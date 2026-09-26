@@ -60,7 +60,7 @@ ON CONFLICT (codigo) DO UPDATE SET
 nombre = EXCLUDED.nombre, descripcion = EXCLUDED.descripcion, activo = true,
 modificado_en = CURRENT_TIMESTAMP;
 
--- Personas. Miguel y Ariana son docentes sin cuenta de acceso.
+-- Personas. Milagros y Ariana son docentes sin cuenta de acceso.
 INSERT INTO persona (
     nombres, apellido_paterno, apellido_materno, telefono,
     documento_identidad, foto_url, cargo_profesional, biografia_profesional
@@ -72,7 +72,7 @@ FROM (VALUES
     ('Gabriel Antonio', 'Mayanga', 'Cabrera', '999 100 102', NULL, NULL, NULL),
     ('Joel Anthony', 'Saldaña', 'Chávez', '999 100 103', NULL, NULL, NULL),
     ('Juan José', 'Morales', 'Velasquez', '999 100 104', NULL, NULL, NULL),
-    ('Miguel Bryan', 'Saldivar', 'Davalos', NULL,
+    ('Milagros Fernanda', 'Salvatierra', 'Guevara', NULL,
      'img/instructores/instructor-1.jpg', 'Docente especialista en Derecho Público',
      'Docente con experiencia en contratación pública, derecho administrativo y gestión estatal.'),
     ('Ariana Fiorella', 'Lazaro', 'Maza', NULL,
@@ -303,24 +303,24 @@ cancelado_en = NULL, modificado_en = CURRENT_TIMESTAMP;
 
 -- Asignaciones docentes; algunos cursos muestran dos docentes.
 WITH asignacion (slug, nombres, apellido, orden) AS (VALUES
-('registral', 'Miguel Bryan', 'Saldivar', 1),
+('registral', 'Milagros Fernanda', 'Salvatierra', 1),
 ('registral', 'Ariana Fiorella', 'Lazaro', 2),
-('contrataciones', 'Miguel Bryan', 'Saldivar', 1),
+('contrataciones', 'Milagros Fernanda', 'Salvatierra', 1),
 ('penal', 'Ariana Fiorella', 'Lazaro', 1),
-('laboral', 'Miguel Bryan', 'Saldivar', 1),
+('laboral', 'Milagros Fernanda', 'Salvatierra', 1),
 ('tributaria', 'Ariana Fiorella', 'Lazaro', 1),
-('sancionador', 'Miguel Bryan', 'Saldivar', 1),
+('sancionador', 'Milagros Fernanda', 'Salvatierra', 1),
 ('sancionador', 'Ariana Fiorella', 'Lazaro', 2),
 ('redaccion', 'Ariana Fiorella', 'Lazaro', 1),
-('arbitraje', 'Miguel Bryan', 'Saldivar', 1),
-('gestion', 'Miguel Bryan', 'Saldivar', 1),
+('arbitraje', 'Milagros Fernanda', 'Salvatierra', 1),
+('gestion', 'Milagros Fernanda', 'Salvatierra', 1),
 ('gestion', 'Ariana Fiorella', 'Lazaro', 2),
-('inmobiliario', 'Miguel Bryan', 'Saldivar', 1),
+('inmobiliario', 'Milagros Fernanda', 'Salvatierra', 1),
 ('notarial', 'Ariana Fiorella', 'Lazaro', 1),
-('urbanistico', 'Miguel Bryan', 'Saldivar', 1),
+('urbanistico', 'Milagros Fernanda', 'Salvatierra', 1),
 ('argumentacion', 'Ariana Fiorella', 'Lazaro', 1),
-('procedimiento', 'Miguel Bryan', 'Saldivar', 1),
-('casos-registrales', 'Miguel Bryan', 'Saldivar', 1),
+('procedimiento', 'Milagros Fernanda', 'Salvatierra', 1),
+('casos-registrales', 'Milagros Fernanda', 'Salvatierra', 1),
 ('casos-registrales', 'Ariana Fiorella', 'Lazaro', 2)
 )
 INSERT INTO curso_docente (curso_id, persona_id, orden)
