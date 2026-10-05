@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.CacheControl;
@@ -30,6 +31,16 @@ public class CursoControlador {
         int tamano = Math.min(Math.max(size, 1), 50);
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(servicio.listar(texto, PageRequest.of(Math.max(page, 0), tamano)));
+    }
+
+    @GetMapping("/beneficios-sugeridos")
+    @Operation(summary = "Sugerir beneficios ya usados en otros cursos",
+            description = "No hay tabla maestra de beneficios (siguen siendo texto libre por curso); esto solo "
+                    + "evita redactar variantes casi idénticas de un curso a otro.")
+    @ApiResponse(responseCode = "200", description = "Hasta 10 coincidencias")
+    @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
+    public ResponseEntity<List<String>> sugerirBeneficios(@RequestParam(defaultValue = "") String texto) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(servicio.sugerirBeneficios(texto));
     }
 
     @PostMapping

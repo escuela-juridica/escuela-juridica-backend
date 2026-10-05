@@ -1,6 +1,7 @@
 package pe.edu.utp.escuela.app.repository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -39,6 +40,18 @@ public interface CursoRepositorio extends JpaRepository<Curso, Long> {
             order by c.creadoEn desc
             """)
     Page<Curso> buscarAdministrativos(@Param("texto") String texto, Pageable pageable);
+
+    /** Beneficios ya usados en otros cursos, para sugerir mientras se escribe uno nuevo (no hay
+     * tabla maestra de beneficios: siguen siendo texto libre por curso, pero reutilizar redacciones
+     * ya existentes evita variantes casi idénticas una al lado de la otra). */
+    @Query(value = """
+            select distinct beneficio
+            from curso c, unnest(c.beneficios) as beneficio
+            where (:texto = '' or lower(beneficio) like concat('%', :texto, '%'))
+            order by beneficio
+            limit 10
+            """, nativeQuery = true)
+    List<String> buscarBeneficiosSugeridos(@Param("texto") String texto);
 
     @Query(value = """
             select new pe.edu.utp.escuela.app.dto.CursoTarjetaFila(

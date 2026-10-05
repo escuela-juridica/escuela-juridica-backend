@@ -77,6 +77,13 @@ public class CursoServicio {
         return PageResponse.from(items, pagina);
     }
 
+    @Transactional(readOnly = true)
+    public List<String> sugerirBeneficios(String texto) {
+        exigirAdministrador();
+        String termino = texto == null ? "" : texto.strip().toLowerCase(Locale.ROOT);
+        return cursos.buscarBeneficiosSugeridos(termino);
+    }
+
     @Transactional
     public CursoEditorRespuesta crear(CrearCursoPeticion p) {
         exigirAdministrador();
@@ -147,10 +154,31 @@ public class CursoServicio {
         curso.setCupoMaximo(p.cupoMaximo());
         curso.setHorasAcademicas(p.horasAcademicas());
         curso.setVigenciaAccesoDias(p.vigenciaAccesoDias());
-        curso.setBeneficios(p.beneficios() == null ? new String[0] : p.beneficios().stream()
-                .map(textos::trimToNull).filter(b -> b != null).toArray(String[]::new));
+        curso.setBeneficios(normalizarBeneficios(p.beneficios()));
 
         return detalleDe(curso);
+    }
+
+    private static final int BENEFICIO_LONGITUD_MAXIMA = 150;
+    private static final int BENEFICIOS_CANTIDAD_MAXIMA = 10;
+
+    /** Recorta espacios, descarta vacíos, trunca textos absurdamente largos y quita duplicados;
+     * nunca falla por esto, salvo que se pase del máximo de beneficios permitido. */
+    private String[] normalizarBeneficios(List<String> entrada) {
+        if (entrada == null) {
+            return new String[0];
+        }
+        List<String> limpios = entrada.stream()
+                .map(textos::trimToNull)
+                .filter(b -> b != null)
+                .map(b -> b.length() > BENEFICIO_LONGITUD_MAXIMA ? b.substring(0, BENEFICIO_LONGITUD_MAXIMA) : b)
+                .distinct()
+                .toList();
+        if (limpios.size() > BENEFICIOS_CANTIDAD_MAXIMA) {
+            throw new BusinessValidationException(
+                    "No puedes agregar más de " + BENEFICIOS_CANTIDAD_MAXIMA + " beneficios.");
+        }
+        return limpios.toArray(new String[0]);
     }
 
     @Transactional
