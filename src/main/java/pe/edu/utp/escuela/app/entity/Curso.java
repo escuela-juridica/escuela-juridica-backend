@@ -23,7 +23,7 @@ import org.hibernate.type.SqlTypes;
 @NoArgsConstructor
 @Entity
 @Table(name = "curso")
-public class Curso {
+public class Curso extends RegistroAuditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -94,9 +94,15 @@ public class Curso {
     @Column(name = "horas_academicas", precision = 8, scale = 2)
     private BigDecimal horasAcademicas;
 
+    @Column(name = "vigencia_acceso_dias")
+    private Integer vigenciaAccesoDias;
+
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "beneficios", nullable = false)
     private String[] beneficios = new String[0];
+
+    @Column(name = "creado_por_usuario_id")
+    private Long creadoPorUsuarioId;
 
     @Column(name = "publicado_en")
     private Instant publicadoEn;

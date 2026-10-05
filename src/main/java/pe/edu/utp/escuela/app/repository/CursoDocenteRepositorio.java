@@ -2,6 +2,7 @@ package pe.edu.utp.escuela.app.repository;
 
 import java.util.Collection;
 import java.util.List;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,6 +12,13 @@ import pe.edu.utp.escuela.app.entity.CursoDocente;
 import pe.edu.utp.escuela.app.entity.CursoDocenteId;
 
 public interface CursoDocenteRepositorio extends JpaRepository<CursoDocente, CursoDocenteId> {
+
+    /** Para el editor administrativo: incluye docentes aunque ya no estén activos (igual que el
+     * resto de HU-009, desactivar nunca borra ni oculta lo ya asignado). */
+    @EntityGraph(attributePaths = "persona")
+    List<CursoDocente> findByCurso_IdOrderByOrdenAsc(Long cursoId);
+
+    void deleteAllByCurso_Id(Long cursoId);
 
     @Query("""
             select new pe.edu.utp.escuela.app.dto.DocenteCursoFila(

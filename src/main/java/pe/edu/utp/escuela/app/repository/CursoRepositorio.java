@@ -23,6 +23,23 @@ public interface CursoRepositorio extends JpaRepository<Curso, Long> {
             """)
     Optional<Curso> buscarFichaPublica(@Param("slug") String slug);
 
+    boolean existsByUrlAmigable(String urlAmigable);
+
+    boolean existsByUrlAmigableAndIdNot(String urlAmigable, Long id);
+
+    @EntityGraph(attributePaths = {
+            "tipoCurso", "categoriaTematica", "entidadCertificadora", "estadoCurso"
+    })
+    Optional<Curso> findWithDetalleById(Long id);
+
+    @EntityGraph(attributePaths = { "tipoCurso", "categoriaTematica", "estadoCurso" })
+    @Query("""
+            select c from Curso c
+            where (:texto = '' or lower(c.titulo) like concat('%', :texto, '%'))
+            order by c.creadoEn desc
+            """)
+    Page<Curso> buscarAdministrativos(@Param("texto") String texto, Pageable pageable);
+
     @Query(value = """
             select new pe.edu.utp.escuela.app.dto.CursoTarjetaFila(
                 c.id, c.urlAmigable, c.titulo, c.descripcion, c.imagenPortadaUrl,
