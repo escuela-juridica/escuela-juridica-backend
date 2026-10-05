@@ -2,6 +2,7 @@ package pe.edu.utp.escuela.app.adminusuario;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -127,13 +128,13 @@ class AdminUsuariosServicioTests {
         when(usuarios.findByCorreoIgnoreCase("nueva@example.com")).thenReturn(Optional.empty());
         when(roles.findByCodigoAndActivoTrue("ROLE_ALUMNO")).thenReturn(Optional.of(rol("ROLE_ALUMNO")));
         when(encoder.encode(anyString())).thenReturn("hash");
-        when(usuarioRoles.buscarPorUsuario(any())).thenReturn(List.of());
 
         CrearUsuarioAdminRespuesta respuesta = servicio.crear(new CrearUsuarioAdminPeticion(
-                "Maria", "Torres", null, "nueva@example.com", null, null, RolUsuarioAdmin.ALUMNO));
+                "Maria", "Torres", null, "nueva@example.com", null, null, List.of(RolUsuarioAdmin.ALUMNO)));
 
         assertFalse(respuesta.reutilizada());
-        assertEquals("Escuela1415@", respuesta.contrasenaTemporal());
+        assertNotNull(respuesta.contrasenaTemporal());
+        assertTrue(respuesta.contrasenaTemporal().length() >= 8);
         assertEquals(CondicionCuentaAdmin.AMBAS_PENDIENTES, respuesta.usuario().condicion());
     }
 
@@ -146,7 +147,7 @@ class AdminUsuariosServicioTests {
         when(usuarioRoles.buscarPorUsuario(7L)).thenReturn(List.of());
 
         CrearUsuarioAdminRespuesta respuesta = servicio.crear(new CrearUsuarioAdminPeticion(
-                "Ana", "Perez", null, "EXISTE@example.com", null, null, RolUsuarioAdmin.ALUMNO));
+                "Ana", "Perez", null, "EXISTE@example.com", null, null, List.of(RolUsuarioAdmin.ALUMNO)));
 
         assertTrue(respuesta.reutilizada());
         assertNull(respuesta.contrasenaTemporal());
@@ -162,7 +163,7 @@ class AdminUsuariosServicioTests {
                 List.of(new UsuarioRolFila(7L, "ROLE_ALUMNO", true, null, Instant.now())));
 
         servicio.crear(new CrearUsuarioAdminPeticion(
-                "Ana", "Perez", null, "existe@example.com", null, null, RolUsuarioAdmin.ALUMNO));
+                "Ana", "Perez", null, "existe@example.com", null, null, List.of(RolUsuarioAdmin.ALUMNO)));
 
         org.mockito.Mockito.verify(usuarioRoles, org.mockito.Mockito.never()).saveAndFlush(any());
     }
@@ -177,7 +178,7 @@ class AdminUsuariosServicioTests {
                 List.of(new UsuarioRolFila(7L, "ROLE_ALUMNO", true, null, Instant.now())));
 
         servicio.crear(new CrearUsuarioAdminPeticion(
-                "Ana", "Perez", null, "existe@example.com", null, null, RolUsuarioAdmin.ADMINISTRADOR));
+                "Ana", "Perez", null, "existe@example.com", null, null, List.of(RolUsuarioAdmin.ADMINISTRADOR)));
 
         var captor = org.mockito.ArgumentCaptor.forClass(pe.edu.utp.escuela.app.entity.UsuarioRol.class);
         org.mockito.Mockito.verify(usuarioRoles).saveAndFlush(captor.capture());
@@ -192,7 +193,7 @@ class AdminUsuariosServicioTests {
         when(personas.existsByDocumentoIdentidad("12345678")).thenReturn(true);
 
         assertThrows(DuplicateResourceException.class, () -> servicio.crear(new CrearUsuarioAdminPeticion(
-                "Maria", "Torres", null, "nueva@example.com", null, "12345678", RolUsuarioAdmin.ALUMNO)));
+                "Maria", "Torres", null, "nueva@example.com", null, "12345678", List.of(RolUsuarioAdmin.ALUMNO))));
     }
 
     @Test
@@ -202,14 +203,51 @@ class AdminUsuariosServicioTests {
         when(usuarios.findByCorreoIgnoreCase("nueva@example.com")).thenReturn(Optional.empty());
         when(roles.findByCodigoAndActivoTrue("ROLE_ALUMNO")).thenReturn(Optional.of(rol("ROLE_ALUMNO")));
         when(encoder.encode(anyString())).thenReturn("hash");
-        when(usuarioRoles.buscarPorUsuario(any())).thenReturn(List.of());
 
         CrearUsuarioAdminRespuesta respuesta = servicio.crear(new CrearUsuarioAdminPeticion(
-                "Maria", "Torres", null, "nueva@example.com", null, null, RolUsuarioAdmin.ALUMNO));
+                "Maria", "Torres", null, "nueva@example.com", null, null, List.of(RolUsuarioAdmin.ALUMNO)));
 
         assertNull(respuesta.usuario().apellidoMaterno());
         assertNull(respuesta.usuario().telefono());
         assertNull(respuesta.usuario().documentoIdentidad());
+    }
+
+    @Test
+    void crearConAmbosRolesDejaAdministradorComoPrincipalSiempre() {
+        comoAdministrador(1L);
+        stubGuardarConId();
+        when(usuarios.findByCorreoIgnoreCase("nueva@example.com")).thenReturn(Optional.empty());
+        when(roles.findByCodigoAndActivoTrue("ROLE_ALUMNO")).thenReturn(Optional.of(rol("ROLE_ALUMNO")));
+        when(roles.findByCodigoAndActivoTrue("ROLE_ADMINISTRADOR")).thenReturn(Optional.of(rol("ROLE_ADMINISTRADOR")));
+        when(encoder.encode(anyString())).thenReturn("hash");
+
+        servicio.crear(new CrearUsuarioAdminPeticion(
+                "Maria", "Torres", null, "nueva@example.com", null, null,
+                List.of(RolUsuarioAdmin.ALUMNO, RolUsuarioAdmin.ADMINISTRADOR)));
+
+        var captor = org.mockito.ArgumentCaptor.forClass(pe.edu.utp.escuela.app.entity.UsuarioRol.class);
+        org.mockito.Mockito.verify(usuarioRoles, org.mockito.Mockito.times(2)).saveAndFlush(captor.capture());
+        var asignaciones = captor.getAllValues();
+        assertEquals(1, asignaciones.stream().filter(pe.edu.utp.escuela.app.entity.UsuarioRol::isPrincipal).count());
+        var principal = asignaciones.stream().filter(pe.edu.utp.escuela.app.entity.UsuarioRol::isPrincipal).findFirst().orElseThrow();
+        assertEquals(1L, principal.getId().getRolId());
+    }
+
+    @Test
+    void resetearContrasenaGeneraUnaNuevaYForzaElCambio() {
+        comoAdministrador(1L);
+        Usuario objetivo = usuarioExistente(9L, "alumno@x.com", true, false);
+        when(usuarios.findWithPersonaById(9L)).thenReturn(Optional.of(objetivo));
+        when(usuarioRoles.buscarPorUsuario(9L)).thenReturn(
+                List.of(new UsuarioRolFila(9L, "ROLE_ALUMNO", true, null, Instant.now())));
+        when(encoder.encode(anyString())).thenReturn("hash-nuevo");
+
+        var respuesta = servicio.resetearContrasena(9L);
+
+        assertNotNull(respuesta.contrasenaTemporal());
+        assertTrue(respuesta.contrasenaTemporal().length() >= 8);
+        assertEquals("hash-nuevo", objetivo.getContrasenaHash());
+        assertTrue(objetivo.isRequiereCambioContrasena());
     }
 
     @Test

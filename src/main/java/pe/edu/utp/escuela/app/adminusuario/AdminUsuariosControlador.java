@@ -104,6 +104,17 @@ public class AdminUsuariosControlador {
         return ResponseEntity.ok(servicio.cambiarActivo(usuarioId, p));
     }
 
+    @PostMapping("/{usuarioId}/resetear-contrasena")
+    @Operation(summary = "Resetear la contraseña de una cuenta",
+            description = "Genera una contraseña temporal aleatoria nueva, fuerza el cambio en el "
+                    + "próximo ingreso y la envía por correo. La respuesta la trae una sola vez.")
+    @ApiResponse(responseCode = "200", description = "Contraseña restablecida")
+    @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
+    @ApiResponse(responseCode = "404", description = "La cuenta ya no existe")
+    public ResponseEntity<ResetearContrasenaRespuesta> resetearContrasena(@PathVariable Long usuarioId) {
+        return ResponseEntity.ok(servicio.resetearContrasena(usuarioId));
+    }
+
     @PostMapping("/{usuarioId}/reenviar-habilitacion")
     @Operation(summary = "Reenviar el código de verificación vigente",
             description = "Solo reenvía si el correo todavía no está verificado; la contraseña "

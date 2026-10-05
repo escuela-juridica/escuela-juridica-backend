@@ -2,6 +2,8 @@ package pe.edu.utp.escuela.app.adminusuario;
 
 import java.security.SecureRandom;
 import java.time.Clock;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -41,8 +43,6 @@ import pe.edu.utp.escuela.app.util.TextNormalizer;
 @Service
 @RequiredArgsConstructor
 public class AdminUsuariosServicio {
-
-    private static final String CONTRASENA_TEMPORAL = "Escuela1415@";
 
     private final UsuarioRepositorio usuarios;
     private final PersonaRepositorio personas;
@@ -113,11 +113,15 @@ public class AdminUsuariosServicio {
     public CrearUsuarioAdminRespuesta crear(CrearUsuarioAdminPeticion p) {
         exigirAdministrador();
         String correo = textos.normalizeEmail(p.correo());
+        List<RolUsuarioAdmin> rolesSolicitados = p.roles().stream().distinct().toList();
+        RolUsuarioAdmin principal = determinarPrincipal(rolesSolicitados);
 
         Optional<Usuario> existente = usuarios.findByCorreoIgnoreCase(correo);
         if (existente.isPresent()) {
             Usuario usuario = existente.get();
-            concederRolSiFalta(usuario, p.rol());
+            for (RolUsuarioAdmin rol : rolesSolicitados) {
+                concederRolSiFalta(usuario, rol);
+            }
             return new CrearUsuarioAdminRespuesta(detalleDe(usuario), true, null);
         }
 
@@ -135,22 +139,54 @@ public class AdminUsuariosServicio {
         personas.saveAndFlush(persona);
 
         Long adminActualId = currentUserService.get().userId();
+        String contrasenaTemporal = generarContrasenaTemporal();
         Usuario usuario = new Usuario();
         usuario.setPersona(persona);
         usuario.setCorreo(correo);
         usuario.setOrigenRegistro("ADMINISTRATIVO");
         usuario.setActivo(true);
         usuario.setRequiereCambioContrasena(true);
-        usuario.setContrasenaHash(encoder.encode(CONTRASENA_TEMPORAL));
+        usuario.setContrasenaHash(encoder.encode(contrasenaTemporal));
         usuario.setCreadoPorUsuarioId(adminActualId);
         usuarios.saveAndFlush(usuario);
 
-        asignarRol(usuario, p.rol(), adminActualId);
+        for (RolUsuarioAdmin rol : rolesSolicitados) {
+            asignarRol(usuario, rol, adminActualId, rol == principal);
+        }
 
         String codigo = generarCodigo(usuario);
-        enviarBienvenida(usuario, CONTRASENA_TEMPORAL, codigo);
+        enviarBienvenida(usuario, contrasenaTemporal, codigo);
 
-        return new CrearUsuarioAdminRespuesta(detalleDe(usuario), false, CONTRASENA_TEMPORAL);
+        return new CrearUsuarioAdminRespuesta(detalleDe(usuario), false, contrasenaTemporal);
+    }
+
+    /** Ya no se pregunta ni se infiere "cuál se guardó primero": con un solo rol, ese es el
+     * principal; con ambos, ADMINISTRADOR siempre gana por ser el de mayor alcance. */
+    private RolUsuarioAdmin determinarPrincipal(List<RolUsuarioAdmin> roles) {
+        return roles.contains(RolUsuarioAdmin.ADMINISTRADOR) ? RolUsuarioAdmin.ADMINISTRADOR : roles.get(0);
+    }
+
+    /** Genera una contraseña temporal aleatoria (no una fija compartida por todas las cuentas),
+     * cumpliendo siempre la política de contraseñas (mayúscula, minúscula y dígito); evita
+     * 0/O/1/l/I para que sea legible al transcribirla desde la pantalla o el correo. */
+    private String generarContrasenaTemporal() {
+        String mayusculas = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        String minusculas = "abcdefghjkmnpqrstuvwxyz";
+        String digitos = "23456789";
+        String todos = mayusculas + minusculas + digitos;
+
+        List<Character> caracteres = new ArrayList<>();
+        caracteres.add(mayusculas.charAt(random.nextInt(mayusculas.length())));
+        caracteres.add(minusculas.charAt(random.nextInt(minusculas.length())));
+        caracteres.add(digitos.charAt(random.nextInt(digitos.length())));
+        for (int i = 0; i < 7; i++) {
+            caracteres.add(todos.charAt(random.nextInt(todos.length())));
+        }
+        Collections.shuffle(caracteres, random);
+
+        StringBuilder resultado = new StringBuilder(caracteres.size());
+        caracteres.forEach(resultado::append);
+        return resultado.toString();
     }
 
     @Transactional
@@ -253,6 +289,20 @@ public class AdminUsuariosServicio {
         }
     }
 
+    /** Resetea la contraseña con una temporal aleatoria nueva (pedido explícitamente: antes no
+     * existía forma de que el administrador restableciera el acceso de alguien). La respuesta la
+     * trae una sola vez, igual que al crear la cuenta; también se envía por correo. */
+    @Transactional
+    public ResetearContrasenaRespuesta resetearContrasena(Long usuarioId) {
+        exigirAdministrador();
+        Usuario usuario = buscarOLanzar(usuarioId);
+        String contrasenaTemporal = generarContrasenaTemporal();
+        usuario.setContrasenaHash(encoder.encode(contrasenaTemporal));
+        usuario.setRequiereCambioContrasena(true);
+        enviarContrasenaRestablecida(usuario, contrasenaTemporal);
+        return new ResetearContrasenaRespuesta(detalleDe(usuario), contrasenaTemporal);
+    }
+
     private void exigirAdministrador() {
         if (!currentUserService.get().hasRole("ADMINISTRADOR")) {
             throw new ForbiddenException();
@@ -276,15 +326,19 @@ public class AdminUsuariosServicio {
         asignarRol(usuario, rolSolicitado, currentUserService.get().userId());
     }
 
-    /** El primer rol que recibe la cuenta queda como principal; cualquier otro se agrega como
-     * secundario sin tocar el principal ya existente. */
+    /** Para conceder un rol suelto sobre una cuenta que ya existe: el primer rol que recibe
+     * queda como principal; cualquier otro se agrega como secundario sin tocar el principal ya
+     * existente. */
     private void asignarRol(Usuario usuario, RolUsuarioAdmin rolSolicitado, Long otorganteId) {
-        Rol rol = rolPorCodigo(rolSolicitado);
         boolean tieneAlgunRol = !usuarioRoles.buscarPorUsuario(usuario.getId()).isEmpty();
+        asignarRol(usuario, rolSolicitado, otorganteId, !tieneAlgunRol);
+    }
 
+    private void asignarRol(Usuario usuario, RolUsuarioAdmin rolSolicitado, Long otorganteId, boolean principal) {
+        Rol rol = rolPorCodigo(rolSolicitado);
         UsuarioRol asignacion = new UsuarioRol();
         asignacion.setId(new UsuarioRol.Clave(usuario.getId(), rol.getId()));
-        asignacion.setPrincipal(!tieneAlgunRol);
+        asignacion.setPrincipal(principal);
         asignacion.setAsignadoPorUsuarioId(otorganteId);
         asignacion.setAsignadoEn(clock.instant());
         usuarioRoles.saveAndFlush(asignacion);
@@ -321,6 +375,27 @@ public class AdminUsuariosServicio {
                             "correo", usuario.getCorreo(),
                             "contrasenaTemporal", contrasenaTemporal,
                             "codigo", codigoVisible)));
+            notificacion.setEstadoEnvio("ENVIADO");
+            notificacion.setEnviadoEn(clock.instant());
+        } catch (MailDeliveryException exception) {
+            notificacion.setEstadoEnvio("ERROR");
+            notificacion.setUltimoError(exception.getMessage());
+        }
+        notificaciones.saveAndFlush(notificacion);
+    }
+
+    private void enviarContrasenaRestablecida(Usuario usuario, String contrasenaTemporal) {
+        Notificacion notificacion = new Notificacion();
+        notificacion.setUsuario(usuario);
+        notificacion.setTipo("CONTRASENA_RESTABLECIDA");
+        notificacion.setDestinatario(usuario.getCorreo());
+        notificacion.setAsunto("Tu contraseña en ESEJUR fue restablecida");
+        try {
+            mailService.sendHtml(HtmlMailMessage.to(usuario.getCorreo(), notificacion.getAsunto(),
+                    "mail/contrasena-restablecida.html",
+                    Map.of(
+                            "nombre", usuario.getPersona().getNombres(),
+                            "contrasenaTemporal", contrasenaTemporal)));
             notificacion.setEstadoEnvio("ENVIADO");
             notificacion.setEnviadoEn(clock.instant());
         } catch (MailDeliveryException exception) {
