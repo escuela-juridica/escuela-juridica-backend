@@ -1529,17 +1529,17 @@ INSERT INTO usuario
     (persona_id, correo, origen_registro, contrasena_hash, correo_verificado_en)
 SELECT p.persona_id, v.correo, v.origen, v.hash, CURRENT_TIMESTAMP
 FROM (VALUES
-    ('Ricardo Enrique', 'Prada', 'enrique.prada@demo.esejur.pe', 'ADMINISTRADOR', '{bcrypt}$2a$10$3q2hYuey7bsCOddOq/6JXeyITlKtm51hBOPZ8XodNvK.AbLF7ntZC'),
-    ('Gabriel Antonio', 'Mayanga', 'gabriel.mayanga@demo.esejur.pe', 'FORMULARIO', '{bcrypt}$2a$10$41ZIgbSSlPVd3pBrI3BGuu9O6s0NXg.XnZZ2svvawPxfzrHU5Aj3G'),
-    ('Joel Anthony', 'Saldana', 'joel.saldana@demo.esejur.pe', 'FORMULARIO', '{bcrypt}$2a$10$RHTaYvzW9s7uFSCHQTkLFO0YUf.qVdldhm8UJAo1Zb9Ol6UjFxWnq'),
-    ('Juan Jose', 'Morales', 'juan.morales@demo.esejur.pe', 'FORMULARIO', '{bcrypt}$2a$10$1AG2h0Y3AYpVmFFp/HPxl.EOOU0fI5pFi2OXoafZjRq3oDnCmUpmq')
+    ('Ricardo Enrique', 'Prada', 'admin@escuelajuridica.edu.pe', 'ADMINISTRADOR', '{bcrypt}$2a$10$3q2hYuey7bsCOddOq/6JXeyITlKtm51hBOPZ8XodNvK.AbLF7ntZC'),
+    ('Gabriel Antonio', 'Mayanga', 'gabriel.mayanga@escuelajuridica.edu.pe', 'FORMULARIO', '{bcrypt}$2a$10$41ZIgbSSlPVd3pBrI3BGuu9O6s0NXg.XnZZ2svvawPxfzrHU5Aj3G'),
+    ('Joel Anthony', 'Saldana', 'joel.saldana@escuelajuridica.edu.pe', 'FORMULARIO', '{bcrypt}$2a$10$RHTaYvzW9s7uFSCHQTkLFO0YUf.qVdldhm8UJAo1Zb9Ol6UjFxWnq'),
+    ('Juan Jose', 'Morales', 'juan.morales@escuelajuridica.edu.pe', 'FORMULARIO', '{bcrypt}$2a$10$1AG2h0Y3AYpVmFFp/HPxl.EOOU0fI5pFi2OXoafZjRq3oDnCmUpmq')
 ) v(nombres, apellido, correo, origen, hash)
 JOIN persona p ON p.nombres = v.nombres AND p.apellido_paterno = v.apellido;
 
 INSERT INTO usuario_rol (usuario_id, rol_id, es_principal)
 SELECT u.usuario_id, r.rol_id, true
 FROM usuario u
-JOIN rol r ON r.codigo = CASE WHEN u.correo = 'enrique.prada@demo.esejur.pe'
+JOIN rol r ON r.codigo = CASE WHEN u.correo = 'admin@escuelajuridica.edu.pe'
                               THEN 'ROLE_ADMINISTRADOR' ELSE 'ROLE_ALUMNO' END;
 
 -- Historial seguro para probar consultas de verificacion y recuperacion sin dejar secretos activos.
@@ -1549,19 +1549,19 @@ INSERT INTO codigo_verificacion_correo
 SELECT u.usuario_id,'$2b$10$iWfWG0m/DgHbTPJq2YtR7uYr1ts980HXONktD/SvopOPO7SlCAuOe',
        'ENVIADO',CURRENT_TIMESTAMP-interval '30 days',CURRENT_TIMESTAMP-interval '30 days',
        CURRENT_TIMESTAMP-interval '30 days'
-FROM usuario u WHERE u.correo='gabriel.mayanga@demo.esejur.pe';
+FROM usuario u WHERE u.correo='gabriel.mayanga@escuelajuridica.edu.pe';
 
 INSERT INTO token_recuperacion_acceso
     (usuario_id,token_hash,estado_envio,solicitado_en,expira_en,utilizado_en,modificado_en)
 SELECT u.usuario_id,'ccaec6bcf1fa251e65660cfe22f09127b139ffe9c73b20bc14b1932f50b4e793',
        'ENVIADO',CURRENT_TIMESTAMP-interval '20 days',CURRENT_TIMESTAMP-interval '20 days'+interval '1 hour',
        CURRENT_TIMESTAMP-interval '20 days'+interval '10 minutes',CURRENT_TIMESTAMP-interval '20 days'
-FROM usuario u WHERE u.correo='joel.saldana@demo.esejur.pe';
+FROM usuario u WHERE u.correo='joel.saldana@escuelajuridica.edu.pe';
 
 INSERT INTO configuracion_institucional (codigo, valor, descripcion, modificado_por_usuario_id)
 SELECT 'LUGAR_EMISION_CERTIFICADO', 'Lima, Peru',
        'Lugar predeterminado para la emision de certificados.', u.usuario_id
-FROM usuario u WHERE u.correo = 'enrique.prada@demo.esejur.pe';
+FROM usuario u WHERE u.correo = 'admin@escuelajuridica.edu.pe';
 
 INSERT INTO firmante (persona_id, cargo_firma, imagen_firma_url)
 SELECT p.persona_id, v.cargo, v.imagen
@@ -1608,7 +1608,7 @@ JOIN tipo_curso tc ON tc.codigo=d.tipo
 JOIN categoria_tematica ct ON ct.codigo=d.categoria
 LEFT JOIN entidad_certificadora ec ON ec.nombre=d.entidad
 JOIN estado_curso es ON es.codigo=d.estado
-JOIN usuario u ON u.correo='enrique.prada@demo.esejur.pe';
+JOIN usuario u ON u.correo='admin@escuelajuridica.edu.pe';
 
 INSERT INTO curso_docente (curso_id, persona_id, orden)
 SELECT c.curso_id, p.persona_id, v.orden
@@ -1672,7 +1672,7 @@ SELECT tm.tipo_material_id,'VIDEO','YOUTUBE','https://www.youtube.com/watch?v=de
        NULL,'video/youtube',NULL,false,true,u.usuario_id
 FROM leccion l
 JOIN tipo_material tm ON tm.codigo='VIDEO'
-JOIN usuario u ON u.correo='enrique.prada@demo.esejur.pe'
+JOIN usuario u ON u.correo='admin@escuelajuridica.edu.pe'
 WHERE l.tipo='GRABADA';
 
 INSERT INTO material_leccion (leccion_id,recurso_id,titulo,orden)
@@ -1706,13 +1706,13 @@ SELECT u.usuario_id,c.curso_id,v.estado,v.forma,
             THEN CURRENT_TIMESTAMP+(c.vigencia_acceso_dias||' days')::interval END,
        CASE WHEN v.forma='ADMINISTRADOR' THEN a.usuario_id END
 FROM (VALUES
- ('gabriel.mayanga@demo.esejur.pe','derecho-registral-notarial','ACTIVA','ADMINISTRADOR'),
- ('joel.saldana@demo.esejur.pe','procedimiento-administrativo','ACTIVA','GRATUITA'),
- ('juan.morales@demo.esejur.pe','contrataciones-estado','ACTIVA','ADMINISTRADOR')
+ ('gabriel.mayanga@escuelajuridica.edu.pe','derecho-registral-notarial','ACTIVA','ADMINISTRADOR'),
+ ('joel.saldana@escuelajuridica.edu.pe','procedimiento-administrativo','ACTIVA','GRATUITA'),
+ ('juan.morales@escuelajuridica.edu.pe','contrataciones-estado','ACTIVA','ADMINISTRADOR')
 ) v(correo,slug,estado,forma)
 JOIN usuario u ON u.correo=v.correo
 JOIN curso c ON c.url_amigable=v.slug
-JOIN usuario a ON a.correo='enrique.prada@demo.esejur.pe';
+JOIN usuario a ON a.correo='admin@escuelajuridica.edu.pe';
 
 INSERT INTO historial_estado_matricula (matricula_id,estado_nuevo,realizado_por_usuario_id)
 SELECT m.matricula_id,m.estado,m.creado_por_usuario_id FROM matricula m;
@@ -1725,13 +1725,13 @@ SELECT m.matricula_id,v.pedido,v.origen,v.medio,v.estado,
        c.precio_regular,c.precio_promocional,v.importe,v.referencia,v.motivo,
        v.constancia,CURRENT_TIMESTAMP,false,a.usuario_id
 FROM (VALUES
- ('gabriel.mayanga@demo.esejur.pe','derecho-registral-notarial','PED-EP03-MANUAL-0001','MANUAL','TRANSFERENCIA','REGISTRADO_MANUAL',450.00::numeric,'TRX-DEMO-0001',NULL::text,'CONST-0001'),
- ('juan.morales@demo.esejur.pe','contrataciones-estado','PED-EP03-EXONERADO-0002','EXONERADO',NULL,'EXONERADO',0.00::numeric,NULL,'Exoneracion autorizada para demostracion','CONST-0002')
+ ('gabriel.mayanga@escuelajuridica.edu.pe','derecho-registral-notarial','PED-EP03-MANUAL-0001','MANUAL','TRANSFERENCIA','REGISTRADO_MANUAL',450.00::numeric,'TRX-DEMO-0001',NULL::text,'CONST-0001'),
+ ('juan.morales@escuelajuridica.edu.pe','contrataciones-estado','PED-EP03-EXONERADO-0002','EXONERADO',NULL,'EXONERADO',0.00::numeric,NULL,'Exoneracion autorizada para demostracion','CONST-0002')
 ) v(correo,slug,pedido,origen,medio,estado,importe,referencia,motivo,constancia)
 JOIN usuario u ON u.correo=v.correo
 JOIN curso c ON c.url_amigable=v.slug
 JOIN matricula m ON m.usuario_id=u.usuario_id AND m.curso_id=c.curso_id
-JOIN usuario a ON a.correo='enrique.prada@demo.esejur.pe';
+JOIN usuario a ON a.correo='admin@escuelajuridica.edu.pe';
 
 INSERT INTO notificacion
     (usuario_id,matricula_id,pago_id,tipo,destinatario,asunto,estado_envio,
@@ -1751,14 +1751,14 @@ SELECT u.usuario_id,c.curso_id,'ACTIVA','PAGO_EN_LINEA',CURRENT_TIMESTAMP,
        CASE WHEN c.vigencia_acceso_dias IS NULL THEN NULL
             ELSE CURRENT_TIMESTAMP+(c.vigencia_acceso_dias||' days')::interval END
 FROM usuario u CROSS JOIN curso c
-WHERE u.correo='joel.saldana@demo.esejur.pe'
+WHERE u.correo='joel.saldana@escuelajuridica.edu.pe'
   AND c.url_amigable='funcion-notarial';
 
 INSERT INTO historial_estado_matricula (matricula_id,estado_anterior,estado_nuevo,motivo)
 SELECT m.matricula_id,'PENDIENTE_PAGO','ACTIVA','Culqi informo APROBADO en el segundo intento.'
 FROM matricula m JOIN usuario u ON u.usuario_id=m.usuario_id
 JOIN curso c ON c.curso_id=m.curso_id
-WHERE u.correo='joel.saldana@demo.esejur.pe' AND c.url_amigable='funcion-notarial';
+WHERE u.correo='joel.saldana@escuelajuridica.edu.pe' AND c.url_amigable='funcion-notarial';
 
 INSERT INTO pago
     (matricula_id,numero_pedido,operacion_proveedor,origen,medio,estado,
@@ -1774,7 +1774,7 @@ FROM (VALUES
  ('PED-EP06-0002','CULQI-OP-DEMO-002','TARJETA','APROBADO',320.00::numeric,
   'CULQI-REF-DEMO-002','4242',1,NULL::text,CURRENT_TIMESTAMP-interval '1 hour',CURRENT_TIMESTAMP-interval '1 hour')
 ) v(pedido,operacion,medio,estado,importe,referencia,digitos,cuotas,motivo,resultado,inicio)
-JOIN usuario u ON u.correo='joel.saldana@demo.esejur.pe'
+JOIN usuario u ON u.correo='joel.saldana@escuelajuridica.edu.pe'
 JOIN curso c ON c.url_amigable='funcion-notarial'
 JOIN matricula m ON m.usuario_id=u.usuario_id AND m.curso_id=c.curso_id;
 
@@ -1795,9 +1795,9 @@ SELECT u.usuario_id,c.curso_id,'CANCELADA','PAGO_EN_LINEA',
        'Cancelacion solicitada antes del resultado de Culqi.',CURRENT_TIMESTAMP-interval '5 hours',
        a.usuario_id,CURRENT_TIMESTAMP-interval '6 hours',CURRENT_TIMESTAMP-interval '5 hours'
 FROM usuario u CROSS JOIN curso c CROSS JOIN usuario a
-WHERE u.correo='gabriel.mayanga@demo.esejur.pe'
+WHERE u.correo='gabriel.mayanga@escuelajuridica.edu.pe'
   AND c.url_amigable='litigacion-penal'
-  AND a.correo='enrique.prada@demo.esejur.pe';
+  AND a.correo='admin@escuelajuridica.edu.pe';
 
 INSERT INTO historial_estado_matricula
     (matricula_id,estado_anterior,estado_nuevo,motivo,realizado_por_usuario_id,realizado_en)
@@ -1805,7 +1805,7 @@ SELECT m.matricula_id,'PENDIENTE_PAGO','CANCELADA',m.motivo_cancelacion,
        m.cancelada_por_usuario_id,m.cancelada_en
 FROM matricula m JOIN usuario u ON u.usuario_id=m.usuario_id
 JOIN curso c ON c.curso_id=m.curso_id
-WHERE u.correo='gabriel.mayanga@demo.esejur.pe' AND c.url_amigable='litigacion-penal';
+WHERE u.correo='gabriel.mayanga@escuelajuridica.edu.pe' AND c.url_amigable='litigacion-penal';
 
 INSERT INTO pago
     (matricula_id,numero_pedido,operacion_proveedor,origen,medio,estado,
@@ -1819,7 +1819,7 @@ SELECT m.matricula_id,'PED-EP06-CANCELADO-0003','CULQI-OP-DEMO-003','EN_LINEA','
        CURRENT_TIMESTAMP-interval '6 hours'
 FROM matricula m JOIN usuario u ON u.usuario_id=m.usuario_id
 JOIN curso c ON c.curso_id=m.curso_id
-WHERE u.correo='gabriel.mayanga@demo.esejur.pe' AND c.url_amigable='litigacion-penal';
+WHERE u.correo='gabriel.mayanga@escuelajuridica.edu.pe' AND c.url_amigable='litigacion-penal';
 
 INSERT INTO evento_pago
     (pago_id,identificador_evento,estado_informado,contenido,recibido_en,aplicado_en)
@@ -1835,7 +1835,7 @@ SELECT m.matricula_id,p.pago_id,'MATRICULA_CANCELADA','ATENDIDO',
        'Se conservo el pago y la matricula permanecio sin acceso.',p.resultado_en,
        CURRENT_TIMESTAMP,a.usuario_id
 FROM pago p JOIN matricula m ON m.matricula_id=p.matricula_id
-JOIN usuario a ON a.correo='enrique.prada@demo.esejur.pe'
+JOIN usuario a ON a.correo='admin@escuelajuridica.edu.pe'
 WHERE p.numero_pedido='PED-EP06-CANCELADO-0003';
 
 -- Reprogramacion demostrativa de una sesion futura, conservando el antes y el despues.
@@ -1848,7 +1848,7 @@ SELECT l.leccion_id,'REPROGRAMACION',l.fecha_hora_inicio,l.fecha_hora_fin,l.enla
        'Cambio de disponibilidad del docente para la demostracion.',a.usuario_id
 FROM leccion l JOIN modulo m ON m.modulo_id=l.modulo_id
 JOIN curso c ON c.curso_id=m.curso_id
-JOIN usuario a ON a.correo='enrique.prada@demo.esejur.pe'
+JOIN usuario a ON a.correo='admin@escuelajuridica.edu.pe'
 WHERE c.url_amigable='litigacion-penal' AND l.tipo='EN_VIVO'
 ORDER BY l.leccion_id FETCH FIRST 1 ROW ONLY;
 
@@ -1868,7 +1868,7 @@ JOIN curso c ON c.curso_id=m.curso_id
 JOIN modulo mo ON mo.curso_id=c.curso_id
 JOIN leccion l ON l.modulo_id=mo.modulo_id
 JOIN material_leccion ml ON ml.leccion_id=l.leccion_id
-WHERE u.correo='gabriel.mayanga@demo.esejur.pe'
+WHERE u.correo='gabriel.mayanga@escuelajuridica.edu.pe'
   AND c.url_amigable='derecho-registral-notarial';
 
 INSERT INTO progreso_leccion
@@ -1881,7 +1881,7 @@ FROM matricula m JOIN usuario u ON u.usuario_id=m.usuario_id
 JOIN curso c ON c.curso_id=m.curso_id
 JOIN modulo mo ON mo.curso_id=c.curso_id
 JOIN leccion l ON l.modulo_id=mo.modulo_id
-WHERE u.correo='gabriel.mayanga@demo.esejur.pe'
+WHERE u.correo='gabriel.mayanga@escuelajuridica.edu.pe'
   AND c.url_amigable='derecho-registral-notarial';
 
 -- Asistencia de Juan en las sesiones elegibles del curso hibrido.
@@ -1891,8 +1891,8 @@ FROM matricula m JOIN usuario u ON u.usuario_id=m.usuario_id
 JOIN curso c ON c.curso_id=m.curso_id
 JOIN modulo mo ON mo.curso_id=c.curso_id
 JOIN leccion l ON l.modulo_id=mo.modulo_id AND l.tipo='EN_VIVO'
-JOIN usuario a ON a.correo='enrique.prada@demo.esejur.pe'
-WHERE u.correo='juan.morales@demo.esejur.pe'
+JOIN usuario a ON a.correo='admin@escuelajuridica.edu.pe'
+WHERE u.correo='juan.morales@escuelajuridica.edu.pe'
   AND c.url_amigable='contrataciones-estado';
 
 -- Intento calificado con una pregunta automatica y otra revisada por administracion.
@@ -1903,7 +1903,7 @@ SELECT m.matricula_id,e.examen_id,1,'CALIFICADO',16,20,16,true,
        CURRENT_TIMESTAMP-interval '2 days',CURRENT_TIMESTAMP-interval '2 days',CURRENT_TIMESTAMP-interval '1 day'
 FROM matricula m JOIN usuario u ON u.usuario_id=m.usuario_id
 JOIN curso c ON c.curso_id=m.curso_id JOIN examen e ON e.curso_id=c.curso_id
-WHERE u.correo='gabriel.mayanga@demo.esejur.pe'
+WHERE u.correo='gabriel.mayanga@escuelajuridica.edu.pe'
   AND c.url_amigable='derecho-registral-notarial'
 ORDER BY e.examen_id FETCH FIRST 1 ROW ONLY;
 
@@ -1930,7 +1930,7 @@ INSERT INTO revision_respuesta
 SELECT r.respuesta_intento_id,6,'Respuesta correcta, puede ampliar la fundamentacion.',a.usuario_id,
        CURRENT_TIMESTAMP-interval '1 day'
 FROM respuesta_intento r JOIN pregunta p ON p.pregunta_id=r.pregunta_id
-JOIN usuario a ON a.correo='enrique.prada@demo.esejur.pe'
+JOIN usuario a ON a.correo='admin@escuelajuridica.edu.pe'
 WHERE p.tipo='RESPUESTA_ABIERTA';
 
 INSERT INTO excepcion_academica
@@ -1941,8 +1941,8 @@ SELECT m.matricula_id,'CORREGIR_PROGRESO','MATRICULA',m.matricula_id,'80','100',
        CURRENT_TIMESTAMP-interval '1 day'
 FROM matricula m JOIN usuario u ON u.usuario_id=m.usuario_id
 JOIN curso c ON c.curso_id=m.curso_id
-JOIN usuario a ON a.correo='enrique.prada@demo.esejur.pe'
-WHERE u.correo='gabriel.mayanga@demo.esejur.pe'
+JOIN usuario a ON a.correo='admin@escuelajuridica.edu.pe'
+WHERE u.correo='gabriel.mayanga@escuelajuridica.edu.pe'
   AND c.url_amigable='derecho-registral-notarial';
 
 -- Logro y certificado vigente para probar consulta, descarga y verificacion publica.
@@ -1950,7 +1950,7 @@ UPDATE matricula SET fecha_finalizacion=CURRENT_TIMESTAMP-interval '1 day', modi
 WHERE matricula_id=(
     SELECT m.matricula_id FROM matricula m JOIN usuario u ON u.usuario_id=m.usuario_id
     JOIN curso c ON c.curso_id=m.curso_id
-    WHERE u.correo='gabriel.mayanga@demo.esejur.pe'
+    WHERE u.correo='gabriel.mayanga@escuelajuridica.edu.pe'
       AND c.url_amigable='derecho-registral-notarial'
 );
 
@@ -1961,7 +1961,7 @@ SELECT m.matricula_id,'EMITIDO',16,100,NULL,'REFRENDADO',m.fecha_finalizacion,
        m.fecha_finalizacion,m.fecha_finalizacion,'Gabriel Antonio Mayanga Cabrera'
 FROM matricula m JOIN usuario u ON u.usuario_id=m.usuario_id
 JOIN curso c ON c.curso_id=m.curso_id
-WHERE u.correo='gabriel.mayanga@demo.esejur.pe'
+WHERE u.correo='gabriel.mayanga@escuelajuridica.edu.pe'
   AND c.url_amigable='derecho-registral-notarial';
 
 INSERT INTO certificado
@@ -1990,7 +1990,7 @@ SELECT ce.certificado_id,'CORRECCION','Nombre: Gabriel A. Mayanga',
        'Nombre: Gabriel Antonio Mayanga Cabrera',
        'Correccion demostrativa de nombres antes de la descarga.',a.usuario_id,
        CURRENT_TIMESTAMP-interval '12 hours'
-FROM certificado ce JOIN usuario a ON a.correo='enrique.prada@demo.esejur.pe'
+FROM certificado ce JOIN usuario a ON a.correo='admin@escuelajuridica.edu.pe'
 WHERE ce.codigo='ESEJUR-2026-DEMO-0001';
 
 -- Queja respondida para probar el libro de reclamaciones.
@@ -2001,13 +2001,13 @@ SELECT 'REC-2026-DEMO-0001',u.usuario_id,'RECLAMO','Joel Anthony Saldana Chavez'
        '999 100 103','No pude abrir un material durante una prueba.',
        'Solicito confirmar la disponibilidad del contenido.','RESPONDIDO',CURRENT_DATE+21,
        CURRENT_TIMESTAMP-interval '3 days',CURRENT_TIMESTAMP-interval '1 day'
-FROM usuario u WHERE u.correo='joel.saldana@demo.esejur.pe';
+FROM usuario u WHERE u.correo='joel.saldana@escuelajuridica.edu.pe';
 
 INSERT INTO respuesta_reclamacion
     (reclamacion_id,respuesta,respondido_por_usuario_id,estado_envio,enviado_en)
 SELECT r.reclamacion_id,'Se verifico el material y el acceso se encuentra nuevamente disponible.',
        a.usuario_id,'ENVIADO',r.respondido_en
-FROM reclamacion r JOIN usuario a ON a.correo='enrique.prada@demo.esejur.pe'
+FROM reclamacion r JOIN usuario a ON a.correo='admin@escuelajuridica.edu.pe'
 WHERE r.codigo='REC-2026-DEMO-0001';
 
 INSERT INTO notificacion

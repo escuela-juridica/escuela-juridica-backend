@@ -46,10 +46,6 @@ public class SecurityConfig {
             "/api/auth/verificacion/**",
             "/api/auth/recuperacion/**",
             "/api/testing/mail",
-            // Temporal (Épica 01, ver pe.edu.utp.escuela.app.adminusuarios): CRUD básico sin
-            // base de datos, deliberadamente separado del sistema de sesión/roles real. Se
-            // elimina en la Épica 02.
-            "/api/admin/usuarios/**",
             "/v3/api-docs/**",
             "/swagger-ui.html",
             "/swagger-ui/**",

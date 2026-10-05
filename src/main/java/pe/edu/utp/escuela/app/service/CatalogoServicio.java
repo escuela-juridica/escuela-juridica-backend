@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utp.escuela.app.dto.CursoTarjetaFila;
@@ -77,11 +78,11 @@ public class CatalogoServicio {
     @Transactional(readOnly = true)
     public FiltrosCursoRespuesta filtros() {
         List<OpcionFiltroRespuesta> tipos = tipoCursoRepositorio
-                .findByActivoTrueOrderByOrdenAscNombreAsc().stream()
+                .findByActivoTrueOrderByOrdenAscNombreAsc(Pageable.unpaged()).stream()
                 .map(tipo -> new OpcionFiltroRespuesta(tipo.getCodigo(), tipo.getNombre()))
                 .toList();
         List<OpcionFiltroRespuesta> categorias = categoriaTematicaRepositorio
-                .findByActivoTrueOrderByOrdenAscNombreAsc().stream()
+                .findByActivoTrueOrderByOrdenAscNombreAsc(Pageable.unpaged()).stream()
                 .map(categoria -> new OpcionFiltroRespuesta(
                         categoria.getCodigo(), categoria.getNombre()))
                 .toList();

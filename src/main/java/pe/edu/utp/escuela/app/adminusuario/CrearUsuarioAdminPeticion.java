@@ -1,4 +1,4 @@
-package pe.edu.utp.escuela.app.adminusuarios;
+package pe.edu.utp.escuela.app.adminusuario;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
