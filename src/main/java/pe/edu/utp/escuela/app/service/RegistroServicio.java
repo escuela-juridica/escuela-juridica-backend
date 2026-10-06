@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 import pe.edu.utp.escuela.app.dto.*;
 import pe.edu.utp.escuela.app.exception.*;
 import pe.edu.utp.escuela.app.repository.*;
-import pe.edu.utp.escuela.app.registro.integracion.*;
 import pe.edu.utp.escuela.app.util.TextNormalizer;
 
 @Service @RequiredArgsConstructor

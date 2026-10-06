@@ -5,7 +5,7 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import pe.edu.utp.escuela.app.adminusuario.UsuarioRolFila;
+import pe.edu.utp.escuela.app.dto.UsuarioRolFila;
 import pe.edu.utp.escuela.app.entity.UsuarioRol;
 
 public interface UsuarioRolRepositorio extends JpaRepository<UsuarioRol, UsuarioRol.Clave> {
@@ -21,7 +21,7 @@ public interface UsuarioRolRepositorio extends JpaRepository<UsuarioRol, Usuario
     List<String> buscarCodigosRolesPrincipales(@Param("usuarioId") Long usuarioId);
 
     @Query("""
-            select new pe.edu.utp.escuela.app.adminusuario.UsuarioRolFila(
+            select new pe.edu.utp.escuela.app.dto.UsuarioRolFila(
                 ur.id.usuarioId, r.codigo, ur.principal, ur.asignadoPorUsuarioId, ur.asignadoEn)
             from UsuarioRol ur join Rol r on r.id = ur.id.rolId
             where ur.id.usuarioId in :usuarioIds
@@ -29,7 +29,7 @@ public interface UsuarioRolRepositorio extends JpaRepository<UsuarioRol, Usuario
     List<UsuarioRolFila> buscarPorUsuarios(@Param("usuarioIds") Collection<Long> usuarioIds);
 
     @Query("""
-            select new pe.edu.utp.escuela.app.adminusuario.UsuarioRolFila(
+            select new pe.edu.utp.escuela.app.dto.UsuarioRolFila(
                 ur.id.usuarioId, r.codigo, ur.principal, ur.asignadoPorUsuarioId, ur.asignadoEn)
             from UsuarioRol ur join Rol r on r.id = ur.id.rolId
             where ur.id.usuarioId = :usuarioId

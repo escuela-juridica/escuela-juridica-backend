@@ -5,11 +5,21 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.EntityGraph;
 import pe.edu.utp.escuela.app.dto.DuracionLeccionFila;
 import pe.edu.utp.escuela.app.dto.RecursoVistaPreviaFila;
 import pe.edu.utp.escuela.app.entity.MaterialLeccion;
 
 public interface MaterialLeccionRepositorio extends JpaRepository<MaterialLeccion, Long> {
+
+    /** Para el editor administrativo: incluye materiales desactivados (quitar nunca borra). */
+    @EntityGraph(attributePaths = { "recurso", "recurso.tipoMaterial" })
+    List<MaterialLeccion> findByLeccion_IdOrderByOrdenAsc(Long leccionId);
+
+    @EntityGraph(attributePaths = { "recurso", "recurso.tipoMaterial" })
+    List<MaterialLeccion> findByLeccion_IdInOrderByLeccion_IdAscOrdenAsc(Collection<Long> leccionIds);
+
+    long countByLeccion_Id(Long leccionId);
 
     @Query("""
             select ml.leccion.id as leccionId, max(r.duracionSegundos) as duracionSegundos

@@ -15,4 +15,11 @@ public interface LeccionRepositorio extends JpaRepository<Leccion, Long> {
             order by l.modulo.id, l.orden
             """)
     List<Leccion> buscarActivasDeModulos(@Param("moduloIds") Collection<Long> moduloIds);
+
+    /** Para el editor administrativo: incluye lecciones desactivadas. */
+    List<Leccion> findByModulo_IdOrderByOrdenAsc(Long moduloId);
+
+    List<Leccion> findByModulo_IdInOrderByModulo_IdAscOrdenAsc(Collection<Long> moduloIds);
+
+    long countByModulo_Id(Long moduloId);
 }

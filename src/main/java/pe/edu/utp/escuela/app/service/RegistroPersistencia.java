@@ -10,7 +10,7 @@ import pe.edu.utp.escuela.app.dto.*;
 import pe.edu.utp.escuela.app.entity.*;
 import pe.edu.utp.escuela.app.exception.*;
 import pe.edu.utp.escuela.app.repository.*;
-import pe.edu.utp.escuela.app.registro.integracion.ContextoGoogleRegistro;
+import pe.edu.utp.escuela.app.service.ContextoGoogleRegistro;
 import pe.edu.utp.escuela.app.util.TextNormalizer;
 
 /** Límite transaccional separado para capturar colisiones después del rollback. */

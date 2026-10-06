@@ -30,6 +30,9 @@ public class Leccion extends RegistroAuditable {
     @JoinColumn(name = "modulo_id", nullable = false)
     private Modulo modulo;
 
+    @Column(name = "leccion_origen_id")
+    private Long leccionOrigenId;
+
     @Column(nullable = false, length = 220)
     private String titulo;
 
