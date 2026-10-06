@@ -212,6 +212,9 @@ public class ContenidoServicio {
         if (p.origen() == OrigenRecurso.SUBIDO) {
             throw new BusinessValidationException("Usa la carga de archivo para el origen SUBIDO.");
         }
+        if (p.origen() == OrigenRecurso.YOUTUBE && !"VIDEO".equals(tipoMaterial.getCodigo())) {
+            throw new BusinessValidationException("El origen YouTube solo aplica a materiales de tipo Video.");
+        }
 
         Recurso recurso = new Recurso();
         recurso.setTipoMaterial(tipoMaterial);
@@ -273,6 +276,14 @@ public class ContenidoServicio {
         MaterialLeccion material = buscarMaterialOLanzar(materialId);
         material.setTitulo(textos.requireText(p.titulo(), "Título"));
         material.setPermiteDescarga(p.permiteDescarga());
+
+        Recurso recurso = material.getRecurso();
+        if (!OrigenRecurso.SUBIDO.name().equals(recurso.getOrigen())) {
+            recurso.setReferencia(textos.requireText(p.referencia(), "URL"));
+            if (OrigenRecurso.YOUTUBE.name().equals(recurso.getOrigen())) {
+                recurso.setYoutubeNoListadoConfirmado(Boolean.TRUE.equals(p.youtubeNoListadoConfirmado()));
+            }
+        }
         return mapearMaterial(material);
     }
 
