@@ -19,7 +19,9 @@ import pe.edu.utp.escuela.app.dto.CursoEditorRespuesta;
 import pe.edu.utp.escuela.app.dto.CursoResumenRespuesta;
 import pe.edu.utp.escuela.app.dto.ReglasCursoRespuesta;
 import pe.edu.utp.escuela.app.dto.PageResponse;
+import pe.edu.utp.escuela.app.dto.ValidacionPublicacionRespuesta;
 import pe.edu.utp.escuela.app.service.CursoServicio;
+import pe.edu.utp.escuela.app.service.PublicacionServicio;
 
 @RestController
 @RequestMapping("/api/admin/cursos")
@@ -28,6 +30,7 @@ import pe.edu.utp.escuela.app.service.CursoServicio;
 public class CursoControlador {
 
     private final CursoServicio servicio;
+    private final PublicacionServicio publicacion;
 
     @GetMapping
     @Operation(summary = "Listar cursos (búsqueda por título, paginado)")
@@ -115,5 +118,26 @@ public class CursoControlador {
     public ResponseEntity<ReglasCursoRespuesta> actualizarReglas(
             @PathVariable Long id, @Valid @RequestBody ActualizarReglasCursoPeticion p) {
         return ResponseEntity.ok(servicio.actualizarReglas(id, p));
+    }
+
+    @GetMapping("/{id}/validacion")
+    @Operation(summary = "Validar un borrador antes de publicarlo",
+            description = "Reúne todos los hallazgos a la vez; no modifica el curso.")
+    @ApiResponse(responseCode = "200", description = "Lista de hallazgos (vacía si no hay nada que corregir)")
+    @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
+    @ApiResponse(responseCode = "404", description = "El curso ya no existe")
+    public ResponseEntity<ValidacionPublicacionRespuesta> validar(@PathVariable Long id) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(publicacion.validar(id));
+    }
+
+    @PostMapping("/{id}/publicacion")
+    @Operation(summary = "Publicar un curso en BORRADOR",
+            description = "Repite la validación dentro de la misma transacción; si no hay bloqueos, pasa a "
+                    + "PUBLICADO (o directamente a EN_CURSO si es virtual sin fecha de inicio).")
+    @ApiResponse(responseCode = "200", description = "Resultado de la publicación (puede haber quedado bloqueada)")
+    @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
+    @ApiResponse(responseCode = "404", description = "El curso ya no existe")
+    public ResponseEntity<ValidacionPublicacionRespuesta> publicar(@PathVariable Long id) {
+        return ResponseEntity.ok(publicacion.publicar(id));
     }
 }
