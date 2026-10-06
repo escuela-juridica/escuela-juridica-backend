@@ -13,6 +13,7 @@ public record LeccionRespuesta(
         boolean esVistaPrevia,
         Instant fechaHoraInicio,
         Instant fechaHoraFin,
+        String enlaceReunion,
         boolean activo,
         Long leccionOrigenId,
         List<MaterialRespuesta> materiales) {

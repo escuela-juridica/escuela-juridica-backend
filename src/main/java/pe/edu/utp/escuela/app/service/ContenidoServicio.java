@@ -1,5 +1,7 @@
 package pe.edu.utp.escuela.app.service;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import pe.edu.utp.escuela.app.dto.ActualizarMaterialPeticion;
+import pe.edu.utp.escuela.app.dto.ActualizarSesionPeticion;
 import pe.edu.utp.escuela.app.dto.ArchivoGuardado;
 import pe.edu.utp.escuela.app.dto.CrearLeccionPeticion;
 import pe.edu.utp.escuela.app.dto.CrearMaterialEnlacePeticion;
@@ -42,9 +45,10 @@ import pe.edu.utp.escuela.app.repository.TipoMaterialRepositorio;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.util.TextNormalizer;
 
-/** HU-011 — Organizar el contenido de un curso: módulos, lecciones y materiales. No incluye
- * exámenes (HU-013) ni la gestión operativa de sesiones en vivo (HU-012); la copia de un módulo
- * tampoco copia exámenes todavía porque esa historia no existe aún. */
+/** HU-011 — Organizar el contenido de un curso: módulos, lecciones y materiales. HU-012 agrega
+ * la programación inicial de la sesión de una lección EN_VIVO ({@link #actualizarSesion}); la
+ * reprogramación, cancelación y asistencia quedan para HU-027. No incluye exámenes (HU-013); la
+ * copia de un módulo tampoco los copia todavía porque esa historia no existe aún. */
 @Service
 @RequiredArgsConstructor
 public class ContenidoServicio {
@@ -58,6 +62,7 @@ public class ContenidoServicio {
     private final ArchivoAlmacenamientoServicio almacenamiento;
     private final CurrentUserService currentUserService;
     private final TextNormalizer textos;
+    private final Clock clock;
 
     // ---------------------------------------------------------------- Lectura --
 
@@ -151,8 +156,6 @@ public class ContenidoServicio {
         leccion.setEstado("PROGRAMADA");
         leccion.setEsObligatoria(p.esObligatoria());
         leccion.setEsVistaPrevia(validarVistaPrevia(p.tipo(), p.esVistaPrevia()));
-        leccion.setFechaHoraInicio(p.tipo() == TipoLeccion.EN_VIVO ? p.fechaHoraInicio() : null);
-        leccion.setFechaHoraFin(p.tipo() == TipoLeccion.EN_VIVO ? p.fechaHoraFin() : null);
         leccion.setActivo(true);
         lecciones.saveAndFlush(leccion);
         return mapearLeccion(leccion, List.of());
@@ -164,11 +167,42 @@ public class ContenidoServicio {
         Leccion leccion = buscarLeccionOLanzar(leccionId);
         leccion.setTitulo(textos.requireText(p.titulo(), "Título"));
         leccion.setDescripcion(textos.trimToNull(p.descripcion()));
+        if (!p.tipo().name().equals(leccion.getTipo()) && p.tipo() != TipoLeccion.EN_VIVO) {
+            // Dejó de ser EN_VIVO: una sesión programada para otro tipo de lección ya no aplica.
+            leccion.setFechaHoraInicio(null);
+            leccion.setFechaHoraFin(null);
+            leccion.setEnlaceReunion(null);
+        }
         leccion.setTipo(p.tipo().name());
         leccion.setEsObligatoria(p.esObligatoria());
         leccion.setEsVistaPrevia(validarVistaPrevia(p.tipo(), p.esVistaPrevia()));
-        leccion.setFechaHoraInicio(p.tipo() == TipoLeccion.EN_VIVO ? p.fechaHoraInicio() : null);
-        leccion.setFechaHoraFin(p.tipo() == TipoLeccion.EN_VIVO ? p.fechaHoraFin() : null);
+        return mapearLeccion(leccion, materiales.findByLeccion_IdOrderByOrdenAsc(leccionId));
+    }
+
+    /** HU-012 — Programa (o reprograma dentro de esta misma historia) la sesión de una lección
+     * EN_VIVO: ventana horaria y enlace de reunión. No crea la reunión ni valida el proveedor. */
+    @Transactional
+    public LeccionRespuesta actualizarSesion(Long leccionId, ActualizarSesionPeticion p) {
+        exigirAdministrador();
+        Leccion leccion = buscarLeccionOLanzar(leccionId);
+        if (!TipoLeccion.EN_VIVO.name().equals(leccion.getTipo())) {
+            throw new BusinessValidationException("Solo una lección en vivo tiene sesión programable.");
+        }
+        Curso curso = leccion.getModulo().getCurso();
+        if ("VIRTUAL".equals(curso.getModalidad())) {
+            throw new BusinessValidationException("Un curso virtual no programa sesiones en vivo.");
+        }
+        if (!p.fechaHoraFin().isAfter(p.fechaHoraInicio())) {
+            throw new BusinessValidationException("La hora de fin debe ser posterior a la hora de inicio.");
+        }
+        LocalDate diaInicio = p.fechaHoraInicio().atZone(clock.getZone()).toLocalDate();
+        LocalDate diaFin = p.fechaHoraFin().atZone(clock.getZone()).toLocalDate();
+        if (diaInicio.isBefore(curso.getFechaInicio()) || diaFin.isAfter(curso.getFechaFin())) {
+            throw new BusinessValidationException("La sesión debe quedar dentro del periodo del curso.");
+        }
+        leccion.setFechaHoraInicio(p.fechaHoraInicio());
+        leccion.setFechaHoraFin(p.fechaHoraFin());
+        leccion.setEnlaceReunion(textos.trimToNull(p.enlaceReunion()));
         return mapearLeccion(leccion, materiales.findByLeccion_IdOrderByOrdenAsc(leccionId));
     }
 
@@ -345,8 +379,8 @@ public class ContenidoServicio {
             copiaLeccion.setEstado("PROGRAMADA");
             copiaLeccion.setEsObligatoria(leccionOrigen.isEsObligatoria());
             copiaLeccion.setEsVistaPrevia(leccionOrigen.isEsVistaPrevia());
-            copiaLeccion.setFechaHoraInicio(leccionOrigen.getFechaHoraInicio());
-            copiaLeccion.setFechaHoraFin(leccionOrigen.getFechaHoraFin());
+            // La sesión (fecha, hora, enlace) queda sin programar: pertenecía al periodo del curso
+            // de origen y no tiene por qué encajar en el del curso destino (HU-012).
             copiaLeccion.setActivo(true);
             lecciones.saveAndFlush(copiaLeccion);
 
@@ -458,7 +492,7 @@ public class ContenidoServicio {
         return new LeccionRespuesta(
                 l.getId(), l.getTitulo(), l.getDescripcion(), l.getOrden(), l.getTipo(),
                 l.isEsObligatoria(), l.isEsVistaPrevia(), l.getFechaHoraInicio(), l.getFechaHoraFin(),
-                l.isActivo(), l.getLeccionOrigenId(), materialesRespuesta);
+                l.getEnlaceReunion(), l.isActivo(), l.getLeccionOrigenId(), materialesRespuesta);
     }
 
     private MaterialRespuesta mapearMaterial(MaterialLeccion m) {

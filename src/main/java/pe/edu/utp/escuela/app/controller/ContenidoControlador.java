@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import pe.edu.utp.escuela.app.dto.ActivoPeticion;
 import pe.edu.utp.escuela.app.dto.ActualizarMaterialPeticion;
+import pe.edu.utp.escuela.app.dto.ActualizarSesionPeticion;
 import pe.edu.utp.escuela.app.dto.CrearLeccionPeticion;
 import pe.edu.utp.escuela.app.dto.CrearMaterialEnlacePeticion;
 import pe.edu.utp.escuela.app.dto.CrearModuloPeticion;
@@ -25,7 +26,7 @@ import pe.edu.utp.escuela.app.service.ContenidoServicio;
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
-@Tag(name = "HU-011 Contenido del curso", description = "Módulos, lecciones y materiales, para administradores")
+@Tag(name = "HU-011 Contenido del curso", description = "Módulos, lecciones, materiales y sesiones en vivo (HU-012), para administradores")
 public class ContenidoControlador {
 
     private final ContenidoServicio servicio;
@@ -109,6 +110,15 @@ public class ContenidoControlador {
     public ResponseEntity<LeccionRespuesta> cambiarActivoLeccion(
             @PathVariable Long id, @Valid @RequestBody ActivoPeticion p) {
         return ResponseEntity.ok(servicio.cambiarActivoLeccion(id, p.activo()));
+    }
+
+    @PutMapping("/lecciones/{id}/sesion")
+    @Operation(summary = "Programar la sesión de una lección en vivo",
+            description = "Fecha, hora y enlace de reunión. Exige modalidad EN_VIVO/HIBRIDO y fechas dentro del periodo del curso.")
+    @ApiResponse(responseCode = "400", description = "Lección no es EN_VIVO, curso virtual, horario inválido o fuera del periodo")
+    public ResponseEntity<LeccionRespuesta> actualizarSesion(
+            @PathVariable Long id, @Valid @RequestBody ActualizarSesionPeticion p) {
+        return ResponseEntity.ok(servicio.actualizarSesion(id, p));
     }
 
     @PostMapping("/lecciones/{id}/materiales")
