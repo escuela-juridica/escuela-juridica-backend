@@ -120,6 +120,7 @@ public class CicloVidaCursoServicio {
 
         String tituloCopia = origen.getTitulo() + " (copia)";
         Curso copia = new Curso();
+        copia.setCursoOrigenId(origen.getId());
         copia.setTitulo(tituloCopia);
         copia.setUrlAmigable(generarUrlAmigableUnica(tituloCopia));
         copia.setEstadoCurso(borrador);
@@ -213,6 +214,9 @@ public class CicloVidaCursoServicio {
         EstadoCurso destino = estadosCurso.findByCodigo(codigoDestino)
                 .orElseThrow(() -> new IllegalStateException("Falta el estado " + codigoDestino));
         curso.setEstadoCurso(destino);
+        if ("CERRADO".equals(codigoDestino)) {
+            curso.setCerradoEn(clock.instant());
+        }
 
         HistorialEstadoCurso h = new HistorialEstadoCurso();
         h.setCurso(curso);

@@ -30,6 +30,9 @@ public class Curso extends RegistroAuditable {
     @Column(name = "curso_id")
     private Long id;
 
+    @Column(name = "curso_origen_id")
+    private Long cursoOrigenId;
+
     @Column(name = "url_amigable", nullable = false, unique = true, length = 180)
     private String urlAmigable;
 
@@ -106,4 +109,7 @@ public class Curso extends RegistroAuditable {
 
     @Column(name = "publicado_en")
     private Instant publicadoEn;
+
+    @Column(name = "cerrado_en")
+    private Instant cerradoEn;
 }
