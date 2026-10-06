@@ -11,11 +11,13 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pe.edu.utp.escuela.app.dto.ActualizarInformacionCursoPeticion;
+import pe.edu.utp.escuela.app.dto.ActualizarReglasCursoPeticion;
 import pe.edu.utp.escuela.app.dto.AsignarDocentesPeticion;
 import pe.edu.utp.escuela.app.dto.AsignarFirmantesPeticion;
 import pe.edu.utp.escuela.app.dto.CrearCursoPeticion;
 import pe.edu.utp.escuela.app.dto.CursoEditorRespuesta;
 import pe.edu.utp.escuela.app.dto.CursoResumenRespuesta;
+import pe.edu.utp.escuela.app.dto.ReglasCursoRespuesta;
 import pe.edu.utp.escuela.app.dto.PageResponse;
 import pe.edu.utp.escuela.app.service.CursoServicio;
 
@@ -99,5 +101,19 @@ public class CursoControlador {
     public ResponseEntity<CursoEditorRespuesta> actualizarFirmantes(
             @PathVariable Long id, @Valid @RequestBody AsignarFirmantesPeticion p) {
         return ResponseEntity.ok(servicio.actualizarFirmantes(id, p));
+    }
+
+    @GetMapping("/{id}/reglas")
+    @Operation(summary = "Consultar requisitos académicos y de certificación")
+    public ResponseEntity<ReglasCursoRespuesta> obtenerReglas(@PathVariable Long id) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(servicio.obtenerReglas(id));
+    }
+
+    @PutMapping("/{id}/reglas")
+    @Operation(summary = "Guardar requisitos académicos y de certificación")
+    @ApiResponse(responseCode = "400", description = "Reglas inválidas o ya congeladas")
+    public ResponseEntity<ReglasCursoRespuesta> actualizarReglas(
+            @PathVariable Long id, @Valid @RequestBody ActualizarReglasCursoPeticion p) {
+        return ResponseEntity.ok(servicio.actualizarReglas(id, p));
     }
 }

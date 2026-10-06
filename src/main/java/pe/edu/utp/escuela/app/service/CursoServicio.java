@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utp.escuela.app.dto.ActualizarInformacionCursoPeticion;
+import pe.edu.utp.escuela.app.dto.ActualizarReglasCursoPeticion;
 import pe.edu.utp.escuela.app.dto.AsignarDocentesPeticion;
 import pe.edu.utp.escuela.app.dto.AsignarFirmantesPeticion;
 import pe.edu.utp.escuela.app.dto.CrearCursoPeticion;
@@ -25,6 +26,7 @@ import pe.edu.utp.escuela.app.dto.FirmanteCursoRespuesta;
 import pe.edu.utp.escuela.app.dto.ModalidadCurso;
 import pe.edu.utp.escuela.app.dto.PageResponse;
 import pe.edu.utp.escuela.app.dto.TipoVentaCurso;
+import pe.edu.utp.escuela.app.dto.ReglasCursoRespuesta;
 import pe.edu.utp.escuela.app.entity.CategoriaTematica;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.CursoDocente;
@@ -45,6 +47,7 @@ import pe.edu.utp.escuela.app.repository.CursoDocenteRepositorio;
 import pe.edu.utp.escuela.app.repository.CursoFirmanteRepositorio;
 import pe.edu.utp.escuela.app.repository.CursoRepositorio;
 import pe.edu.utp.escuela.app.repository.EntidadCertificadoraRepositorio;
+import pe.edu.utp.escuela.app.repository.ExamenRepositorio;
 import pe.edu.utp.escuela.app.repository.EstadoCursoRepositorio;
 import pe.edu.utp.escuela.app.repository.FirmanteRepositorio;
 import pe.edu.utp.escuela.app.repository.HistorialEstadoCursoRepositorio;
@@ -67,6 +70,7 @@ public class CursoServicio {
     private final CursoDocenteRepositorio cursoDocentes;
     private final CursoFirmanteRepositorio cursoFirmantes;
     private final ReglaCursoRepositorio reglasCurso;
+    private final ExamenRepositorio examenes;
     private final HistorialEstadoCursoRepositorio historial;
     private final EstadoCursoRepositorio estadosCurso;
     private final TipoCursoRepositorio tiposCurso;
@@ -128,6 +132,7 @@ public class CursoServicio {
     public CursoEditorRespuesta actualizarInformacion(Long cursoId, ActualizarInformacionCursoPeticion p) {
         exigirAdministrador();
         Curso curso = buscarOLanzar(cursoId);
+        boolean modalidadSinDefinir = curso.getModalidad() == null;
 
         LocalDate fechaFin = p.modalidad() == ModalidadCurso.VIRTUAL ? null : p.fechaFin();
         LocalDate fechaCierre = p.modalidad() == ModalidadCurso.VIRTUAL ? null : p.fechaCierreMatricula();
@@ -165,6 +170,13 @@ public class CursoServicio {
         curso.setHorasAcademicas(p.horasAcademicas());
         curso.setVigenciaAccesoDias(p.vigenciaAccesoDias());
         curso.setBeneficios(normalizarBeneficios(p.beneficios()));
+
+        // Los valores iniciales de HU-014 dependen de la primera modalidad elegida. Después de
+        // esta asignación la administración conserva sus propias decisiones en la pestaña
+        // Certificación y una posterior edición de Información no las sobrescribe.
+        if (modalidadSinDefinir) {
+            aplicarReglasInicialesPorModalidad(reglaDe(cursoId), p.modalidad());
+        }
 
         return detalleDe(curso);
     }
@@ -256,6 +268,91 @@ public class CursoServicio {
         }
 
         return detalleDe(curso);
+    }
+
+    // -------------------------------------------------------- HU-014 Requisitos --
+
+    @Transactional(readOnly = true)
+    public ReglasCursoRespuesta obtenerReglas(Long cursoId) {
+        exigirAdministrador();
+        Curso curso = buscarOLanzar(cursoId);
+        return reglasDe(reglaDe(cursoId), curso);
+    }
+
+    @Transactional
+    public ReglasCursoRespuesta actualizarReglas(Long cursoId, ActualizarReglasCursoPeticion p) {
+        exigirAdministrador();
+        Curso curso = buscarOLanzar(cursoId);
+        ReglaCurso regla = reglaDe(cursoId);
+        ModalidadCurso modalidad = modalidadDe(curso);
+
+        if (regla.getBloqueadoEn() != null || "EN_CURSO".equals(curso.getEstadoCurso().getCodigo())) {
+            throw new BusinessValidationException("Las reglas académicas ya están congeladas para esta convocatoria.");
+        }
+        if (modalidad == ModalidadCurso.VIRTUAL && p.requiereAsistencia()) {
+            throw new BusinessValidationException("Un curso virtual no puede exigir asistencia.");
+        }
+        if (p.requiereExamenes() && p.notaRefrendado().compareTo(p.notaMinima()) <= 0) {
+            throw new BusinessValidationException("La nota de Refrendado debe ser mayor que la nota mínima.");
+        }
+        if (!p.requiereExamenes() && examenes.existsByCurso_IdAndActivoTrueAndTipo(cursoId, "CALIFICADO")) {
+            throw new BusinessValidationException(
+                    "No puedes desactivar exámenes mientras exista un examen CALIFICADO activo. Conviértelo a PRACTICA o retíralo.");
+        }
+        validarCierrePorReglas(curso, modalidad, p.requiereAsistencia(), p.fechaCierreMatricula());
+
+        regla.setRequiereExamenes(p.requiereExamenes());
+        regla.setRequiereProgreso(p.requiereProgreso());
+        regla.setRequiereAsistencia(p.requiereAsistencia());
+        regla.setNotaMinima(p.notaMinima());
+        regla.setNotaRefrendado(p.notaRefrendado());
+        regla.setProgresoMinimo(p.progresoMinimo());
+        regla.setUmbralVideo(p.umbralVideo());
+        regla.setAsistenciaMinima(p.asistenciaMinima());
+        regla.setSecuenciaObligatoria(p.secuenciaObligatoria());
+        regla.setDiasEsperaCertificado(p.diasEsperaCertificado());
+        curso.setFechaCierreMatricula(p.fechaCierreMatricula());
+        reglasCurso.save(regla);
+        return reglasDe(regla, curso);
+    }
+
+    private ReglaCurso reglaDe(Long cursoId) {
+        return reglasCurso.findByCurso_Id(cursoId)
+                .orElseThrow(() -> new IllegalStateException("El curso no tiene configuración de requisitos."));
+    }
+
+    private ModalidadCurso modalidadDe(Curso curso) {
+        if (curso.getModalidad() == null) {
+            throw new BusinessValidationException("Guarda primero la modalidad del curso en Información.");
+        }
+        return ModalidadCurso.valueOf(curso.getModalidad());
+    }
+
+    private void validarCierrePorReglas(Curso curso, ModalidadCurso modalidad, boolean requiereAsistencia,
+            LocalDate cierre) {
+        if (modalidad == ModalidadCurso.VIRTUAL && cierre != null) {
+            throw new BusinessValidationException("Un curso virtual no registra fecha de cierre de matrícula.");
+        }
+        if (requiereAsistencia && cierre == null) {
+            throw new BusinessValidationException("La asistencia obligatoria exige una fecha de cierre de matrícula.");
+        }
+        if (cierre != null && curso.getFechaFin() != null && cierre.isAfter(curso.getFechaFin())) {
+            throw new BusinessValidationException("El cierre de matrícula no puede ser posterior a la fecha de fin.");
+        }
+    }
+
+    private ReglasCursoRespuesta reglasDe(ReglaCurso r, Curso c) {
+        return new ReglasCursoRespuesta(r.isRequiereExamenes(), r.isRequiereProgreso(), r.isRequiereAsistencia(),
+                r.getNotaMinima(), r.getNotaRefrendado(), r.getProgresoMinimo(), r.getUmbralVideo(),
+                r.getAsistenciaMinima(), r.isSecuenciaObligatoria(), r.getDiasEsperaCertificado(),
+                c.getFechaCierreMatricula(), r.getBloqueadoEn() != null || "EN_CURSO".equals(c.getEstadoCurso().getCodigo()));
+    }
+
+    private void aplicarReglasInicialesPorModalidad(ReglaCurso regla, ModalidadCurso modalidad) {
+        regla.setRequiereExamenes(true);
+        regla.setRequiereProgreso(modalidad != ModalidadCurso.EN_VIVO);
+        regla.setRequiereAsistencia(modalidad != ModalidadCurso.VIRTUAL);
+        reglasCurso.save(regla);
     }
 
     // ---------------------------------------------------------------- Validaciones --
