@@ -99,6 +99,12 @@ public class ExamenServicio {
     public ExamenRespuesta cambiarActivoExamen(Long examenId, boolean activo) {
         exigirAdministrador();
         Examen examen = buscarExamenOLanzar(examenId);
+        // HU-016: una vez iniciada la convocatoria, un examen CALIFICADO ya no se retira (dejaría
+        // sin evaluar a quien ya cursa). Uno PRACTICA sigue pudiendo desactivarse.
+        if (!activo && "CALIFICADO".equals(examen.getTipo()) && cursoIniciado(examen.getCurso())) {
+            throw new BusinessValidationException(
+                    "El curso ya inició: no puedes retirar un examen CALIFICADO de la convocatoria.");
+        }
         examen.setActivo(activo);
         return mapearExamen(examen, preguntas.findByExamen_IdOrderByOrdenAsc(examenId));
     }
@@ -120,6 +126,67 @@ public class ExamenServicio {
         examenes.flush();
 
         return construirExamenes(examenes.findByCurso_IdOrderByOrdenAsc(cursoId));
+    }
+
+    /** HU-016 — Al duplicar un curso, los exámenes finales (sin módulo) no viajan con ningún
+     * módulo, así que ContenidoServicio.copiarModulo no los alcanza; esta es su copia dedicada.
+     * Igual que allí, la fecha de habilitación no se copia (pertenecía al periodo de origen). */
+    @Transactional
+    public void copiarExamenesFinales(Long cursoDestinoId, Long cursoOrigenId) {
+        exigirAdministrador();
+        Curso destino = buscarCursoOLanzar(cursoDestinoId);
+        List<Examen> finales = examenes.findByCurso_IdOrderByOrdenAsc(cursoOrigenId).stream()
+                .filter(Examen::isActivo)
+                .filter(e -> FinalidadExamen.FINAL.name().equals(e.getFinalidad()))
+                .toList();
+
+        for (Examen origen : finales) {
+            Examen copia = new Examen();
+            copia.setCurso(destino);
+            copia.setModulo(null);
+            copia.setExamenOrigenId(origen.getId());
+            copia.setTitulo(origen.getTitulo());
+            copia.setDescripcion(origen.getDescripcion());
+            copia.setTipo(origen.getTipo());
+            copia.setFinalidad(origen.getFinalidad());
+            copia.setOrden((int) examenes.countByCurso_Id(cursoDestinoId) + 1);
+            copia.setMaximoIntentos(origen.getMaximoIntentos());
+            copia.setTiempoLimiteMinutos(origen.getTiempoLimiteMinutos());
+            copia.setBarajarPreguntas(origen.isBarajarPreguntas());
+            copia.setBarajarOpciones(origen.isBarajarOpciones());
+            copia.setMostrarRespuestas(origen.getMostrarRespuestas());
+            copia.setBloqueaSiguienteModulo(origen.isBloqueaSiguienteModulo());
+            copia.setDiasRevision(origen.getDiasRevision());
+            copia.setActivo(true);
+            examenes.saveAndFlush(copia);
+
+            for (Pregunta preguntaOrigen : preguntas.findByExamen_IdOrderByOrdenAsc(origen.getId())) {
+                if (!preguntaOrigen.isActivo()) {
+                    continue;
+                }
+                Pregunta copiaPregunta = new Pregunta();
+                copiaPregunta.setExamen(copia);
+                copiaPregunta.setTipo(preguntaOrigen.getTipo());
+                copiaPregunta.setEnunciado(preguntaOrigen.getEnunciado());
+                copiaPregunta.setPuntaje(preguntaOrigen.getPuntaje());
+                copiaPregunta.setOrden(preguntaOrigen.getOrden());
+                copiaPregunta.setActivo(true);
+                preguntas.saveAndFlush(copiaPregunta);
+
+                for (OpcionPregunta opcionOrigen : opciones.findByPregunta_IdOrderByOrdenAsc(preguntaOrigen.getId())) {
+                    if (!opcionOrigen.isActivo()) {
+                        continue;
+                    }
+                    OpcionPregunta copiaOpcion = new OpcionPregunta();
+                    copiaOpcion.setPregunta(copiaPregunta);
+                    copiaOpcion.setTexto(opcionOrigen.getTexto());
+                    copiaOpcion.setEsCorrecta(opcionOrigen.isEsCorrecta());
+                    copiaOpcion.setOrden(opcionOrigen.getOrden());
+                    copiaOpcion.setActivo(true);
+                    opciones.saveAndFlush(copiaOpcion);
+                }
+            }
+        }
     }
 
     // ---------------------------------------------------------------- Preguntas --
@@ -252,9 +319,13 @@ public class ExamenServicio {
 
     private boolean cursoIniciado(Curso curso) {
         // Un borrador virtual puede no tener fecha de inicio; eso no lo convierte en un curso
-        // iniciado. Las reglas quedan congeladas recién cuando la convocatoria está EN_CURSO.
-        return curso.getEstadoCurso() != null
-                && "EN_CURSO".equals(curso.getEstadoCurso().getCodigo());
+        // iniciado. Las reglas quedan congeladas desde EN_CURSO y siguen congeladas en CERRADO
+        // (HU-016: nunca se retrocede).
+        if (curso.getEstadoCurso() == null) {
+            return false;
+        }
+        String codigo = curso.getEstadoCurso().getCodigo();
+        return "EN_CURSO".equals(codigo) || "CERRADO".equals(codigo);
     }
 
     private List<CrearOpcionPeticion> validarOpciones(TipoPregunta tipo, List<CrearOpcionPeticion> opcionesPedidas) {

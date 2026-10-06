@@ -14,12 +14,16 @@ import pe.edu.utp.escuela.app.dto.ActualizarInformacionCursoPeticion;
 import pe.edu.utp.escuela.app.dto.ActualizarReglasCursoPeticion;
 import pe.edu.utp.escuela.app.dto.AsignarDocentesPeticion;
 import pe.edu.utp.escuela.app.dto.AsignarFirmantesPeticion;
+import pe.edu.utp.escuela.app.dto.CambiarDestacadoPeticion;
+import pe.edu.utp.escuela.app.dto.CerrarCursoPeticion;
 import pe.edu.utp.escuela.app.dto.CrearCursoPeticion;
 import pe.edu.utp.escuela.app.dto.CursoEditorRespuesta;
 import pe.edu.utp.escuela.app.dto.CursoResumenRespuesta;
 import pe.edu.utp.escuela.app.dto.ReglasCursoRespuesta;
 import pe.edu.utp.escuela.app.dto.PageResponse;
+import pe.edu.utp.escuela.app.dto.RetrasarInicioPeticion;
 import pe.edu.utp.escuela.app.dto.ValidacionPublicacionRespuesta;
+import pe.edu.utp.escuela.app.service.CicloVidaCursoServicio;
 import pe.edu.utp.escuela.app.service.CursoServicio;
 import pe.edu.utp.escuela.app.service.PublicacionServicio;
 
@@ -31,6 +35,7 @@ public class CursoControlador {
 
     private final CursoServicio servicio;
     private final PublicacionServicio publicacion;
+    private final CicloVidaCursoServicio cicloVida;
 
     @GetMapping
     @Operation(summary = "Listar cursos (búsqueda por título, paginado)")
@@ -139,5 +144,51 @@ public class CursoControlador {
     @ApiResponse(responseCode = "404", description = "El curso ya no existe")
     public ResponseEntity<ValidacionPublicacionRespuesta> publicar(@PathVariable Long id) {
         return ResponseEntity.ok(publicacion.publicar(id));
+    }
+
+    @PostMapping("/{id}/adelantar-inicio")
+    @Operation(summary = "Adelantar el inicio de un curso publicado",
+            description = "Pasa de PUBLICADO a EN_CURSO de inmediato, sin esperar la fecha programada.")
+    @ApiResponse(responseCode = "200", description = "Curso en curso")
+    @ApiResponse(responseCode = "400", description = "El curso no está publicado")
+    public ResponseEntity<CursoEditorRespuesta> adelantarInicio(@PathVariable Long id) {
+        return ResponseEntity.ok(cicloVida.adelantarInicio(id));
+    }
+
+    @PostMapping("/{id}/retrasar-inicio")
+    @Operation(summary = "Retrasar la fecha de inicio de un curso publicado",
+            description = "Solo antes de que el curso inicie; la nueva fecha debe ser posterior a la actual.")
+    @ApiResponse(responseCode = "200", description = "Fecha actualizada")
+    @ApiResponse(responseCode = "400", description = "El curso no está publicado o la fecha no es válida")
+    public ResponseEntity<CursoEditorRespuesta> retrasarInicio(
+            @PathVariable Long id, @Valid @RequestBody RetrasarInicioPeticion p) {
+        return ResponseEntity.ok(cicloVida.retrasarInicio(id, p));
+    }
+
+    @PostMapping("/{id}/cerrar")
+    @Operation(summary = "Cerrar anticipadamente un curso publicado o en curso",
+            description = "No cancela matrículas ni retira el acceso de quienes ya cursan; solo deja de ofrecerse.")
+    @ApiResponse(responseCode = "200", description = "Curso cerrado")
+    @ApiResponse(responseCode = "400", description = "El curso no está publicado ni en curso")
+    public ResponseEntity<CursoEditorRespuesta> cerrar(
+            @PathVariable Long id, @RequestBody(required = false) CerrarCursoPeticion p) {
+        return ResponseEntity.ok(cicloVida.cerrar(id, p != null ? p : new CerrarCursoPeticion(null)));
+    }
+
+    @PatchMapping("/{id}/destacado")
+    @Operation(summary = "Destacar o quitar del destacado para el orden del catálogo")
+    @ApiResponse(responseCode = "200", description = "Destacado actualizado")
+    public ResponseEntity<CursoEditorRespuesta> cambiarDestacado(
+            @PathVariable Long id, @Valid @RequestBody CambiarDestacadoPeticion p) {
+        return ResponseEntity.ok(cicloVida.cambiarDestacado(id, p.destacado()));
+    }
+
+    @PostMapping("/{id}/duplicar")
+    @Operation(summary = "Duplicar como una nueva convocatoria BORRADOR",
+            description = "Copia información general, contenido, exámenes y reglas; no copia matrículas, pagos, "
+                    + "progreso, intentos, asistencia ni certificados. La copia recibe una URL amigable propia.")
+    @ApiResponse(responseCode = "200", description = "Nuevo borrador creado")
+    public ResponseEntity<CursoEditorRespuesta> duplicar(@PathVariable Long id) {
+        return ResponseEntity.ok(cicloVida.duplicar(id));
     }
 }

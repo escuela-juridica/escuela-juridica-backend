@@ -34,6 +34,7 @@ public record CursoEditorRespuesta(
         String estadoCodigo,
         String estadoNombre,
         boolean publicado,
+        boolean tieneMatriculas,
         List<DocenteCursoRespuesta> docentes,
         List<FirmanteCursoRespuesta> firmantes,
         Instant creadoEn) {

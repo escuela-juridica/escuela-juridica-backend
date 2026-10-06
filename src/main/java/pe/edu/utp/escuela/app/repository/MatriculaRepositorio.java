@@ -12,6 +12,8 @@ import pe.edu.utp.escuela.app.entity.Matricula;
 
 public interface MatriculaRepositorio extends JpaRepository<Matricula, Long> {
 
+    boolean existsByCurso_Id(Long cursoId);
+
     @Query("""
             select new pe.edu.utp.escuela.app.dto.ConteoMatriculaFila(m.curso.id, count(m.id))
             from Matricula m

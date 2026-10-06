@@ -28,6 +28,13 @@ public interface CursoRepositorio extends JpaRepository<Curso, Long> {
 
     boolean existsByUrlAmigableAndIdNot(String urlAmigable, Long id);
 
+    /** HU-016 — Candidatos a pasar de PUBLICADO a EN_CURSO: llegó su fecha de inicio. */
+    List<Curso> findByEstadoCurso_CodigoAndFechaInicioLessThanEqual(String codigoEstado, LocalDate hoy);
+
+    /** HU-016 — Candidatos a pasar de EN_CURSO a CERRADO: ya pasó su fecha de fin (nunca aplica a
+     * VIRTUAL, que no tiene fecha de fin). */
+    List<Curso> findByEstadoCurso_CodigoAndFechaFinLessThan(String codigoEstado, LocalDate hoy);
+
     @EntityGraph(attributePaths = {
             "tipoCurso", "categoriaTematica", "entidadCertificadora", "estadoCurso"
     })

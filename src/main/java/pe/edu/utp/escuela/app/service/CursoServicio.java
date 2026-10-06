@@ -51,6 +51,7 @@ import pe.edu.utp.escuela.app.repository.ExamenRepositorio;
 import pe.edu.utp.escuela.app.repository.EstadoCursoRepositorio;
 import pe.edu.utp.escuela.app.repository.FirmanteRepositorio;
 import pe.edu.utp.escuela.app.repository.HistorialEstadoCursoRepositorio;
+import pe.edu.utp.escuela.app.repository.MatriculaRepositorio;
 import pe.edu.utp.escuela.app.repository.PersonaRepositorio;
 import pe.edu.utp.escuela.app.repository.ReglaCursoRepositorio;
 import pe.edu.utp.escuela.app.repository.TipoCursoRepositorio;
@@ -78,6 +79,7 @@ public class CursoServicio {
     private final EntidadCertificadoraRepositorio entidades;
     private final PersonaRepositorio personas;
     private final FirmanteRepositorio firmantes;
+    private final MatriculaRepositorio matriculas;
     private final CurrentUserService currentUserService;
     private final TextNormalizer textos;
     private final Clock clock;
@@ -286,7 +288,7 @@ public class CursoServicio {
         ReglaCurso regla = reglaDe(cursoId);
         ModalidadCurso modalidad = modalidadDe(curso);
 
-        if (regla.getBloqueadoEn() != null || "EN_CURSO".equals(curso.getEstadoCurso().getCodigo())) {
+        if (regla.getBloqueadoEn() != null || cursoIniciado(curso)) {
             throw new BusinessValidationException("Las reglas académicas ya están congeladas para esta convocatoria.");
         }
         if (modalidad == ModalidadCurso.VIRTUAL && p.requiereAsistencia()) {
@@ -345,7 +347,14 @@ public class CursoServicio {
         return new ReglasCursoRespuesta(r.isRequiereExamenes(), r.isRequiereProgreso(), r.isRequiereAsistencia(),
                 r.getNotaMinima(), r.getNotaRefrendado(), r.getProgresoMinimo(), r.getUmbralVideo(),
                 r.getAsistenciaMinima(), r.isSecuenciaObligatoria(), r.getDiasEsperaCertificado(),
-                c.getFechaCierreMatricula(), r.getBloqueadoEn() != null || "EN_CURSO".equals(c.getEstadoCurso().getCodigo()));
+                c.getFechaCierreMatricula(), r.getBloqueadoEn() != null || cursoIniciado(c));
+    }
+
+    /** HU-016 — Una convocatoria "ha iniciado" desde que pasa a EN_CURSO; sigue siéndolo en
+     * CERRADO (nunca vuelve atrás). Antes de eso (BORRADOR, PUBLICADO) no congela nada por esto. */
+    private boolean cursoIniciado(Curso curso) {
+        String codigo = curso.getEstadoCurso().getCodigo();
+        return "EN_CURSO".equals(codigo) || "CERRADO".equals(codigo);
     }
 
     private void aplicarReglasInicialesPorModalidad(ReglaCurso regla, ModalidadCurso modalidad) {
@@ -533,6 +542,7 @@ public class CursoServicio {
                 c.getEstadoCurso().getCodigo(),
                 c.getEstadoCurso().getNombre(),
                 c.getPublicadoEn() != null,
+                matriculas.existsByCurso_Id(c.getId()),
                 docentes,
                 firmantesCurso,
                 c.getCreadoEn());

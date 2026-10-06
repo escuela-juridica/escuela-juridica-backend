@@ -128,6 +128,11 @@ public class ContenidoServicio {
     public ModuloRespuesta cambiarActivoModulo(Long moduloId, boolean activo) {
         exigirAdministrador();
         Modulo modulo = buscarModuloOLanzar(moduloId);
+        // HU-016: un módulo ya no se retira después de iniciar la convocatoria (quien ya cursa
+        // perdería contenido en medio del curso). Reactivarlo no está restringido.
+        if (!activo && cursoIniciado(modulo.getCurso())) {
+            throw new BusinessValidationException("El curso ya inició: no puedes retirar un módulo de la convocatoria.");
+        }
         modulo.setActivo(activo);
         return mapearModulo(modulo, lecciones.findByModulo_IdOrderByOrdenAsc(moduloId));
     }
@@ -157,6 +162,12 @@ public class ContenidoServicio {
     public LeccionRespuesta crearLeccion(Long moduloId, CrearLeccionPeticion p) {
         exigirAdministrador();
         Modulo modulo = buscarModuloOLanzar(moduloId);
+        // HU-016: tras iniciar, se puede agregar contenido complementario, pero no exigencias
+        // nuevas; una lección obligatoria nueva sí las agrega.
+        if (p.esObligatoria() && cursoIniciado(modulo.getCurso())) {
+            throw new BusinessValidationException(
+                    "El curso ya inició: una lección nueva no puede ser obligatoria. Agrégala como complementaria.");
+        }
         Leccion leccion = new Leccion();
         leccion.setModulo(modulo);
         leccion.setTitulo(textos.requireText(p.titulo(), "Título"));
@@ -184,6 +195,12 @@ public class ContenidoServicio {
             leccion.setEnlaceReunion(null);
         }
         leccion.setTipo(p.tipo().name());
+        // HU-016: puede corregirse una lección existente, pero no convertirse en obligatoria recién
+        // después de iniciar (sí puede relajarse, de obligatoria a complementaria).
+        if (p.esObligatoria() && !leccion.isEsObligatoria() && cursoIniciado(leccion.getModulo().getCurso())) {
+            throw new BusinessValidationException(
+                    "El curso ya inició: no puedes volver obligatoria una lección complementaria.");
+        }
         leccion.setEsObligatoria(p.esObligatoria());
         leccion.setEsVistaPrevia(validarVistaPrevia(p.tipo(), p.esVistaPrevia()));
         return mapearLeccion(leccion, materiales.findByLeccion_IdOrderByOrdenAsc(leccionId));
@@ -220,6 +237,11 @@ public class ContenidoServicio {
     public LeccionRespuesta cambiarActivoLeccion(Long leccionId, boolean activo) {
         exigirAdministrador();
         Leccion leccion = buscarLeccionOLanzar(leccionId);
+        // HU-016: igual que un módulo, una lección ya no se retira tras iniciar; ocultar contenido
+        // problemático temporalmente se hace desde su propio material, no desactivando la lección.
+        if (!activo && cursoIniciado(leccion.getModulo().getCurso())) {
+            throw new BusinessValidationException("El curso ya inició: no puedes retirar una lección de la convocatoria.");
+        }
         leccion.setActivo(activo);
         return mapearLeccion(leccion, materiales.findByLeccion_IdOrderByOrdenAsc(leccionId));
     }
@@ -468,6 +490,16 @@ public class ContenidoServicio {
         if (!currentUserService.get().hasRole("ADMINISTRADOR")) {
             throw new ForbiddenException();
         }
+    }
+
+    /** HU-016 — Desde EN_CURSO (y aún en CERRADO, que nunca retrocede) ya no se retiran módulos ni
+     * lecciones, ni se agregan nuevas obligatorias. */
+    private boolean cursoIniciado(Curso curso) {
+        if (curso.getEstadoCurso() == null) {
+            return false;
+        }
+        String codigo = curso.getEstadoCurso().getCodigo();
+        return "EN_CURSO".equals(codigo) || "CERRADO".equals(codigo);
     }
 
     private Curso buscarCursoOLanzar(Long cursoId) {
