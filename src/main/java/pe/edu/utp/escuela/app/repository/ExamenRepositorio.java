@@ -19,4 +19,6 @@ public interface ExamenRepositorio extends JpaRepository<Examen, Long> {
     boolean existsByCurso_IdAndTituloIgnoreCaseAndIdNot(Long cursoId, String titulo, Long id);
 
     boolean existsByCurso_IdAndActivoTrueAndTipo(Long cursoId, String tipo);
+
+    void deleteAllByModulo_Id(Long moduloId);
 }

@@ -84,6 +84,14 @@ public class ContenidoControlador {
         return ResponseEntity.ok(servicio.cambiarActivoModulo(id, p.activo()));
     }
 
+    @DeleteMapping("/modulos/{id}")
+    @Operation(summary = "Eliminar un módulo", description = "Borrado real, solo mientras el curso sigue en BORRADOR.")
+    @ApiResponse(responseCode = "400", description = "El curso ya no está en borrador")
+    public ResponseEntity<Void> eliminarModulo(@PathVariable Long id) {
+        servicio.eliminarModulo(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/modulos/{moduloId}/lecciones")
     @Operation(summary = "Crear una lección al final del módulo")
     public ResponseEntity<LeccionRespuesta> crearLeccion(
@@ -110,6 +118,14 @@ public class ContenidoControlador {
     public ResponseEntity<LeccionRespuesta> cambiarActivoLeccion(
             @PathVariable Long id, @Valid @RequestBody ActivoPeticion p) {
         return ResponseEntity.ok(servicio.cambiarActivoLeccion(id, p.activo()));
+    }
+
+    @DeleteMapping("/lecciones/{id}")
+    @Operation(summary = "Eliminar una lección", description = "Borrado real, solo mientras el curso sigue en BORRADOR.")
+    @ApiResponse(responseCode = "400", description = "El curso ya no está en borrador")
+    public ResponseEntity<Void> eliminarLeccion(@PathVariable Long id) {
+        servicio.eliminarLeccion(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/lecciones/{id}/sesion")
@@ -160,5 +176,13 @@ public class ContenidoControlador {
     public ResponseEntity<MaterialRespuesta> cambiarActivoMaterial(
             @PathVariable Long id, @Valid @RequestBody ActivoPeticion p) {
         return ResponseEntity.ok(servicio.cambiarActivoMaterial(id, p.activo()));
+    }
+
+    @DeleteMapping("/materiales/{id}")
+    @Operation(summary = "Eliminar un material", description = "Borrado real (nunca del recurso físico), solo mientras el curso sigue en BORRADOR.")
+    @ApiResponse(responseCode = "400", description = "El curso ya no está en borrador")
+    public ResponseEntity<Void> eliminarMaterial(@PathVariable Long id) {
+        servicio.eliminarMaterial(id);
+        return ResponseEntity.noContent().build();
     }
 }

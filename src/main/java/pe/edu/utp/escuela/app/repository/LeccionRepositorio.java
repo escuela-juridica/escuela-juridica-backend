@@ -22,4 +22,6 @@ public interface LeccionRepositorio extends JpaRepository<Leccion, Long> {
     List<Leccion> findByModulo_IdInOrderByModulo_IdAscOrdenAsc(Collection<Long> moduloIds);
 
     long countByModulo_Id(Long moduloId);
+
+    void deleteAllByModulo_IdIn(Collection<Long> moduloIds);
 }

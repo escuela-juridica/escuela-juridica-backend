@@ -54,6 +54,14 @@ public class ExamenControlador {
         return ResponseEntity.ok(servicio.cambiarActivoExamen(id, p.activo()));
     }
 
+    @DeleteMapping("/examenes/{id}")
+    @Operation(summary = "Eliminar un examen", description = "Borrado real, solo mientras el curso sigue en BORRADOR.")
+    @ApiResponse(responseCode = "400", description = "El curso ya no está en borrador")
+    public ResponseEntity<Void> eliminarExamen(@PathVariable Long id) {
+        servicio.eliminarExamen(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @PutMapping("/cursos/{cursoId}/examenes/orden")
     @Operation(summary = "Reordenar los exámenes de un curso")
     public ResponseEntity<List<ExamenRespuesta>> reordenarExamenes(
@@ -81,6 +89,14 @@ public class ExamenControlador {
     public ResponseEntity<PreguntaRespuesta> cambiarActivoPregunta(
             @PathVariable Long id, @Valid @RequestBody ActivoPeticion p) {
         return ResponseEntity.ok(servicio.cambiarActivoPregunta(id, p.activo()));
+    }
+
+    @DeleteMapping("/preguntas/{id}")
+    @Operation(summary = "Eliminar una pregunta", description = "Borrado real, solo mientras el curso sigue en BORRADOR.")
+    @ApiResponse(responseCode = "400", description = "El curso ya no está en borrador")
+    public ResponseEntity<Void> eliminarPregunta(@PathVariable Long id) {
+        servicio.eliminarPregunta(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/examenes/{examenId}/preguntas/orden")

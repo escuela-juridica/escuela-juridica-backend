@@ -493,6 +493,54 @@ public class ContenidoServicio {
         return construirModulos(List.of(copia)).get(0);
     }
 
+    // ---------------------------------------------------------------- Eliminar --
+
+    /** HU-016 — Borrado real (no "desactivar"), solo mientras el curso sigue en BORRADOR: ahí
+     * nunca hubo ni puede haber actividad de un alumno. Publicado el curso, lo único disponible
+     * vuelve a ser activar/desactivar. Arrastra lecciones, materiales (no el recurso físico, que
+     * puede estar compartido) y los exámenes de módulo con sus preguntas y opciones. */
+    @Transactional
+    public void eliminarModulo(Long moduloId) {
+        exigirAdministrador();
+        Modulo modulo = buscarModuloOLanzar(moduloId);
+        exigirCursoBorrador(modulo.getCurso());
+
+        List<Long> leccionIds = lecciones.findByModulo_IdOrderByOrdenAsc(moduloId).stream().map(Leccion::getId).toList();
+        if (!leccionIds.isEmpty()) {
+            materiales.deleteAllByLeccion_IdIn(leccionIds);
+        }
+        lecciones.deleteAllByModulo_IdIn(List.of(moduloId));
+
+        List<Long> examenIds = examenes.findByModulo_IdOrderByOrdenAsc(moduloId).stream().map(Examen::getId).toList();
+        if (!examenIds.isEmpty()) {
+            List<Long> preguntaIds = preguntas.findByExamen_IdIn(examenIds).stream().map(Pregunta::getId).toList();
+            if (!preguntaIds.isEmpty()) {
+                opciones.deleteAllByPregunta_IdIn(preguntaIds);
+            }
+            preguntas.deleteAllByExamen_IdIn(examenIds);
+        }
+        examenes.deleteAllByModulo_Id(moduloId);
+
+        modulos.delete(modulo);
+    }
+
+    @Transactional
+    public void eliminarLeccion(Long leccionId) {
+        exigirAdministrador();
+        Leccion leccion = buscarLeccionOLanzar(leccionId);
+        exigirCursoBorrador(leccion.getModulo().getCurso());
+        materiales.deleteAllByLeccion_IdIn(List.of(leccionId));
+        lecciones.delete(leccion);
+    }
+
+    @Transactional
+    public void eliminarMaterial(Long materialId) {
+        exigirAdministrador();
+        MaterialLeccion material = buscarMaterialOLanzar(materialId);
+        exigirCursoBorrador(material.getLeccion().getModulo().getCurso());
+        materiales.delete(material);
+    }
+
     // ---------------------------------------------------------------- Soporte --
 
     /** "Vista previa pública definida por lección, nunca por examen ni sesión en vivo": una
@@ -518,6 +566,15 @@ public class ContenidoServicio {
         }
         String codigo = curso.getEstadoCurso().getCodigo();
         return "EN_CURSO".equals(codigo) || "CERRADO".equals(codigo);
+    }
+
+    /** HU-016 — El borrado real solo aplica en BORRADOR; publicado, ni siquiera PUBLICADO sin
+     * iniciar admite esto (ya puede tener matrículas), solo activar/desactivar. */
+    private void exigirCursoBorrador(Curso curso) {
+        if (!"BORRADOR".equals(curso.getEstadoCurso().getCodigo())) {
+            throw new BusinessValidationException(
+                    "Solo puedes eliminar contenido mientras el curso está en borrador; después, desactívalo.");
+        }
     }
 
     private Curso buscarCursoOLanzar(Long cursoId) {

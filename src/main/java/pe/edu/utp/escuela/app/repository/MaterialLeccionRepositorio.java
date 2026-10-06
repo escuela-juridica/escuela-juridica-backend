@@ -21,6 +21,8 @@ public interface MaterialLeccionRepositorio extends JpaRepository<MaterialLeccio
 
     long countByLeccion_Id(Long leccionId);
 
+    void deleteAllByLeccion_IdIn(Collection<Long> leccionIds);
+
     @Query("""
             select ml.leccion.id as leccionId, max(r.duracionSegundos) as duracionSegundos
             from MaterialLeccion ml join ml.recurso r

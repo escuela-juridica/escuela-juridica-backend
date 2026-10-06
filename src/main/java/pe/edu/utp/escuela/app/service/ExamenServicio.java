@@ -109,6 +109,21 @@ public class ExamenServicio {
         return mapearExamen(examen, preguntas.findByExamen_IdOrderByOrdenAsc(examenId));
     }
 
+    /** HU-016 — Borrado real, solo mientras el curso sigue en BORRADOR (ver
+     * ContenidoServicio.eliminarModulo para la misma regla aplicada ahí). */
+    @Transactional
+    public void eliminarExamen(Long examenId) {
+        exigirAdministrador();
+        Examen examen = buscarExamenOLanzar(examenId);
+        exigirCursoBorrador(examen.getCurso());
+        List<Long> preguntaIds = preguntas.findByExamen_IdOrderByOrdenAsc(examenId).stream().map(Pregunta::getId).toList();
+        if (!preguntaIds.isEmpty()) {
+            opciones.deleteAllByPregunta_IdIn(preguntaIds);
+        }
+        preguntas.deleteAllByExamen_IdIn(List.of(examenId));
+        examenes.delete(examen);
+    }
+
     @Transactional
     public List<ExamenRespuesta> reordenarExamenes(Long cursoId, OrdenPeticion p) {
         exigirAdministrador();
@@ -232,6 +247,15 @@ public class ExamenServicio {
         Pregunta pregunta = buscarPreguntaOLanzar(preguntaId);
         pregunta.setActivo(activo);
         return mapearPregunta(pregunta, opciones.findByPregunta_IdOrderByOrdenAsc(preguntaId));
+    }
+
+    @Transactional
+    public void eliminarPregunta(Long preguntaId) {
+        exigirAdministrador();
+        Pregunta pregunta = buscarPreguntaOLanzar(preguntaId);
+        exigirCursoBorrador(pregunta.getExamen().getCurso());
+        opciones.deleteAllByPregunta_IdIn(List.of(preguntaId));
+        preguntas.delete(pregunta);
     }
 
     @Transactional
@@ -381,6 +405,14 @@ public class ExamenServicio {
     private Curso buscarCursoOLanzar(Long cursoId) {
         return cursos.findById(cursoId)
                 .orElseThrow(() -> new ResourceNotFoundException("El curso ya no existe."));
+    }
+
+    /** HU-016 — El borrado real solo aplica en BORRADOR (igual que en ContenidoServicio). */
+    private void exigirCursoBorrador(Curso curso) {
+        if (!"BORRADOR".equals(curso.getEstadoCurso().getCodigo())) {
+            throw new BusinessValidationException(
+                    "Solo puedes eliminar contenido mientras el curso está en borrador; después, desactívalo.");
+        }
     }
 
     private Examen buscarExamenOLanzar(Long examenId) {

@@ -183,6 +183,16 @@ public class CursoControlador {
         return ResponseEntity.ok(cicloVida.cambiarDestacado(id, p.destacado()));
     }
 
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Eliminar un curso en borrador",
+            description = "Borrado real (no soft-delete), solo permitido mientras el curso sigue en BORRADOR y sin matrículas.")
+    @ApiResponse(responseCode = "204", description = "Curso eliminado")
+    @ApiResponse(responseCode = "400", description = "El curso no está en borrador, o tiene matrículas")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        cicloVida.eliminarCurso(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/{id}/duplicar")
     @Operation(summary = "Duplicar como una nueva convocatoria BORRADOR",
             description = "Copia información general, contenido, exámenes y reglas; no copia matrículas, pagos, "

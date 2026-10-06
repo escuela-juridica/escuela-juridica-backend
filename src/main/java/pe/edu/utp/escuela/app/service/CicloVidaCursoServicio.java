@@ -14,6 +14,7 @@ import pe.edu.utp.escuela.app.dto.RetrasarInicioPeticion;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.CursoDocente;
 import pe.edu.utp.escuela.app.entity.EstadoCurso;
+import pe.edu.utp.escuela.app.entity.Examen;
 import pe.edu.utp.escuela.app.entity.HistorialEstadoCurso;
 import pe.edu.utp.escuela.app.entity.Modulo;
 import pe.edu.utp.escuela.app.entity.ReglaCurso;
@@ -21,9 +22,12 @@ import pe.edu.utp.escuela.app.exception.BusinessValidationException;
 import pe.edu.utp.escuela.app.exception.ForbiddenException;
 import pe.edu.utp.escuela.app.exception.ResourceNotFoundException;
 import pe.edu.utp.escuela.app.repository.CursoDocenteRepositorio;
+import pe.edu.utp.escuela.app.repository.CursoFirmanteRepositorio;
 import pe.edu.utp.escuela.app.repository.CursoRepositorio;
 import pe.edu.utp.escuela.app.repository.EstadoCursoRepositorio;
+import pe.edu.utp.escuela.app.repository.ExamenRepositorio;
 import pe.edu.utp.escuela.app.repository.HistorialEstadoCursoRepositorio;
+import pe.edu.utp.escuela.app.repository.MatriculaRepositorio;
 import pe.edu.utp.escuela.app.repository.ModuloRepositorio;
 import pe.edu.utp.escuela.app.repository.ReglaCursoRepositorio;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
@@ -43,7 +47,10 @@ public class CicloVidaCursoServicio {
     private final HistorialEstadoCursoRepositorio historial;
     private final ReglaCursoRepositorio reglasCurso;
     private final CursoDocenteRepositorio cursoDocentes;
+    private final CursoFirmanteRepositorio cursoFirmantes;
     private final ModuloRepositorio modulos;
+    private final ExamenRepositorio examenes;
+    private final MatriculaRepositorio matriculas;
     private final CurrentUserService currentUserService;
     private final TextNormalizer textos;
     private final Clock clock;
@@ -103,6 +110,38 @@ public class CicloVidaCursoServicio {
         Curso curso = buscarOLanzar(cursoId);
         curso.setDestacado(destacado);
         return cursoServicio.obtener(cursoId);
+    }
+
+    /** HU-016 — "BORRADOR solo puede eliminarse si no tiene matrículas ni actividad relacionada".
+     * Un curso en BORRADOR nunca puede tener matrículas (exige publicación), así que la condición
+     * siempre se cumple; la comprobación queda por seguridad. Publicado, ni este método ni los
+     * eliminarModulo/eliminarLeccion/... de ContenidoServicio/ExamenServicio aceptan borrar: solo
+     * queda activar/desactivar. Reutiliza esas mismas cascadas en vez de duplicar la lógica aquí. */
+    @Transactional
+    public void eliminarCurso(Long cursoId) {
+        exigirAdministrador();
+        Curso curso = buscarOLanzar(cursoId);
+        if (!"BORRADOR".equals(curso.getEstadoCurso().getCodigo())) {
+            throw new BusinessValidationException("Solo un curso en borrador puede eliminarse.");
+        }
+        if (matriculas.existsByCurso_Id(cursoId)) {
+            throw new BusinessValidationException("No puedes eliminar un curso con matrículas.");
+        }
+
+        for (Modulo modulo : modulos.findByCurso_IdOrderByOrdenAsc(cursoId)) {
+            contenidoServicio.eliminarModulo(modulo.getId());
+        }
+        // A esta altura solo quedan los exámenes finales (sin módulo: los de módulo ya se
+        // borraron arriba, en cascada, junto con su módulo).
+        for (Examen examen : examenes.findByCurso_IdOrderByOrdenAsc(cursoId)) {
+            examenServicio.eliminarExamen(examen.getId());
+        }
+
+        reglasCurso.deleteByCurso_Id(cursoId);
+        cursoDocentes.deleteAllByCurso_Id(cursoId);
+        cursoFirmantes.deleteAllByCurso_Id(cursoId);
+        historial.deleteAllByCurso_Id(cursoId);
+        cursos.delete(curso);
     }
 
     /** HU-016 — Nueva convocatoria BORRADOR independiente: copia información general, módulos,

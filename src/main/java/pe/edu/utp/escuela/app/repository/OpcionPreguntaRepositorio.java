@@ -1,5 +1,6 @@
 package pe.edu.utp.escuela.app.repository;
 
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import pe.edu.utp.escuela.app.entity.OpcionPregunta;
@@ -9,4 +10,6 @@ public interface OpcionPreguntaRepositorio extends JpaRepository<OpcionPregunta,
     List<OpcionPregunta> findByPregunta_IdOrderByOrdenAsc(Long preguntaId);
 
     void deleteAllByPregunta_Id(Long preguntaId);
+
+    void deleteAllByPregunta_IdIn(Collection<Long> preguntaIds);
 }
