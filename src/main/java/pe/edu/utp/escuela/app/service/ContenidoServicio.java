@@ -399,7 +399,9 @@ public class ContenidoServicio {
         copia.setActivo(true);
         modulos.saveAndFlush(copia);
 
-        List<Leccion> leccionesOrigen = lecciones.findByModulo_IdOrderByOrdenAsc(origen.getId());
+        List<Leccion> leccionesOrigen = lecciones.findByModulo_IdOrderByOrdenAsc(origen.getId()).stream()
+                .filter(Leccion::isActivo)
+                .toList();
         for (Leccion leccionOrigen : leccionesOrigen) {
             Leccion copiaLeccion = new Leccion();
             copiaLeccion.setModulo(copia);
@@ -416,7 +418,11 @@ public class ContenidoServicio {
             copiaLeccion.setActivo(true);
             lecciones.saveAndFlush(copiaLeccion);
 
-            for (MaterialLeccion materialOrigen : materiales.findByLeccion_IdOrderByOrdenAsc(leccionOrigen.getId())) {
+            List<MaterialLeccion> materialesOrigen = materiales.findByLeccion_IdOrderByOrdenAsc(leccionOrigen.getId())
+                    .stream()
+                    .filter(m -> m.isActivo() && m.getRecurso().isActivo())
+                    .toList();
+            for (MaterialLeccion materialOrigen : materialesOrigen) {
                 MaterialLeccion copiaMaterial = new MaterialLeccion();
                 copiaMaterial.setLeccion(copiaLeccion);
                 copiaMaterial.setRecurso(materialOrigen.getRecurso());
@@ -428,7 +434,10 @@ public class ContenidoServicio {
             }
         }
 
-        for (Examen examenOrigen : examenes.findByModulo_IdOrderByOrdenAsc(origen.getId())) {
+        List<Examen> examenesOrigen = examenes.findByModulo_IdOrderByOrdenAsc(origen.getId()).stream()
+                .filter(Examen::isActivo)
+                .toList();
+        for (Examen examenOrigen : examenesOrigen) {
             Examen copiaExamen = new Examen();
             copiaExamen.setCurso(cursoDestino);
             copiaExamen.setModulo(copia);
@@ -437,7 +446,9 @@ public class ContenidoServicio {
             copiaExamen.setDescripcion(examenOrigen.getDescripcion());
             copiaExamen.setTipo(examenOrigen.getTipo());
             copiaExamen.setFinalidad(examenOrigen.getFinalidad());
-            copiaExamen.setOrden(examenOrigen.getOrden());
+            // No se copia literal: el curso destino puede ya tener otros exámenes (p. ej. al
+            // duplicar un curso completo), así que el orden se recalcula igual que crearExamen.
+            copiaExamen.setOrden((int) examenes.countByCurso_Id(cursoId) + 1);
             copiaExamen.setMaximoIntentos(examenOrigen.getMaximoIntentos());
             copiaExamen.setTiempoLimiteMinutos(examenOrigen.getTiempoLimiteMinutos());
             copiaExamen.setBarajarPreguntas(examenOrigen.isBarajarPreguntas());
@@ -450,7 +461,10 @@ public class ContenidoServicio {
             copiaExamen.setActivo(true);
             examenes.saveAndFlush(copiaExamen);
 
-            for (Pregunta preguntaOrigen : preguntas.findByExamen_IdOrderByOrdenAsc(examenOrigen.getId())) {
+            List<Pregunta> preguntasOrigen = preguntas.findByExamen_IdOrderByOrdenAsc(examenOrigen.getId()).stream()
+                    .filter(Pregunta::isActivo)
+                    .toList();
+            for (Pregunta preguntaOrigen : preguntasOrigen) {
                 Pregunta copiaPregunta = new Pregunta();
                 copiaPregunta.setExamen(copiaExamen);
                 copiaPregunta.setTipo(preguntaOrigen.getTipo());
@@ -460,7 +474,11 @@ public class ContenidoServicio {
                 copiaPregunta.setActivo(true);
                 preguntas.saveAndFlush(copiaPregunta);
 
-                for (OpcionPregunta opcionOrigen : opciones.findByPregunta_IdOrderByOrdenAsc(preguntaOrigen.getId())) {
+                List<OpcionPregunta> opcionesOrigen = opciones.findByPregunta_IdOrderByOrdenAsc(preguntaOrigen.getId())
+                        .stream()
+                        .filter(OpcionPregunta::isActivo)
+                        .toList();
+                for (OpcionPregunta opcionOrigen : opcionesOrigen) {
                     OpcionPregunta copiaOpcion = new OpcionPregunta();
                     copiaOpcion.setPregunta(copiaPregunta);
                     copiaOpcion.setTexto(opcionOrigen.getTexto());
