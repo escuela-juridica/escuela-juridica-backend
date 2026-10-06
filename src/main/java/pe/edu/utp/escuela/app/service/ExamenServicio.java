@@ -228,6 +228,10 @@ public class ExamenServicio {
             throw new BusinessValidationException(
                     "El curso ya inició: no puedes cambiar los días de revisión de abiertas.");
         }
+        if (esActualizacion && cursoIniciado(curso) && !p.tipo().name().equals(examen.getTipo())) {
+            throw new BusinessValidationException(
+                    "El curso ya inició: no puedes cambiar el tipo (Calificado/Práctica) de un examen existente.");
+        }
 
         examen.setCurso(curso);
         examen.setModulo(moduloResuelto);

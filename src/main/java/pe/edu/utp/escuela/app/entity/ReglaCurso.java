@@ -33,34 +33,34 @@ public class ReglaCurso {
     private Curso curso;
 
     @Column(name = "requiere_examenes", nullable = false)
-    private boolean requiereExamenes;
+    private boolean requiereExamenes = true;
 
     @Column(name = "requiere_progreso", nullable = false)
-    private boolean requiereProgreso;
+    private boolean requiereProgreso = true;
 
     @Column(name = "requiere_asistencia", nullable = false)
-    private boolean requiereAsistencia;
+    private boolean requiereAsistencia = false;
 
     @Column(name = "nota_minima", nullable = false, precision = 5, scale = 2)
-    private BigDecimal notaMinima;
+    private BigDecimal notaMinima = BigDecimal.valueOf(12);
 
     @Column(name = "nota_refrendado", nullable = false, precision = 5, scale = 2)
-    private BigDecimal notaRefrendado;
+    private BigDecimal notaRefrendado = BigDecimal.valueOf(14);
 
     @Column(name = "progreso_minimo", nullable = false, precision = 5, scale = 2)
-    private BigDecimal progresoMinimo;
+    private BigDecimal progresoMinimo = BigDecimal.valueOf(80);
 
     @Column(name = "umbral_video", nullable = false, precision = 5, scale = 2)
-    private BigDecimal umbralVideo;
+    private BigDecimal umbralVideo = BigDecimal.valueOf(50);
 
     @Column(name = "asistencia_minima", nullable = false, precision = 5, scale = 2)
-    private BigDecimal asistenciaMinima;
+    private BigDecimal asistenciaMinima = BigDecimal.valueOf(80);
 
     @Column(name = "secuencia_obligatoria", nullable = false)
-    private boolean secuenciaObligatoria;
+    private boolean secuenciaObligatoria = true;
 
     @Column(name = "dias_espera_certificado", nullable = false)
-    private Integer diasEsperaCertificado;
+    private Integer diasEsperaCertificado = 0;
 
     @Column(name = "bloqueado_en")
     private Instant bloqueadoEn;
