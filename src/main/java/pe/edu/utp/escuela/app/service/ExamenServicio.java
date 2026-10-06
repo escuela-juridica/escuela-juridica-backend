@@ -1,7 +1,5 @@
 package pe.edu.utp.escuela.app.service;
 
-import java.time.Clock;
-import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -52,7 +50,6 @@ public class ExamenServicio {
     private final OpcionPreguntaRepositorio opciones;
     private final CurrentUserService currentUserService;
     private final TextNormalizer textos;
-    private final Clock clock;
 
     // ---------------------------------------------------------------- Lectura --
 
@@ -250,11 +247,10 @@ public class ExamenServicio {
     }
 
     private boolean cursoIniciado(Curso curso) {
-        LocalDate inicio = curso.getFechaInicio();
-        if (inicio == null) {
-            return "VIRTUAL".equals(curso.getModalidad());
-        }
-        return !inicio.isAfter(LocalDate.now(clock));
+        // Un borrador virtual puede no tener fecha de inicio; eso no lo convierte en un curso
+        // iniciado. Las reglas quedan congeladas recién cuando la convocatoria está EN_CURSO.
+        return curso.getEstadoCurso() != null
+                && "EN_CURSO".equals(curso.getEstadoCurso().getCodigo());
     }
 
     private List<CrearOpcionPeticion> validarOpciones(TipoPregunta tipo, List<CrearOpcionPeticion> opcionesPedidas) {
