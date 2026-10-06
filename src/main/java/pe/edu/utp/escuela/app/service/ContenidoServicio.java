@@ -212,7 +212,7 @@ public class ContenidoServicio {
         }
         leccion.setFechaHoraInicio(p.fechaHoraInicio());
         leccion.setFechaHoraFin(p.fechaHoraFin());
-        leccion.setEnlaceReunion(textos.trimToNull(p.enlaceReunion()));
+        leccion.setEnlaceReunion(textos.requireText(p.enlaceReunion(), "Enlace de la reunión"));
         return mapearLeccion(leccion, materiales.findByLeccion_IdOrderByOrdenAsc(leccionId));
     }
 
