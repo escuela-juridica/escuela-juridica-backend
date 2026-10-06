@@ -28,18 +28,24 @@ import pe.edu.utp.escuela.app.dto.OrigenRecurso;
 import pe.edu.utp.escuela.app.dto.RecursoRespuesta;
 import pe.edu.utp.escuela.app.dto.TipoLeccion;
 import pe.edu.utp.escuela.app.entity.Curso;
+import pe.edu.utp.escuela.app.entity.Examen;
 import pe.edu.utp.escuela.app.entity.Leccion;
 import pe.edu.utp.escuela.app.entity.MaterialLeccion;
 import pe.edu.utp.escuela.app.entity.Modulo;
+import pe.edu.utp.escuela.app.entity.OpcionPregunta;
+import pe.edu.utp.escuela.app.entity.Pregunta;
 import pe.edu.utp.escuela.app.entity.Recurso;
 import pe.edu.utp.escuela.app.entity.TipoMaterial;
 import pe.edu.utp.escuela.app.exception.BusinessValidationException;
 import pe.edu.utp.escuela.app.exception.ForbiddenException;
 import pe.edu.utp.escuela.app.exception.ResourceNotFoundException;
 import pe.edu.utp.escuela.app.repository.CursoRepositorio;
+import pe.edu.utp.escuela.app.repository.ExamenRepositorio;
 import pe.edu.utp.escuela.app.repository.LeccionRepositorio;
 import pe.edu.utp.escuela.app.repository.MaterialLeccionRepositorio;
 import pe.edu.utp.escuela.app.repository.ModuloRepositorio;
+import pe.edu.utp.escuela.app.repository.OpcionPreguntaRepositorio;
+import pe.edu.utp.escuela.app.repository.PreguntaRepositorio;
 import pe.edu.utp.escuela.app.repository.RecursoRepositorio;
 import pe.edu.utp.escuela.app.repository.TipoMaterialRepositorio;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
@@ -47,8 +53,9 @@ import pe.edu.utp.escuela.app.util.TextNormalizer;
 
 /** HU-011 — Organizar el contenido de un curso: módulos, lecciones y materiales. HU-012 agrega
  * la programación inicial de la sesión de una lección EN_VIVO ({@link #actualizarSesion}); la
- * reprogramación, cancelación y asistencia quedan para HU-027. No incluye exámenes (HU-013); la
- * copia de un módulo tampoco los copia todavía porque esa historia no existe aún. */
+ * reprogramación, cancelación y asistencia quedan para HU-027. La copia de un módulo también
+ * duplica los exámenes de módulo configurados en HU-013 (no su fecha de habilitación, por la
+ * misma razón que no copia la sesión en vivo). */
 @Service
 @RequiredArgsConstructor
 public class ContenidoServicio {
@@ -59,6 +66,9 @@ public class ContenidoServicio {
     private final MaterialLeccionRepositorio materiales;
     private final RecursoRepositorio recursos;
     private final TipoMaterialRepositorio tiposMaterial;
+    private final ExamenRepositorio examenes;
+    private final PreguntaRepositorio preguntas;
+    private final OpcionPreguntaRepositorio opciones;
     private final ArchivoAlmacenamientoServicio almacenamiento;
     private final CurrentUserService currentUserService;
     private final TextNormalizer textos;
@@ -350,8 +360,8 @@ public class ContenidoServicio {
 
     // ---------------------------------------------------------------- Copiar módulo --
 
-    /** Copia módulo, lecciones y materiales; los materiales de la copia reutilizan el mismo
-     * recurso físico (no se duplica el archivo). No copia exámenes: HU-013 todavía no existe. */
+    /** Copia módulo, lecciones, materiales y exámenes de módulo; los materiales de la copia
+     * reutilizan el mismo recurso físico (no se duplica el archivo). */
     @Transactional
     public ModuloRespuesta copiarModulo(Long cursoId, Long moduloOrigenId) {
         exigirAdministrador();
@@ -393,6 +403,50 @@ public class ContenidoServicio {
                 copiaMaterial.setPermiteDescarga(materialOrigen.isPermiteDescarga());
                 copiaMaterial.setActivo(true);
                 materiales.saveAndFlush(copiaMaterial);
+            }
+        }
+
+        for (Examen examenOrigen : examenes.findByModulo_IdOrderByOrdenAsc(origen.getId())) {
+            Examen copiaExamen = new Examen();
+            copiaExamen.setCurso(cursoDestino);
+            copiaExamen.setModulo(copia);
+            copiaExamen.setExamenOrigenId(examenOrigen.getId());
+            copiaExamen.setTitulo(examenOrigen.getTitulo());
+            copiaExamen.setDescripcion(examenOrigen.getDescripcion());
+            copiaExamen.setTipo(examenOrigen.getTipo());
+            copiaExamen.setFinalidad(examenOrigen.getFinalidad());
+            copiaExamen.setOrden(examenOrigen.getOrden());
+            copiaExamen.setMaximoIntentos(examenOrigen.getMaximoIntentos());
+            copiaExamen.setTiempoLimiteMinutos(examenOrigen.getTiempoLimiteMinutos());
+            copiaExamen.setBarajarPreguntas(examenOrigen.isBarajarPreguntas());
+            copiaExamen.setBarajarOpciones(examenOrigen.isBarajarOpciones());
+            copiaExamen.setMostrarRespuestas(examenOrigen.getMostrarRespuestas());
+            // La fecha de habilitación, igual que la sesión en vivo, pertenecía al periodo del
+            // curso de origen: la copia queda sin programar hasta que administración la revise.
+            copiaExamen.setBloqueaSiguienteModulo(examenOrigen.isBloqueaSiguienteModulo());
+            copiaExamen.setDiasRevision(examenOrigen.getDiasRevision());
+            copiaExamen.setActivo(true);
+            examenes.saveAndFlush(copiaExamen);
+
+            for (Pregunta preguntaOrigen : preguntas.findByExamen_IdOrderByOrdenAsc(examenOrigen.getId())) {
+                Pregunta copiaPregunta = new Pregunta();
+                copiaPregunta.setExamen(copiaExamen);
+                copiaPregunta.setTipo(preguntaOrigen.getTipo());
+                copiaPregunta.setEnunciado(preguntaOrigen.getEnunciado());
+                copiaPregunta.setPuntaje(preguntaOrigen.getPuntaje());
+                copiaPregunta.setOrden(preguntaOrigen.getOrden());
+                copiaPregunta.setActivo(true);
+                preguntas.saveAndFlush(copiaPregunta);
+
+                for (OpcionPregunta opcionOrigen : opciones.findByPregunta_IdOrderByOrdenAsc(preguntaOrigen.getId())) {
+                    OpcionPregunta copiaOpcion = new OpcionPregunta();
+                    copiaOpcion.setPregunta(copiaPregunta);
+                    copiaOpcion.setTexto(opcionOrigen.getTexto());
+                    copiaOpcion.setEsCorrecta(opcionOrigen.isEsCorrecta());
+                    copiaOpcion.setOrden(opcionOrigen.getOrden());
+                    copiaOpcion.setActivo(true);
+                    opciones.saveAndFlush(copiaOpcion);
+                }
             }
         }
 

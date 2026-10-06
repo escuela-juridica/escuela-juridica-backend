@@ -56,7 +56,7 @@ public class ContenidoControlador {
 
     @PostMapping("/cursos/{cursoId}/copias-modulo/{moduloOrigenId}")
     @Operation(summary = "Copiar un módulo existente dentro de este curso",
-            description = "Copia módulos, lecciones y materiales; los materiales reutilizan el mismo recurso físico. No copia exámenes (HU-013).")
+            description = "Copia módulos, lecciones, materiales y exámenes de módulo; los materiales reutilizan el mismo recurso físico.")
     @ApiResponse(responseCode = "404", description = "El curso o el módulo de origen ya no existen")
     public ResponseEntity<ModuloRespuesta> copiarModulo(
             @PathVariable Long cursoId, @PathVariable Long moduloOrigenId) {
