@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -29,6 +30,37 @@ public class Matricula {
     @JoinColumn(name = "curso_id", nullable = false)
     private Curso curso;
 
-    @Column(nullable = false, length = 12)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "usuario_id", nullable = false)
+    private Usuario usuario;
+
+    @Column(nullable = false, length = 20)
     private String estado;
+
+    @Column(name = "forma_ingreso", nullable = false, length = 25)
+    private String formaIngreso;
+
+    @Column(name = "fecha_matricula", nullable = false)
+    private Instant fechaMatricula;
+
+    @Column(name = "fecha_activacion")
+    private Instant fechaActivacion;
+
+    @Column(name = "fecha_vencimiento")
+    private Instant fechaVencimiento;
+
+    @Column(name = "fecha_finalizacion")
+    private Instant fechaFinalizacion;
+
+    @Column(name = "motivo_cancelacion", columnDefinition = "text")
+    private String motivoCancelacion;
+
+    @Column(name = "cancelada_en")
+    private Instant canceladaEn;
+
+    @Column(name = "cancelada_por_usuario_id")
+    private Long canceladaPorUsuarioId;
+
+    @Column(name = "creado_por_usuario_id")
+    private Long creadoPorUsuarioId;
 }

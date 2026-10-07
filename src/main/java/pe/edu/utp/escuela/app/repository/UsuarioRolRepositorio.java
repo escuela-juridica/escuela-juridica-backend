@@ -43,4 +43,20 @@ public interface UsuarioRolRepositorio extends JpaRepository<UsuarioRol, Usuario
             where r.codigo = :codigoRol and u.activo = true
             """)
     long contarActivosConRol(@Param("codigoRol") String codigoRol);
+
+    @Query("""
+            select count(ur) > 0 from UsuarioRol ur join Rol r on r.id = ur.id.rolId
+            where ur.id.usuarioId = :usuarioId and r.codigo = :codigoRol and r.activo = true
+            """)
+    boolean usuarioTieneRol(@Param("usuarioId") Long usuarioId, @Param("codigoRol") String codigoRol);
+
+    /** Validacion puntual para operaciones de negocio sobre otra cuenta (por ejemplo HU-019). */
+    @Query(value = """
+            select exists (
+                select 1 from usuario_rol ur
+                join rol r on r.rol_id = ur.rol_id
+                where ur.usuario_id = :usuarioId and r.codigo = :codigoRol
+            )
+            """, nativeQuery = true)
+    boolean existeRolActivo(@Param("usuarioId") Long usuarioId, @Param("codigoRol") String codigoRol);
 }
