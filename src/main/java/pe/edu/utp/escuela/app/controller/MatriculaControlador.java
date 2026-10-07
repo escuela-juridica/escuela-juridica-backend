@@ -3,14 +3,17 @@ package pe.edu.utp.escuela.app.controller;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pe.edu.utp.escuela.app.dto.CancelarMatriculaPeticion;
 import pe.edu.utp.escuela.app.dto.CrearMatriculaAdministrativaPeticion;
 import pe.edu.utp.escuela.app.dto.MatriculaRespuesta;
 import pe.edu.utp.escuela.app.dto.MatriculaAdministrativaRespuesta;
+import pe.edu.utp.escuela.app.dto.PageResponse;
 import pe.edu.utp.escuela.app.dto.ReporteMatriculaRespuesta;
-import java.nio.charset.StandardCharsets;
+import pe.edu.utp.escuela.app.export.ReporteMatriculaExportador;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import pe.edu.utp.escuela.app.service.MatriculaServicio;
@@ -21,6 +24,7 @@ import pe.edu.utp.escuela.app.service.MatriculaServicio;
 @RequiredArgsConstructor
 public class MatriculaControlador {
     private final MatriculaServicio servicio;
+    private final ReporteMatriculaExportador exportador;
 
     @PostMapping("/cursos/{cursoId}/matricula-gratuita")
     public ResponseEntity<MatriculaRespuesta> matricularGratis(@PathVariable Long cursoId) {
@@ -39,36 +43,59 @@ public class MatriculaControlador {
     }
 
     @GetMapping("/admin/matriculas")
-    public ResponseEntity<List<MatriculaAdministrativaRespuesta>> listarAdministrativas(
+    public ResponseEntity<PageResponse<MatriculaAdministrativaRespuesta>> listarAdministrativas(
             @RequestParam(defaultValue = "") String texto,
-            @RequestParam(defaultValue = "") String estado) {
-        return ResponseEntity.ok(servicio.listarAdministrativas(texto, estado));
+            @RequestParam(defaultValue = "") String estado,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        int tamano = Math.min(Math.max(size, 1), 50);
+        Page<MatriculaAdministrativaRespuesta> pagina =
+                servicio.listarAdministrativas(texto, estado, PageRequest.of(Math.max(page, 0), tamano));
+        return ResponseEntity.ok(PageResponse.from(pagina));
     }
 
     @GetMapping("/admin/reportes/matriculas")
-    public ResponseEntity<List<ReporteMatriculaRespuesta>> reporte(
+    public ResponseEntity<PageResponse<ReporteMatriculaRespuesta>> reporte(
             @RequestParam(defaultValue = "") String texto,
-            @RequestParam(defaultValue = "") String estado) {
-        return ResponseEntity.ok(servicio.reporte(texto, estado));
+            @RequestParam(defaultValue = "") String estado,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        int tamano = Math.min(Math.max(size, 1), 50);
+        Page<ReporteMatriculaRespuesta> pagina =
+                servicio.reportePaginado(texto, estado, PageRequest.of(Math.max(page, 0), tamano));
+        return ResponseEntity.ok(PageResponse.from(pagina));
     }
 
     @GetMapping("/admin/reportes/matriculas/exportar")
     public ResponseEntity<byte[]> exportarReporte(
             @RequestParam(defaultValue = "") String texto,
             @RequestParam(defaultValue = "") String estado) {
-        StringBuilder csv = new StringBuilder("Alumno;Correo;Curso;Modalidad;Fecha matricula;Fecha activacion;Estado;Origen;Situacion academica\n");
-        for (ReporteMatriculaRespuesta fila : servicio.reporte(texto, estado)) {
-            csv.append(valorCsv(fila.alumno())).append(';').append(valorCsv(fila.correo())).append(';')
-                    .append(valorCsv(fila.curso())).append(';').append(valorCsv(fila.modalidad())).append(';')
-                    .append(fila.fechaMatricula()).append(';').append(fila.fechaActivacion()).append(';')
-                    .append(fila.estadoMatricula()).append(';').append(fila.formaIngreso()).append(';')
-                    .append(fila.situacionAcademica()).append('\n');
-        }
+        byte[] csv = exportador.csv(servicio.reporte(texto, estado));
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=reportes-matriculas.csv")
-                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8)).body(csv.toString().getBytes(StandardCharsets.UTF_8));
+                .contentType(new MediaType("text", "csv", java.nio.charset.StandardCharsets.UTF_8)).body(csv);
     }
 
-    private String valorCsv(String valor) { return "\"" + (valor == null ? "" : valor.replace("\"", "\"\"")) + "\""; }
+    @GetMapping("/admin/reportes/matriculas/exportar-excel")
+    public ResponseEntity<byte[]> exportarExcel(
+            @RequestParam(defaultValue = "") String texto,
+            @RequestParam(defaultValue = "") String estado) {
+        byte[] excel = exportador.excel(servicio.reporte(texto, estado), texto, estado);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=reportes-matriculas.xlsx")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(excel);
+    }
+
+    @GetMapping("/admin/reportes/matriculas/exportar-pdf")
+    public ResponseEntity<byte[]> exportarPdf(
+            @RequestParam(defaultValue = "") String texto,
+            @RequestParam(defaultValue = "") String estado) {
+        byte[] pdf = exportador.pdf(servicio.reporte(texto, estado), texto, estado);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=reportes-matriculas.pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
+    }
 
     @PatchMapping("/admin/matriculas/{matriculaId}/cancelacion")
     public ResponseEntity<MatriculaRespuesta> cancelar(

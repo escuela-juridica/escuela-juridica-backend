@@ -7,6 +7,8 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utp.escuela.app.dto.CancelarMatriculaPeticion;
@@ -79,16 +81,19 @@ public class MatriculaServicio {
     }
 
     @Transactional(readOnly = true)
-    public List<MatriculaAdministrativaRespuesta> listarAdministrativas(String texto, String estado) {
+    public Page<MatriculaAdministrativaRespuesta> listarAdministrativas(String texto, String estado, Pageable pageable) {
         exigirAdministrador();
         String filtro = texto == null ? "" : texto.strip().toLowerCase();
         String estadoFiltro = estado == null ? "" : estado.strip().toUpperCase();
-        return matriculas.findAllByOrderByFechaMatriculaDesc().stream()
-                .filter(m -> estadoFiltro.isBlank() || estadoFiltro.equals(m.getEstado()))
-                .filter(m -> filtro.isBlank() || m.getCurso().getTitulo().toLowerCase().contains(filtro)
-                        || m.getUsuario().getCorreo().toLowerCase().contains(filtro)
-                        || (m.getUsuario().getPersona().getNombres() + " " + m.getUsuario().getPersona().getApellidoPaterno()).toLowerCase().contains(filtro))
-                .map(this::respuestaAdministrativa).toList();
+        return matriculas.buscarAdministrativas(filtro, estadoFiltro, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ReporteMatriculaRespuesta> reportePaginado(String texto, String estado, Pageable pageable) {
+        exigirAdministrador();
+        String filtro = texto == null ? "" : texto.strip().toLowerCase();
+        String estadoFiltro = estado == null ? "" : estado.strip().toUpperCase();
+        return matriculas.buscarReporte(filtro, estadoFiltro, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -135,9 +140,5 @@ public class MatriculaServicio {
     }
     private Curso curso(Long id) { return cursos.findWithDetalleById(id).orElseThrow(() -> new ResourceNotFoundException("El curso no existe.")); }
     private void exigirAdministrador() { if (!actual.get().hasRole("ADMINISTRADOR")) throw new ForbiddenException(); }
-    private MatriculaAdministrativaRespuesta respuestaAdministrativa(Matricula m) {
-        String alumno = m.getUsuario().getPersona().getNombres() + " " + m.getUsuario().getPersona().getApellidoPaterno();
-        return new MatriculaAdministrativaRespuesta(m.getId(), m.getUsuario().getId(), alumno.strip(), m.getUsuario().getCorreo(), m.getCurso().getId(), m.getCurso().getTitulo(), m.getEstado(), m.getFormaIngreso(), m.getFechaMatricula(), m.getFechaVencimiento());
-    }
     private MatriculaRespuesta respuesta(Matricula m) { Instant ahora = clock.instant(); boolean vigente = m.getFechaVencimiento() == null || !ahora.isAfter(m.getFechaVencimiento()); boolean inicio = m.getCurso().getFechaInicio() == null || !LocalDate.now(clock.withZone(LIMA)).isBefore(m.getCurso().getFechaInicio()); boolean efectivo = "ACTIVA".equals(m.getEstado()) && vigente && inicio && m.getUsuario().isActivo() && m.getUsuario().getCorreoVerificadoEn() != null && !m.getUsuario().isRequiereCambioContrasena(); String mensaje = efectivo ? "Disponible para continuar." : !inicio ? "El curso aun no inicia." : !vigente ? "El acceso vencio." : "El acceso no esta disponible."; return new MatriculaRespuesta(m.getId(), m.getCurso().getId(), m.getCurso().getTitulo(), m.getCurso().getUrlAmigable(), m.getCurso().getModalidad(), m.getEstado(), m.getFormaIngreso(), m.getFechaMatricula(), m.getFechaActivacion(), m.getFechaVencimiento(), m.getFechaFinalizacion(), m.getCurso().getFechaInicio(), efectivo, mensaje); }
 }
