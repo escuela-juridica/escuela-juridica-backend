@@ -12,5 +12,6 @@ public record CrearMatriculaAdministrativaPeticion(
         BigDecimal importe,
         String medio,
         String referencia,
-        @NotBlank String motivo) {
+        @NotBlank String motivo,
+        boolean confirmoAdvertenciaAcademica) {
 }

@@ -7,8 +7,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 import pe.edu.utp.escuela.app.dto.CursoTarjetaFila;
 import pe.edu.utp.escuela.app.entity.Curso;
 
@@ -39,6 +41,10 @@ public interface CursoRepositorio extends JpaRepository<Curso, Long> {
             "tipoCurso", "categoriaTematica", "entidadCertificadora", "estadoCurso"
     })
     Optional<Curso> findWithDetalleById(Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from Curso c join fetch c.estadoCurso where c.id = :id")
+    Optional<Curso> bloquearParaMatricula(@Param("id") Long id);
 
     @EntityGraph(attributePaths = { "tipoCurso", "categoriaTematica", "estadoCurso" })
     @Query("""

@@ -42,7 +42,7 @@ public class ReporteMatriculaExportador {
 
     private static final String[] ENCABEZADOS = {
             "Alumno", "Correo", "Curso", "Modalidad", "Fecha matricula", "Fecha activacion",
-            "Estado", "Origen", "Situacion academica",
+            "Estado", "Origen", "Situacion academica", "Estado del certificado",
     };
 
     private static final byte[] COLOR_MARCA = hexARgb("103860");
@@ -74,7 +74,8 @@ public class ReporteMatriculaExportador {
                     .append(formatoFecha(fila.fechaMatricula())).append(';').append(formatoFecha(fila.fechaActivacion())).append(';')
                     .append(valorCsv(etiquetaEstado(fila.estadoMatricula()))).append(';')
                     .append(valorCsv(etiquetaIngreso(fila.formaIngreso()))).append(';')
-                    .append(valorCsv(etiquetaSituacion(fila.situacionAcademica()))).append('\n');
+                    .append(valorCsv(etiquetaSituacion(fila.situacionAcademica()))).append(';')
+                    .append(valorCsv(etiquetaCertificado(fila.estadoCertificado()))).append('\n');
         }
         return csv.toString().getBytes(StandardCharsets.UTF_8);
     }
@@ -128,9 +129,10 @@ public class ReporteMatriculaExportador {
                 escribirCelda(libro, cacheEstilos, filaDatos, 7, etiquetaIngreso(fila.formaIngreso()), par,
                         colorIngreso(fila.formaIngreso()));
                 escribirCelda(libro, cacheEstilos, filaDatos, 8, etiquetaSituacion(fila.situacionAcademica()), par, null);
+                escribirCelda(libro, cacheEstilos, filaDatos, 9, etiquetaCertificado(fila.estadoCertificado()), par, null);
             }
 
-            int[] anchos = { 7500, 8500, 9000, 4500, 6500, 6500, 4500, 6000, 6000 };
+            int[] anchos = { 7500, 8500, 9000, 4500, 6500, 6500, 4500, 6000, 6000, 6500 };
             for (int i = 0; i < anchos.length; i++) {
                 hoja.setColumnWidth(i, anchos[i]);
             }
@@ -202,7 +204,8 @@ public class ReporteMatriculaExportador {
     private byte[] colorIngreso(String formaIngreso) {
         return switch (formaIngreso) {
             case "GRATUITA" -> COLOR_CELESTE;
-            case "ADMINISTRADOR", "EXONERADA" -> COLOR_VIOLETA;
+            case "ADMINISTRADOR", "EXONERADA", "EXONERADO" -> COLOR_VIOLETA;
+            case "MANUAL", "REGISTRADO_MANUAL" -> COLOR_CELESTE;
             case "PAGO_EN_LINEA" -> COLOR_EXITO;
             default -> null;
         };
@@ -219,7 +222,7 @@ public class ReporteMatriculaExportador {
     // --------------------------------------------------------------------------------- PDF --
 
     public byte[] pdf(List<ReporteMatriculaRespuesta> filas, String textoFiltro, String estadoFiltro) {
-        float[] anchos = { 100, 120, 105, 62, 70, 70, 60, 80, 70 };
+        float[] anchos = { 90, 105, 105, 52, 62, 62, 55, 72, 68, 65 };
         float margen = 25f;
         float altoFila = 17f;
         float altoEncabezadoTabla = 20f;
@@ -327,10 +330,11 @@ public class ReporteMatriculaExportador {
                 recorte(fila.alumno(), 42), recorte(fila.correo(), 48), recorte(fila.curso(), 44),
                 recorte(fila.modalidad(), 14), formatoFecha(fila.fechaMatricula()), formatoFecha(fila.fechaActivacion()),
                 etiquetaEstado(fila.estadoMatricula()), etiquetaIngreso(fila.formaIngreso()),
-                etiquetaSituacion(fila.situacionAcademica()),
+                etiquetaSituacion(fila.situacionAcademica()), etiquetaCertificado(fila.estadoCertificado()),
         };
         Color colorEstado = "ACTIVA".equals(fila.estadoMatricula()) ? AWT_EXITO : AWT_ERROR;
-        Color[] colores = { null, null, null, null, null, null, colorEstado, colorIngresoPdf(fila.formaIngreso()), null };
+        Color[] colores = { null, null, null, null, null, null, colorEstado,
+                colorIngresoPdf(fila.formaIngreso()), null, null };
 
         float x = margen;
         for (int i = 0; i < valores.length; i++) {
@@ -358,7 +362,8 @@ public class ReporteMatriculaExportador {
     private Color colorIngresoPdf(String formaIngreso) {
         return switch (formaIngreso) {
             case "GRATUITA" -> AWT_CELESTE;
-            case "ADMINISTRADOR", "EXONERADA" -> AWT_VIOLETA;
+            case "ADMINISTRADOR", "EXONERADA", "EXONERADO" -> AWT_VIOLETA;
+            case "MANUAL", "REGISTRADO_MANUAL" -> AWT_CELESTE;
             case "PAGO_EN_LINEA" -> AWT_EXITO;
             default -> null;
         };
@@ -385,20 +390,37 @@ public class ReporteMatriculaExportador {
     }
 
     private String etiquetaEstado(String estado) {
-        return "ACTIVA".equals(estado) ? "Activa" : "Cancelada";
+        return switch (estado) {
+            case "ACTIVA" -> "Activa";
+            case "CANCELADA" -> "Cancelada";
+            case "VENCIDA" -> "Vencida";
+            case "PENDIENTE_PAGO" -> "Pendiente de pago";
+            case "FINALIZADA" -> "Finalizada";
+            default -> estado == null ? "Sin estado" : estado;
+        };
     }
 
     private String etiquetaIngreso(String formaIngreso) {
         return switch (formaIngreso) {
             case "GRATUITA" -> "Gratuita";
             case "ADMINISTRADOR" -> "Asignacion manual";
+            case "MANUAL", "REGISTRADO_MANUAL" -> "Pago manual registrado";
             case "PAGO_EN_LINEA" -> "Pago en linea";
-            case "EXONERADA" -> "Exonerada";
+            case "EXONERADA", "EXONERADO" -> "Exonerada";
             default -> formaIngreso;
         };
     }
 
     private String etiquetaSituacion(String situacion) {
         return "EN_CURSO".equals(situacion) ? "En curso" : "Finalizado";
+    }
+
+    private String etiquetaCertificado(String estado) {
+        return switch (estado == null ? "NO_EMITIDO" : estado) {
+            case "VIGENTE" -> "Vigente";
+            case "ANULADO" -> "Anulado";
+            case "NO_EMITIDO" -> "No emitido";
+            default -> estado;
+        };
     }
 }

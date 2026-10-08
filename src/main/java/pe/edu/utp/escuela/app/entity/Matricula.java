@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.OneToOne;
 import java.time.Instant;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -63,4 +64,7 @@ public class Matricula {
 
     @Column(name = "creado_por_usuario_id")
     private Long creadoPorUsuarioId;
+
+    @OneToOne(mappedBy = "matricula", fetch = FetchType.LAZY)
+    private LogroCertificacion logroCertificacion;
 }

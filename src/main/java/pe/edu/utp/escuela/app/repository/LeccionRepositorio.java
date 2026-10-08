@@ -1,8 +1,11 @@
 package pe.edu.utp.escuela.app.repository;
 
 import java.util.Collection;
+import java.time.Instant;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import pe.edu.utp.escuela.app.entity.Leccion;
@@ -22,6 +25,10 @@ public interface LeccionRepositorio extends JpaRepository<Leccion, Long> {
     List<Leccion> findByModulo_IdInOrderByModulo_IdAscOrdenAsc(Collection<Long> moduloIds);
 
     long countByModulo_Id(Long moduloId);
+
+    @Query("select count(l) from Leccion l where l.modulo.curso.id = :cursoId and l.tipo = 'EN_VIVO' "
+            + "and l.activo = true and l.estado <> 'CANCELADA' and l.fechaHoraInicio > :desde")
+    long contarSesionesFuturasActivas(@Param("cursoId") Long cursoId, @Param("desde") Instant desde);
 
     void deleteAllByModulo_IdIn(Collection<Long> moduloIds);
 }

@@ -6,4 +6,4 @@ import java.time.Instant;
 public record ReporteMatriculaRespuesta(
         Long matriculaId, String alumno, String correo, String curso, String modalidad,
         Instant fechaMatricula, Instant fechaActivacion, String estadoMatricula, String formaIngreso,
-        String situacionAcademica) {}
+        String situacionAcademica, String estadoCertificado) {}

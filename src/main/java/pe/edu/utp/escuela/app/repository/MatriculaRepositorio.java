@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.time.Instant;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +31,12 @@ public interface MatriculaRepositorio extends JpaRepository<Matricula, Long> {
 
     @EntityGraph(attributePaths = { "curso", "usuario", "usuario.persona" })
     List<Matricula> findAllByOrderByFechaMatriculaDesc();
+
+    @EntityGraph(attributePaths = { "curso", "curso.estadoCurso", "usuario", "usuario.persona" })
+    List<Matricula> findByEstadoAndFechaVencimientoLessThanEqual(String estado, Instant instante);
+
+    @EntityGraph(attributePaths = { "curso", "curso.estadoCurso", "usuario", "usuario.persona" })
+    Optional<Matricula> findWithDetalleById(Long id);
 
     @Query(value = """
             select new pe.edu.utp.escuela.app.dto.MatriculaAdministrativaRespuesta(
@@ -59,13 +66,19 @@ public interface MatriculaRepositorio extends JpaRepository<Matricula, Long> {
             select new pe.edu.utp.escuela.app.dto.ReporteMatriculaRespuesta(
                 m.id, concat(p.nombres, ' ', p.apellidoPaterno), u.correo, c.titulo, c.modalidad,
                 m.fechaMatricula, m.fechaActivacion, m.estado, m.formaIngreso,
-                case when m.fechaFinalizacion is null then 'EN_CURSO' else 'FINALIZADO' end)
+                case when m.fechaFinalizacion is null then 'EN_CURSO' else 'FINALIZADO' end,
+                coalesce(certificado.estado, 'NO_EMITIDO'))
             from Matricula m
             join m.usuario u join u.persona p join m.curso c
+            left join m.logroCertificacion logro left join logro.certificado certificado
             where (:estado = '' or m.estado = :estado)
               and (:texto = '' or lower(c.titulo) like concat('%', :texto, '%')
                    or lower(u.correo) like concat('%', :texto, '%')
                    or lower(concat(p.nombres, ' ', p.apellidoPaterno)) like concat('%', :texto, '%'))
+              and (:cursoId is null or c.id = :cursoId)
+              and (:modalidad = '' or c.modalidad = :modalidad)
+              and m.fechaMatricula >= :desde
+              and m.fechaMatricula < :hasta
             order by m.fechaMatricula desc
             """,
             countQuery = """
@@ -76,9 +89,39 @@ public interface MatriculaRepositorio extends JpaRepository<Matricula, Long> {
               and (:texto = '' or lower(c.titulo) like concat('%', :texto, '%')
                    or lower(u.correo) like concat('%', :texto, '%')
                    or lower(concat(p.nombres, ' ', p.apellidoPaterno)) like concat('%', :texto, '%'))
+              and (:cursoId is null or c.id = :cursoId)
+              and (:modalidad = '' or c.modalidad = :modalidad)
+              and m.fechaMatricula >= :desde
+              and m.fechaMatricula < :hasta
             """)
     Page<ReporteMatriculaRespuesta> buscarReporte(
-            @Param("texto") String texto, @Param("estado") String estado, Pageable pageable);
+            @Param("texto") String texto, @Param("estado") String estado,
+            @Param("cursoId") Long cursoId, @Param("modalidad") String modalidad,
+            @Param("desde") Instant desde, @Param("hasta") Instant hasta, Pageable pageable);
+
+    @Query("""
+            select new pe.edu.utp.escuela.app.dto.ReporteMatriculaRespuesta(
+                m.id, concat(p.nombres, ' ', p.apellidoPaterno), u.correo, c.titulo, c.modalidad,
+                m.fechaMatricula, m.fechaActivacion, m.estado, m.formaIngreso,
+                case when m.fechaFinalizacion is null then 'EN_CURSO' else 'FINALIZADO' end,
+                coalesce(certificado.estado, 'NO_EMITIDO'))
+            from Matricula m
+            join m.usuario u join u.persona p join m.curso c
+            left join m.logroCertificacion logro left join logro.certificado certificado
+            where (:estado = '' or m.estado = :estado)
+              and (:texto = '' or lower(c.titulo) like concat('%', :texto, '%')
+                   or lower(u.correo) like concat('%', :texto, '%')
+                   or lower(concat(p.nombres, ' ', p.apellidoPaterno)) like concat('%', :texto, '%'))
+              and (:cursoId is null or c.id = :cursoId)
+              and (:modalidad = '' or c.modalidad = :modalidad)
+              and m.fechaMatricula >= :desde
+              and m.fechaMatricula < :hasta
+            order by m.fechaMatricula desc
+            """)
+    List<ReporteMatriculaRespuesta> exportarReporte(
+            @Param("texto") String texto, @Param("estado") String estado,
+            @Param("cursoId") Long cursoId, @Param("modalidad") String modalidad,
+            @Param("desde") Instant desde, @Param("hasta") Instant hasta);
 
     @Query("""
             select new pe.edu.utp.escuela.app.dto.ConteoMatriculaFila(m.curso.id, count(m.id))
