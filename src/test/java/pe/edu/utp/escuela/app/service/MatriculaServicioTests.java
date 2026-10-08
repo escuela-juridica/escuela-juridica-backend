@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -15,7 +16,6 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,10 +41,17 @@ import pe.edu.utp.escuela.app.exception.BusinessValidationException;
 import pe.edu.utp.escuela.app.exception.DuplicateResourceException;
 import pe.edu.utp.escuela.app.exception.ResourceNotFoundException;
 import pe.edu.utp.escuela.app.repository.CursoRepositorio;
+import pe.edu.utp.escuela.app.repository.HistorialEstadoMatriculaRepositorio;
+import pe.edu.utp.escuela.app.repository.LeccionRepositorio;
 import pe.edu.utp.escuela.app.repository.MatriculaRepositorio;
+import pe.edu.utp.escuela.app.repository.ModuloRepositorio;
+import pe.edu.utp.escuela.app.repository.NotificacionRepositorio;
 import pe.edu.utp.escuela.app.repository.PagoRepositorio;
+import pe.edu.utp.escuela.app.repository.ProgresoLeccionRepositorio;
+import pe.edu.utp.escuela.app.repository.ReglaCursoRepositorio;
 import pe.edu.utp.escuela.app.repository.UsuarioRepositorio;
 import pe.edu.utp.escuela.app.repository.UsuarioRolRepositorio;
+import pe.edu.utp.escuela.app.mail.MailService;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.security.CurrentUserService.CurrentUser;
 
@@ -59,6 +66,13 @@ class MatriculaServicioTests {
     @Mock private UsuarioRolRepositorio roles;
     @Mock private AdminUsuariosServicio adminUsuarios;
     @Mock private PagoRepositorio pagos;
+    @Mock private HistorialEstadoMatriculaRepositorio historial;
+    @Mock private NotificacionRepositorio notificaciones;
+    @Mock private ReglaCursoRepositorio reglas;
+    @Mock private ModuloRepositorio modulos;
+    @Mock private LeccionRepositorio lecciones;
+    @Mock private ProgresoLeccionRepositorio progresoLecciones;
+    @Mock private MailService mailService;
     @Mock private CurrentUserService actual;
 
     private MatriculaServicio servicio;
@@ -66,7 +80,10 @@ class MatriculaServicioTests {
 
     @BeforeEach
     void setUp() {
-        servicio = new MatriculaServicio(matriculas, cursos, usuarios, roles, adminUsuarios, pagos, actual, clock);
+        servicio = new MatriculaServicio(matriculas, cursos, usuarios, roles, adminUsuarios, pagos,
+                historial, notificaciones, reglas, modulos, lecciones, progresoLecciones, mailService, actual, clock);
+        lenient().when(cursos.bloquearParaMatricula(any()))
+                .thenAnswer(invocation -> cursos.findWithDetalleById(invocation.getArgument(0)));
     }
 
     private void comoAlumno(Long id) {
@@ -201,18 +218,15 @@ class MatriculaServicioTests {
 
     private CrearMatriculaAdministrativaPeticion peticionExonerada() {
         return new CrearMatriculaAdministrativaPeticion(5L, 200L, "EXONERADO", BigDecimal.ZERO, null, null,
-                "Convenio institucional");
+                "Convenio institucional", false);
     }
 
     private void prepararPersistenciaDeMatricula() {
-        AtomicReference<Matricula> guardada = new AtomicReference<>();
         when(matriculas.saveAndFlush(any(Matricula.class))).thenAnswer(invocation -> {
             Matricula m = invocation.getArgument(0);
             m.setId(500L);
-            guardada.set(m);
             return m;
         });
-        when(matriculas.getReferenceById(500L)).thenAnswer(invocation -> guardada.get());
     }
 
     @Test
@@ -263,7 +277,7 @@ class MatriculaServicioTests {
         when(cursos.findWithDetalleById(200L)).thenReturn(Optional.of(cursoPublicadoGratuito()));
 
         CrearMatriculaAdministrativaPeticion peticion = new CrearMatriculaAdministrativaPeticion(5L, 200L,
-                "DESCUENTO", null, null, null, "Motivo");
+                "DESCUENTO", null, null, null, "Motivo", false);
 
         assertThrows(BusinessValidationException.class, () -> servicio.matricularAdministrativamente(peticion));
     }
@@ -278,7 +292,7 @@ class MatriculaServicioTests {
         prepararPersistenciaDeMatricula();
 
         CrearMatriculaAdministrativaPeticion peticion = new CrearMatriculaAdministrativaPeticion(5L, 200L,
-                "EXONERADO", BigDecimal.TEN, null, null, "Motivo");
+                "EXONERADO", BigDecimal.TEN, null, null, "Motivo", false);
 
         assertThrows(BusinessValidationException.class, () -> servicio.matricularAdministrativamente(peticion));
     }
@@ -293,7 +307,7 @@ class MatriculaServicioTests {
         prepararPersistenciaDeMatricula();
 
         CrearMatriculaAdministrativaPeticion peticion = new CrearMatriculaAdministrativaPeticion(5L, 200L,
-                "REGISTRADO_MANUAL", BigDecimal.valueOf(150), null, null, "Pago por Yape");
+                "REGISTRADO_MANUAL", BigDecimal.valueOf(150), null, null, "Pago por Yape", false);
 
         assertThrows(BusinessValidationException.class, () -> servicio.matricularAdministrativamente(peticion));
     }
@@ -308,7 +322,7 @@ class MatriculaServicioTests {
         prepararPersistenciaDeMatricula();
 
         CrearMatriculaAdministrativaPeticion peticion = new CrearMatriculaAdministrativaPeticion(5L, 200L,
-                "REGISTRADO_MANUAL", BigDecimal.valueOf(150), "Yape", "OP-123", "Pago por Yape");
+                "REGISTRADO_MANUAL", BigDecimal.valueOf(150), "Yape", "OP-123", "Pago por Yape", false);
 
         MatriculaRespuesta respuesta = servicio.matricularAdministrativamente(peticion);
 
@@ -341,7 +355,7 @@ class MatriculaServicioTests {
         m.setEstado("ACTIVA");
         m.setCurso(cursoPublicadoGratuito());
         m.setUsuario(alumnoHabilitado(5L));
-        when(matriculas.findById(500L)).thenReturn(Optional.of(m));
+        when(matriculas.findWithDetalleById(500L)).thenReturn(Optional.of(m));
 
         MatriculaRespuesta respuesta = servicio.cancelar(500L, new CancelarMatriculaPeticion("Ya no continuará"));
 
@@ -355,7 +369,7 @@ class MatriculaServicioTests {
         Matricula m = new Matricula();
         m.setId(500L);
         m.setEstado("CANCELADA");
-        when(matriculas.findById(500L)).thenReturn(Optional.of(m));
+        when(matriculas.findWithDetalleById(500L)).thenReturn(Optional.of(m));
 
         assertThrows(BusinessValidationException.class,
                 () -> servicio.cancelar(500L, new CancelarMatriculaPeticion("Motivo")));
@@ -364,7 +378,7 @@ class MatriculaServicioTests {
     @Test
     void cancelarUnaMatriculaInexistenteLanzaNoEncontrado() {
         comoAdministrador(1L);
-        when(matriculas.findById(500L)).thenReturn(Optional.empty());
+        when(matriculas.findWithDetalleById(500L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class,
                 () -> servicio.cancelar(500L, new CancelarMatriculaPeticion("Motivo")));
@@ -414,7 +428,7 @@ class MatriculaServicioTests {
         List<MatriculaRespuesta> resultado = servicio.misCursos();
 
         assertFalse(resultado.get(0).accesoEfectivo());
-        assertEquals("El acceso vencio.", resultado.get(0).mensajeAcceso());
+        assertEquals("El acceso venci\u00f3.", resultado.get(0).mensajeAcceso());
     }
 
     @Test
@@ -435,7 +449,7 @@ class MatriculaServicioTests {
         List<MatriculaRespuesta> resultado = servicio.misCursos();
 
         assertFalse(resultado.get(0).accesoEfectivo());
-        assertEquals("El curso aun no inicia.", resultado.get(0).mensajeAcceso());
+        assertEquals("El curso a\u00fan no inicia.", resultado.get(0).mensajeAcceso());
     }
 
     // ---------------------------------------------------------------- HU-041 (filtrado) --
@@ -465,9 +479,11 @@ class MatriculaServicioTests {
         noCoincide.setFormaIngreso("GRATUITA");
         noCoincide.setFechaMatricula(Instant.parse("2026-09-01T00:00:00Z"));
 
-        when(matriculas.findAllByOrderByFechaMatriculaDesc()).thenReturn(List.of(coincide, noCoincide));
+        when(matriculas.exportarReporte(any(), any(), any(), any(), any(), any())).thenReturn(List.of(
+                new ReporteMatriculaRespuesta(1L, "Ana Pérez", "ana@example.com", "Derecho Registral", "VIRTUAL",
+                        coincide.getFechaMatricula(), null, "ACTIVA", "GRATUITA", "EN_CURSO", "NO_EMITIDO")));
 
-        List<ReporteMatriculaRespuesta> resultado = servicio.reporte("registral", "ACTIVA");
+        List<ReporteMatriculaRespuesta> resultado = servicio.reporte("registral", "ACTIVA", null, "", null, null);
 
         assertEquals(1, resultado.size());
         assertEquals("Derecho Registral", resultado.get(0).curso());
@@ -477,12 +493,16 @@ class MatriculaServicioTests {
     void reportePaginadoDelegaAlRepositorio() {
         comoAdministrador(1L);
         Pageable pageable = PageRequest.of(0, 20);
-        @SuppressWarnings("unchecked")
-        Page<ReporteMatriculaRespuesta> pagina = org.mockito.Mockito.mock(Page.class);
-        when(matriculas.buscarReporte("", "", pageable)).thenReturn(pagina);
+        ReporteMatriculaRespuesta fila = new ReporteMatriculaRespuesta(1L, "Ana Pérez", "ana@example.com",
+                "Curso", "VIRTUAL", Instant.parse("2026-09-01T00:00:00Z"), null, "ACTIVA", "GRATUITA",
+                "EN_CURSO", "NO_EMITIDO");
+        Page<ReporteMatriculaRespuesta> pagina = new org.springframework.data.domain.PageImpl<>(List.of(fila), pageable, 1);
+        when(matriculas.buscarReporte(any(), any(), any(), any(), any(), any(), org.mockito.ArgumentMatchers.eq(pageable)))
+                .thenReturn(pagina);
 
-        Page<ReporteMatriculaRespuesta> resultado = servicio.reportePaginado("", "", pageable);
+        Page<ReporteMatriculaRespuesta> resultado = servicio.reportePaginado("", "", null, "", null, null, pageable);
 
-        assertEquals(pagina, resultado);
+        assertEquals(1, resultado.getTotalElements());
+        assertEquals("Curso", resultado.getContent().getFirst().curso());
     }
 }

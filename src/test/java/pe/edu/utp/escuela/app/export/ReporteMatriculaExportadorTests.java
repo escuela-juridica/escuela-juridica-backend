@@ -19,10 +19,10 @@ class ReporteMatriculaExportadorTests {
         return List.of(
                 new ReporteMatriculaRespuesta(1L, "Ana Pérez", "ana@example.com", "Derecho Registral", "VIRTUAL",
                         Instant.parse("2026-09-01T00:00:00Z"), Instant.parse("2026-09-01T00:00:00Z"),
-                        "ACTIVA", "GRATUITA", "EN_CURSO"),
+                        "ACTIVA", "GRATUITA", "EN_CURSO", "NO_EMITIDO"),
                 new ReporteMatriculaRespuesta(2L, "Luis Gómez", "luis@example.com", "Derecho Notarial", "HIBRIDO",
                         Instant.parse("2026-09-02T00:00:00Z"), null,
-                        "CANCELADA", "ADMINISTRADOR", "EN_CURSO"));
+                        "CANCELADA", "ADMINISTRADOR", "EN_CURSO", "NO_EMITIDO"));
     }
 
     @Test
