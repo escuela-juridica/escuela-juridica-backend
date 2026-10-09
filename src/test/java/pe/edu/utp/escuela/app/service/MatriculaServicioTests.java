@@ -21,15 +21,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import pe.edu.utp.escuela.app.dto.CancelarMatriculaPeticion;
 import pe.edu.utp.escuela.app.dto.CondicionCuentaAdmin;
 import pe.edu.utp.escuela.app.dto.CrearMatriculaAdministrativaPeticion;
-import pe.edu.utp.escuela.app.dto.MatriculaAdministrativaRespuesta;
 import pe.edu.utp.escuela.app.dto.MatriculaRespuesta;
-import pe.edu.utp.escuela.app.dto.ReporteMatriculaRespuesta;
 import pe.edu.utp.escuela.app.dto.RolUsuarioAdmin;
 import pe.edu.utp.escuela.app.dto.UsuarioAdminRespuesta;
 import pe.edu.utp.escuela.app.entity.Curso;
@@ -56,7 +50,7 @@ import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.security.CurrentUserService.CurrentUser;
 
 /** HU-017 (matrícula gratuita), HU-019 (matrícula administrativa), HU-020 (consultar/controlar
- * matrículas y pagos), HU-021 (mis cursos y accesos) y el filtrado de HU-041 (reporte). */
+ * matrículas y pagos) y HU-021 (mis cursos y accesos). */
 @ExtendWith(MockitoExtension.class)
 class MatriculaServicioTests {
 
@@ -346,59 +340,7 @@ class MatriculaServicioTests {
         org.mockito.Mockito.verify(pagos).save(any());
     }
 
-    // ---------------------------------------------------------------- HU-020 --
-
-    @Test
-    void listarAdministrativasDelegaFiltrosAlRepositorio() {
-        // HU-020 Escenario 1 (consulta administrativa).
-        comoAdministrador(1L);
-        Pageable pageable = PageRequest.of(0, 20);
-        @SuppressWarnings("unchecked")
-        Page<MatriculaAdministrativaRespuesta> pagina = org.mockito.Mockito.mock(Page.class);
-        when(matriculas.buscarAdministrativas("curso jurídico", "ACTIVA", pageable)).thenReturn(pagina);
-
-        Page<MatriculaAdministrativaRespuesta> resultado =
-                servicio.listarAdministrativas(" Curso Jurídico ", "activa", pageable);
-
-        assertEquals(pagina, resultado);
-    }
-
-    @Test
-    void cancelarUnaMatriculaActivaLaCancela() {
-        comoAdministrador(1L);
-        Matricula m = new Matricula();
-        m.setId(500L);
-        m.setEstado("ACTIVA");
-        m.setCurso(cursoPublicadoGratuito());
-        m.setUsuario(alumnoHabilitado(5L));
-        when(matriculas.findWithDetalleById(500L)).thenReturn(Optional.of(m));
-
-        MatriculaRespuesta respuesta = servicio.cancelar(500L, new CancelarMatriculaPeticion("Ya no continuará"));
-
-        assertEquals("CANCELADA", respuesta.estado());
-    }
-
-    @Test
-    void cancelarUnaMatriculaYaCanceladaLanzaValidacion() {
-        // HU-020 Escenario 3 (cambio controlado).
-        comoAdministrador(1L);
-        Matricula m = new Matricula();
-        m.setId(500L);
-        m.setEstado("CANCELADA");
-        when(matriculas.findWithDetalleById(500L)).thenReturn(Optional.of(m));
-
-        assertThrows(BusinessValidationException.class,
-                () -> servicio.cancelar(500L, new CancelarMatriculaPeticion("Motivo")));
-    }
-
-    @Test
-    void cancelarUnaMatriculaInexistenteLanzaNoEncontrado() {
-        comoAdministrador(1L);
-        when(matriculas.findWithDetalleById(500L)).thenReturn(Optional.empty());
-
-        assertThrows(ResourceNotFoundException.class,
-                () -> servicio.cancelar(500L, new CancelarMatriculaPeticion("Motivo")));
-    }
+    // HU-020 se retiró deliberadamente (ver docs/epica-4/HU-020-MAPA-TECNICO-CONTROL-MATRICULAS.md).
 
     // ---------------------------------------------------------------- HU-021 --
 
@@ -468,57 +410,8 @@ class MatriculaServicioTests {
         assertEquals("El curso a\u00fan no inicia.", resultado.get(0).mensajeAcceso());
     }
 
-    // ---------------------------------------------------------------- HU-041 (filtrado) --
-
-    @Test
-    void reporteFiltraPorTextoYPorEstado() {
-        // HU-041 Escenario 1 (filtros).
-        comoAdministrador(1L);
-        Usuario usuario = alumnoHabilitado(1L);
-        Curso cursoCoincide = cursoPublicadoGratuito();
-        cursoCoincide.setTitulo("Derecho Registral");
-        Matricula coincide = new Matricula();
-        coincide.setId(1L);
-        coincide.setCurso(cursoCoincide);
-        coincide.setUsuario(usuario);
-        coincide.setEstado("ACTIVA");
-        coincide.setFormaIngreso("GRATUITA");
-        coincide.setFechaMatricula(Instant.parse("2026-09-01T00:00:00Z"));
-
-        Curso cursoNoCoincide = cursoPublicadoGratuito();
-        cursoNoCoincide.setTitulo("Derecho Notarial");
-        Matricula noCoincide = new Matricula();
-        noCoincide.setId(2L);
-        noCoincide.setCurso(cursoNoCoincide);
-        noCoincide.setUsuario(usuario);
-        noCoincide.setEstado("CANCELADA");
-        noCoincide.setFormaIngreso("GRATUITA");
-        noCoincide.setFechaMatricula(Instant.parse("2026-09-01T00:00:00Z"));
-
-        when(matriculas.exportarReporte(any(), any(), any(), any(), any(), any())).thenReturn(List.of(
-                new ReporteMatriculaRespuesta(1L, "Ana Pérez", "ana@example.com", "Derecho Registral", "VIRTUAL",
-                        coincide.getFechaMatricula(), null, "ACTIVA", "GRATUITA", "EN_CURSO", "NO_EMITIDO")));
-
-        List<ReporteMatriculaRespuesta> resultado = servicio.reporte("registral", "ACTIVA", null, "", null, null);
-
-        assertEquals(1, resultado.size());
-        assertEquals("Derecho Registral", resultado.get(0).curso());
-    }
-
-    @Test
-    void reportePaginadoDelegaAlRepositorio() {
-        comoAdministrador(1L);
-        Pageable pageable = PageRequest.of(0, 20);
-        ReporteMatriculaRespuesta fila = new ReporteMatriculaRespuesta(1L, "Ana Pérez", "ana@example.com",
-                "Curso", "VIRTUAL", Instant.parse("2026-09-01T00:00:00Z"), null, "ACTIVA", "GRATUITA",
-                "EN_CURSO", "NO_EMITIDO");
-        Page<ReporteMatriculaRespuesta> pagina = new org.springframework.data.domain.PageImpl<>(List.of(fila), pageable, 1);
-        when(matriculas.buscarReporte(any(), any(), any(), any(), any(), any(), org.mockito.ArgumentMatchers.eq(pageable)))
-                .thenReturn(pagina);
-
-        Page<ReporteMatriculaRespuesta> resultado = servicio.reportePaginado("", "", null, "", null, null, pageable);
-
-        assertEquals(1, resultado.getTotalElements());
-        assertEquals("Curso", resultado.getContent().getFirst().curso());
-    }
+    // HU-041 (reporteFiltraPorTextoYPorEstado, reportePaginadoDelegaAlRepositorio) se retiró
+    // deliberadamente — ver docs/epica-4/HU-041-MAPA-TECNICO-REPORTE-MATRICULAS.md para
+    // reconstruirla. Por la instrucción vigente de no escribir nuevos tests JUnit, no se
+    // recrean aquí.
 }

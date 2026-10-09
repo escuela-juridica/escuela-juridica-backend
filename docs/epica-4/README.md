@@ -3,10 +3,15 @@
 Guías técnicas (backend + frontend) de las 4 historias en construcción ahora mismo. Cada una tiene
 versión `.md` y `.docx` con el mismo contenido:
 
-- `HU-022-MAPA-TECNICO-INGRESAR-AULA` — Ingresar y continuar un curso
-- `HU-023-MAPA-TECNICO-MATERIALES` — Consultar materiales protegidos
-- `HU-026-MAPA-TECNICO-PARTICIPAR-EN-VIVO` — Participar en sesiones en vivo
+- `HU-008-MAPA-TECNICO-GESTIONAR-USUARIOS` — Gestionar usuarios administrativamente
+- `HU-020-MAPA-TECNICO-CONTROL-MATRICULAS` — Controlar matrículas y pagos
 - `HU-027-MAPA-TECNICO-CAMBIOS-SESIONES` — Administrar cambios en sesiones en vivo
+- `HU-041-MAPA-TECNICO-REPORTE-MATRICULAS` — Consultar el reporte de matrículas
+
+> HU-008, HU-020 y HU-041 ya estaban implementadas y funcionando — se retiraron deliberadamente
+> (código y tests) para convertirlas en ejercicio de programación del equipo. Cada guía trae el código
+> real que existía, para reconstruirlo igual o mejor. HU-022, HU-023 y HU-026 (aula del alumno) ya no
+> forman parte de este lote.
 
 ## La maquetación visual (HTML) está en otro lado, a propósito
 
@@ -16,10 +21,10 @@ frontend, junto con el CSS y las imágenes compartidas que necesitan para verse 
 ```
 escuela-juridica-frontend/maquetacion-html/
 ├── 00-INDICE.html                        ← abrir primero, tiene la guía completa
-├── HU-022-PF-AULA-ingresar.html
-├── HU-023-PF-AULA-materiales.html
-├── HU-026-PF-CALENDARIO-calendario.html
+├── HU-008-PF-USUARIOS-listado.html
+├── HU-020-PF-MATRICULAS-listado.html
 ├── HU-027-PF-ADMIN-sesiones.html
+├── HU-041-PF-REPORTE-matriculas.html
 ├── estilos.css                           ← compartido por toda la app, no solo EP04
 └── img/
 ```
