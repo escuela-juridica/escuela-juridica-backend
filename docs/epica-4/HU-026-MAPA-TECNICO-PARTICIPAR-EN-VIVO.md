@@ -34,6 +34,21 @@ entre cero.
 - Puede desarrollarse en paralelo con HU-027 (esa historia solo toca el lado admin de la misma
   `Leccion`).
 
+## 🔑 Punto de oro — con quién coordinar
+
+Esta es la historia más independiente de las tres — tu calendario (`features/aula/calendario`) y
+`SesionesEnVivoServicio` son archivos nuevos propios, no tocan `aula.ts`/`aula.html` de HU-022 para
+nada. Arranca ya, sin esperar a nadie. Solo dos coordinaciones puntuales, no bloqueos:
+
+1. **Contrato de `AulaServicio.motivoSinAccesoPublico(Matricula m)`** (de HU-022, Juan y Joel): su
+   firma ya está definida en la guía de esa historia — programa contra ese contrato directamente; si
+   necesitas compilar antes de que mergeen, usa un stub local temporal con esas mismas 6 líneas.
+2. **Nombres de clases CSS de la tarjeta de sesión en vivo**, compartida visualmente con el aula de
+   HU-022 — coordina con Juan/Joel antes de maquetar (conversación corta, no una espera).
+
+`AulaControlador` lo tocan los tres equipos (022, 023 y 026): agrega tus endpoints en un bloque propio
+y comentado (`// HU-026 — Sesiones en vivo`), separado de los demás, para que el merge sea automático.
+
 ## Contratos que deben acordarse
 
 | Operación | Método y ruta | Resultado conceptual |
