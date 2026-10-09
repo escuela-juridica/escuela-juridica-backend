@@ -33,6 +33,21 @@ sesión o sin matrícula — cada solicitud se valida de nuevo, no solo la prime
   alumno). Puede adelantarse asumiendo una matrícula activa de prueba mientras HU-022 no esté lista.
 - No depende de HU-024 ni HU-025.
 
+## 🔑 Punto de oro — con quién coordinar
+
+No esperes a que HU-022 (Juan y Joel) termine toda su historia para empezar — arranca ya:
+
+1. **Backend, 100% en paralelo**: `MaterialesAulaServicio`, los tres endpoints y
+   `ArchivoAlmacenamientoServicio.cargar(...)` no necesitan nada de HU-022 para programarse y probarse
+   con una matrícula de prueba. Solo necesitas el contrato de `AulaServicio.motivoSinAccesoPublico(Matricula m)`
+   (ya definido en la guía de HU-022) — si Juan/Joel aún no mergearon, copia esas 6 líneas como stub
+   local para poder compilar, y bórralas al rebasar sobre su rama ya mergeada.
+2. **Frontend, el único paso que sí espera**: tu panel de materiales se renderiza *dentro* de
+   `aula.ts`/`aula.html` que crea HU-022 — ese archivo tiene que existir antes de enchufar tu panel. No
+   es toda tu historia, es el último paso de integración visual; mientras tanto avanza el resto.
+3. Avisa a Juan/Joel cuándo vas a necesitar su esqueleto en `develop` para no quedarte bloqueado justo
+   al final.
+
 ## Contratos que deben acordarse
 
 | Operación | Método y ruta | Resultado conceptual |

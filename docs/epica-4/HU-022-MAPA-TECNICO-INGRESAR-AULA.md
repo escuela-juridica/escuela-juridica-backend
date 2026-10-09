@@ -34,6 +34,22 @@ pantalla (se detalla en HU-026, pero el espacio y el estado "antes de la ventana
 - La tarjeta de sesión en vivo que aparece aquí comparte diseño con la de HU-026 — coordinar con ese
   equipo antes de nombrar las clases CSS (ver la guía de maquetación).
 
+## 🔑 Punto de oro — con quién coordinar
+
+Esta historia es la base: **HU-023 y HU-026 no esperan a que termines todo**, solo necesitan dos
+cosas tuyas, lo antes posible, no al final:
+
+1. **Avisar apenas el esqueleto esté en `develop`** (`AulaControlador`, `AulaServicio` con
+   `motivoSinAccesoPublico(Matricula m)`, y `aula.ts`/`aula.html` con la estructura base) — ese aviso
+   es lo que les permite a los otros dos equipos empezar a integrar en serio. No hace falta que esté
+   terminada la historia completa, solo ese esqueleto.
+2. **Acordar con el equipo de HU-026** (Gabriel y Ariana) los nombres de las clases CSS de la tarjeta
+   de sesión en vivo antes de maquetar — es una conversación corta, no un bloqueo.
+
+Mientras tanto, HU-023 y HU-026 ya pueden programar contra el contrato de `motivoSinAccesoPublico`
+(nombre y firma están definidos abajo) sin esperarte, usando un stub local temporal si necesitan
+compilar antes de tu merge.
+
 ## Contratos que deben acordarse
 
 | Operación | Método y ruta | Resultado conceptual |
