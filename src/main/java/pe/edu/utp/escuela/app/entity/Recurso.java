@@ -25,6 +25,10 @@ public class Recurso extends RegistroAuditable {
     @Column(name = "recurso_id")
     private Long id;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "tipo_material_id", nullable = false)
+    private TipoMaterial tipoMaterial;
+
     @Column(nullable = false, length = 15)
     private String tipo;
 

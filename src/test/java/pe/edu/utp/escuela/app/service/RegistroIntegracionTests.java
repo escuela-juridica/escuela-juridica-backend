@@ -23,7 +23,6 @@ import pe.edu.utp.escuela.app.entity.*;
 import pe.edu.utp.escuela.app.exception.*;
 import pe.edu.utp.escuela.app.mail.*;
 import pe.edu.utp.escuela.app.repository.*;
-import pe.edu.utp.escuela.app.registro.integracion.*;
 
 @SpringBootTest @ActiveProfiles("test")
 class RegistroIntegracionTests {

@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 public record FichaCursoRespuesta(
+        Long cursoId,
         String urlAmigable,
         String titulo,
         String descripcion,

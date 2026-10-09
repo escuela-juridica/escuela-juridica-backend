@@ -27,5 +27,9 @@ public class Usuario extends RegistroAuditable {
     private boolean activo = true;
     @Column(name = "requiere_cambio_contrasena", nullable = false)
     private boolean requiereCambioContrasena;
+    @Column(name = "creado_por_usuario_id")
+    private Long creadoPorUsuarioId;
+    @Column(name = "deshabilitado_en")
+    private Instant deshabilitadoEn;
 }
 

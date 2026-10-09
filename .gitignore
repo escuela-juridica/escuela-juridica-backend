@@ -32,3 +32,6 @@ Thumbs.db
 .env
 *.log
 application-local.properties
+
+### Archivos subidos por usuarios ###
+uploads/

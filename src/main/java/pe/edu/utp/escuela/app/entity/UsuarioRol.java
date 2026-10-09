@@ -11,6 +11,8 @@ public class UsuarioRol {
     private Clave id;
     @Column(name = "es_principal", nullable = false)
     private boolean principal = true;
+    @Column(name = "asignado_por_usuario_id")
+    private Long asignadoPorUsuarioId;
     @Column(name = "asignado_en", nullable = false)
     private Instant asignadoEn;
 

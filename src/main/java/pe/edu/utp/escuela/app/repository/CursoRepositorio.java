@@ -1,13 +1,16 @@
 package pe.edu.utp.escuela.app.repository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 import pe.edu.utp.escuela.app.dto.CursoTarjetaFila;
 import pe.edu.utp.escuela.app.entity.Curso;
 
@@ -22,6 +25,46 @@ public interface CursoRepositorio extends JpaRepository<Curso, Long> {
               and e.codigo not in ('BORRADOR', 'CANCELADO')
             """)
     Optional<Curso> buscarFichaPublica(@Param("slug") String slug);
+
+    boolean existsByUrlAmigable(String urlAmigable);
+
+    boolean existsByUrlAmigableAndIdNot(String urlAmigable, Long id);
+
+    /** HU-016 — Candidatos a pasar de PUBLICADO a EN_CURSO: llegó su fecha de inicio. */
+    List<Curso> findByEstadoCurso_CodigoAndFechaInicioLessThanEqual(String codigoEstado, LocalDate hoy);
+
+    /** HU-016 — Candidatos a pasar de EN_CURSO a CERRADO: ya pasó su fecha de fin (nunca aplica a
+     * VIRTUAL, que no tiene fecha de fin). */
+    List<Curso> findByEstadoCurso_CodigoAndFechaFinLessThan(String codigoEstado, LocalDate hoy);
+
+    @EntityGraph(attributePaths = {
+            "tipoCurso", "categoriaTematica", "entidadCertificadora", "estadoCurso"
+    })
+    Optional<Curso> findWithDetalleById(Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from Curso c join fetch c.estadoCurso where c.id = :id")
+    Optional<Curso> bloquearParaMatricula(@Param("id") Long id);
+
+    @EntityGraph(attributePaths = { "tipoCurso", "categoriaTematica", "estadoCurso" })
+    @Query("""
+            select c from Curso c
+            where (:texto = '' or lower(c.titulo) like concat('%', :texto, '%'))
+            order by c.creadoEn desc
+            """)
+    Page<Curso> buscarAdministrativos(@Param("texto") String texto, Pageable pageable);
+
+    /** Beneficios ya usados en otros cursos, para sugerir mientras se escribe uno nuevo (no hay
+     * tabla maestra de beneficios: siguen siendo texto libre por curso, pero reutilizar redacciones
+     * ya existentes evita variantes casi idénticas una al lado de la otra). */
+    @Query(value = """
+            select distinct beneficio
+            from curso c, unnest(c.beneficios) as beneficio
+            where (:texto = '' or lower(beneficio) like concat('%', :texto, '%'))
+            order by beneficio
+            limit 10
+            """, nativeQuery = true)
+    List<String> buscarBeneficiosSugeridos(@Param("texto") String texto);
 
     @Query(value = """
             select new pe.edu.utp.escuela.app.dto.CursoTarjetaFila(

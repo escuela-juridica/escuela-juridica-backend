@@ -89,6 +89,7 @@ public class FichaCursoServicio {
         boolean esVirtual = "VIRTUAL".equals(curso.getModalidad());
 
         return new FichaCursoRespuesta(
+                curso.getId(),
                 curso.getUrlAmigable(),
                 curso.getTitulo(),
                 curso.getDescripcion(),
