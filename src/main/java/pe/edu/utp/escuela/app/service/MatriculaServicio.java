@@ -295,7 +295,7 @@ public class MatriculaServicio {
 
     private void validarCurso(Curso curso, boolean gratuita) {
         String estado = curso.getEstadoCurso().getCodigo();
-        if (!("PUBLICADO".equals(estado) || (!gratuita && "EN_CURSO".equals(estado)))) {
+        if (!("PUBLICADO".equals(estado) || "EN_CURSO".equals(estado))) {
             throw new BusinessValidationException("El curso no admite nuevas matrículas.");
         }
         LocalDate hoy = LocalDate.now(clock.withZone(LIMA));

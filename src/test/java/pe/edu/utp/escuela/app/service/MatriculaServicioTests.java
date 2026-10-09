@@ -147,6 +147,22 @@ class MatriculaServicioTests {
     }
 
     @Test
+    void matricularGratisConCursoEnCursoDisponibleCreaMatriculaActiva() {
+        comoAlumno(1L);
+        Usuario usuario = alumnoHabilitado(1L);
+        Curso curso = cursoPublicadoGratuito();
+        curso.getEstadoCurso().setCodigo("EN_CURSO");
+        when(usuarios.findWithPersonaById(1L)).thenReturn(Optional.of(usuario));
+        when(cursos.findWithDetalleById(200L)).thenReturn(Optional.of(curso));
+        when(matriculas.existsByUsuario_IdAndCurso_Id(1L, 200L)).thenReturn(false);
+
+        MatriculaRespuesta respuesta = servicio.matricularGratis(200L);
+
+        assertEquals("ACTIVA", respuesta.estado());
+        assertEquals("GRATUITA", respuesta.formaIngreso());
+    }
+
+    @Test
     void matricularGratisConMatriculaExistenteNoCreaUnSegundoRegistro() {
         // HU-017 Escenario 2 (idempotencia).
         comoAlumno(1L);
