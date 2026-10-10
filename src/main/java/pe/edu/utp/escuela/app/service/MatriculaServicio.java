@@ -10,21 +10,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utp.escuela.app.dto.AdvertenciaMatriculaRespuesta;
-import pe.edu.utp.escuela.app.dto.CancelarMatriculaPeticion;
 import pe.edu.utp.escuela.app.dto.CrearMatriculaAdministrativaPeticion;
-import pe.edu.utp.escuela.app.dto.HistorialEstadoMatriculaRespuesta;
-import pe.edu.utp.escuela.app.dto.MatriculaAdministrativaRespuesta;
-import pe.edu.utp.escuela.app.dto.MatriculaDetalleAdministrativaRespuesta;
 import pe.edu.utp.escuela.app.dto.MatriculaRespuesta;
-import pe.edu.utp.escuela.app.dto.PagoMatriculaDetalleRespuesta;
 import pe.edu.utp.escuela.app.dto.ReenvioMatriculaRespuesta;
-import pe.edu.utp.escuela.app.dto.ReporteMatriculaRespuesta;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.HistorialEstadoMatricula;
 import pe.edu.utp.escuela.app.entity.Leccion;
@@ -149,57 +141,11 @@ public class MatriculaServicio {
                 .map(m -> respuesta(m, null)).toList();
     }
 
-    @Transactional
-    public Page<MatriculaAdministrativaRespuesta> listarAdministrativas(String texto, String estado, Pageable pageable) {
-        procesarVencimientos();
-        exigirAdministrador();
-        return matriculas.buscarAdministrativas(normalizar(texto), normalizarEstado(estado), pageable);
-    }
+    // HU-020 (listarAdministrativas, detalleAdministrativo, cancelar) se retiró deliberadamente —
+    // ver docs/epica-4/HU-020-MAPA-TECNICO-CONTROL-MATRICULAS.md para reconstruirla.
 
-    @Transactional
-    public Page<ReporteMatriculaRespuesta> reportePaginado(
-            String texto, String estado, Long cursoId, String modalidad,
-            LocalDate desde, LocalDate hasta, Pageable pageable) {
-        procesarVencimientos();
-        exigirAdministrador();
-        validarRango(desde, hasta);
-        Page<ReporteMatriculaRespuesta> pagina = matriculas.buscarReporte(normalizar(texto), normalizarEstado(estado), cursoId,
-                normalizarEstado(modalidad), inicio(desde), finExclusivo(hasta), pageable);
-        Map<Long, String> origenes = origenesReporte(pagina.getContent());
-        return pagina.map(f -> conOrigen(f, origenes.getOrDefault(f.matriculaId(), f.formaIngreso())));
-    }
-
-    @Transactional
-    public List<ReporteMatriculaRespuesta> reporte(
-            String texto, String estado, Long cursoId, String modalidad, LocalDate desde, LocalDate hasta) {
-        procesarVencimientos();
-        exigirAdministrador();
-        validarRango(desde, hasta);
-        List<ReporteMatriculaRespuesta> filas = matriculas.exportarReporte(normalizar(texto), normalizarEstado(estado), cursoId,
-                normalizarEstado(modalidad), inicio(desde), finExclusivo(hasta));
-        Map<Long, String> origenes = origenesReporte(filas);
-        return filas.stream().map(f -> conOrigen(f, origenes.getOrDefault(f.matriculaId(), f.formaIngreso()))).toList();
-    }
-
-    @Transactional
-    public MatriculaDetalleAdministrativaRespuesta detalleAdministrativo(Long matriculaId) {
-        procesarVencimientos();
-        exigirAdministrador();
-        Matricula m = matriculas.findWithDetalleById(matriculaId)
-                .orElseThrow(() -> new ResourceNotFoundException("La matrícula no existe."));
-        List<PagoMatriculaDetalleRespuesta> pagosRespuesta = pagos.findByMatricula_IdOrderByResultadoEnDesc(matriculaId)
-                .stream().map(p -> new PagoMatriculaDetalleRespuesta(p.getId(), p.getOrigen(), p.getEstado(),
-                        p.getImporte(), p.getMoneda(), p.getMedio(), p.getReferenciaExterna(), p.getMotivo(),
-                        p.getRegistradoPorUsuarioId(), nombreUsuario(p.getRegistradoPorUsuarioId()), p.getResultadoEn())).toList();
-        List<HistorialEstadoMatriculaRespuesta> estados = historial.findByMatricula_IdOrderByRealizadoEnDesc(matriculaId)
-                .stream().map(h -> new HistorialEstadoMatriculaRespuesta(h.getEstadoAnterior(), h.getEstadoNuevo(),
-                        h.getMotivo(), h.getRealizadoPorUsuarioId(), nombreUsuario(h.getRealizadoPorUsuarioId()), h.getRealizadoEn())).toList();
-        return new MatriculaDetalleAdministrativaRespuesta(m.getId(), m.getUsuario().getId(),
-                m.getUsuario().getPersona().nombreCompleto(), m.getUsuario().getCorreo(), m.getCurso().getId(),
-                m.getCurso().getTitulo(), m.getCurso().getModalidad(), m.getEstado(), m.getFormaIngreso(),
-                m.getFechaMatricula(), m.getFechaActivacion(), m.getFechaVencimiento(), m.getFechaFinalizacion(),
-                m.getMotivoCancelacion(), m.getCreadoPorUsuarioId(), nombreUsuario(m.getCreadoPorUsuarioId()), pagosRespuesta, estados);
-    }
+    // HU-041 (reportePaginado, reporte) se retiró deliberadamente — ver
+    // docs/epica-4/HU-041-MAPA-TECNICO-REPORTE-MATRICULAS.md para reconstruirla.
 
     @Transactional
     public ReenvioMatriculaRespuesta reenviarConfirmacion(Long matriculaId) {
@@ -214,24 +160,6 @@ public class MatriculaServicio {
                 : "Confirmación de matrícula administrativa.");
         return new ReenvioMatriculaRespuesta("ENVIADO".equals(estado),
                 "ENVIADO".equals(estado) ? "Correo enviado correctamente." : "No se pudo enviar el correo. Puedes volver a intentarlo.");
-    }
-
-    @Transactional
-    public MatriculaRespuesta cancelar(Long matriculaId, CancelarMatriculaPeticion p) {
-        procesarVencimientos();
-        exigirAdministrador();
-        Matricula m = matriculas.findWithDetalleById(matriculaId)
-                .orElseThrow(() -> new ResourceNotFoundException("La matrícula no existe."));
-        if (!"ACTIVA".equals(m.getEstado())) {
-            throw new BusinessValidationException("Solo puedes cancelar una matrícula activa.");
-        }
-        String anterior = m.getEstado();
-        m.setEstado("CANCELADA");
-        m.setMotivoCancelacion(p.motivo().strip());
-        m.setCanceladaEn(clock.instant());
-        m.setCanceladaPorUsuarioId(actual.get().userId());
-        registrarCambio(m, anterior, "CANCELADA", p.motivo().strip(), actual.get().userId());
-        return respuesta(m, null);
     }
 
     @Scheduled(fixedDelay = 60_000, initialDelay = 10_000)
@@ -407,28 +335,6 @@ public class MatriculaServicio {
         historial.save(h);
     }
 
-    private Map<Long, String> origenesReporte(List<ReporteMatriculaRespuesta> filas) {
-        if (filas.isEmpty()) return Map.of();
-        List<Long> ids = filas.stream().map(ReporteMatriculaRespuesta::matriculaId).toList();
-        Map<Long, List<Pago>> pagosPorMatricula = pagos.findByMatricula_IdIn(ids).stream()
-                .collect(Collectors.groupingBy(p -> p.getMatricula().getId()));
-        return pagosPorMatricula.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
-                entry -> origenReporte(entry.getValue())));
-    }
-
-    private String origenReporte(List<Pago> pagosDeMatricula) {
-        if (pagosDeMatricula.stream().anyMatch(p -> "EXONERADO".equals(p.getOrigen()))) return "EXONERADO";
-        if (pagosDeMatricula.stream().anyMatch(p -> "MANUAL".equals(p.getOrigen()))) return "REGISTRADO_MANUAL";
-        if (pagosDeMatricula.stream().anyMatch(p -> "APROBADO".equals(p.getEstado()))) return "PAGO_EN_LINEA";
-        return pagosDeMatricula.getFirst().getOrigen();
-    }
-
-    private ReporteMatriculaRespuesta conOrigen(ReporteMatriculaRespuesta f, String origen) {
-        return new ReporteMatriculaRespuesta(f.matriculaId(), f.alumno(), f.correo(), f.curso(), f.modalidad(),
-                f.fechaMatricula(), f.fechaActivacion(), f.estadoMatricula(), origen,
-                f.situacionAcademica(), f.estadoCertificado());
-    }
-
     private boolean tieneRol(Long usuarioId, String codigo) {
         return adminUsuarios.obtener(usuarioId).roles().stream().anyMatch(rol -> codigo.equals(rol.name()));
     }
@@ -437,21 +343,8 @@ public class MatriculaServicio {
         return cursos.findWithDetalleById(id).orElseThrow(() -> new ResourceNotFoundException("El curso no existe."));
     }
 
-    private String nombreUsuario(Long usuarioId) {
-        if (usuarioId == null) return "Autoservicio / sistema";
-        return usuarios.findWithPersonaById(usuarioId).map(u -> u.getPersona().nombreCompleto()).orElse("Usuario " + usuarioId);
-    }
-
     private void exigirAdministrador() {
         if (!actual.get().hasRole("ADMINISTRADOR")) throw new ForbiddenException();
-    }
-
-    private static String normalizar(String valor) {
-        return valor == null ? "" : valor.strip().toLowerCase();
-    }
-
-    private static String normalizarEstado(String valor) {
-        return valor == null ? "" : valor.strip().toUpperCase();
     }
 
     private static boolean esVacio(String valor) {
@@ -460,25 +353,5 @@ public class MatriculaServicio {
 
     private static String limpiar(String valor) {
         return valor == null || valor.isBlank() ? null : valor.strip();
-    }
-
-    private static void validarRango(LocalDate desde, LocalDate hasta) {
-        if (desde != null && hasta != null && hasta.isBefore(desde)) {
-            throw new BusinessValidationException("La fecha final no puede ser anterior a la fecha inicial.");
-        }
-    }
-
-    private static Instant inicio(LocalDate fecha) {
-        // Se envía siempre un Instant tipado: PostgreSQL no puede inferir el tipo
-        // de un parámetro nulo usado en una comparación opcional.
-        return fecha == null
-                ? LocalDate.of(1, 1, 1).atStartOfDay(LIMA).toInstant()
-                : fecha.atStartOfDay(LIMA).toInstant();
-    }
-
-    private static Instant finExclusivo(LocalDate fecha) {
-        return fecha == null
-                ? LocalDate.of(9999, 12, 31).plusDays(1).atStartOfDay(LIMA).toInstant()
-                : fecha.plusDays(1).atStartOfDay(LIMA).toInstant();
     }
 }
