@@ -1,5 +1,7 @@
 # HU-008 — Mapa técnico para gestionar usuarios administrativamente
 
+> **Equipo: Miguel** · Rama: `feature/HU-008-usuarios` (desde `develop`).
+
 > Estado de integración: esta historia **ya estuvo 100% implementada y funcionando** (hay
 > screenshots reales de la pantalla "Usuarios" del panel de administración con datos reales). El
 > dueño del proyecto decidió reasignarla como ejercicio de programación para el equipo: el

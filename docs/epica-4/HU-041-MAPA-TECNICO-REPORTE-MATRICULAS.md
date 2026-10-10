@@ -1,5 +1,7 @@
 # HU-041 — Mapa técnico para consultar el reporte de matrículas
 
+> **Equipo: Ariana y Gabriel** · Rama: `feature/HU-041-reporte-matriculas` (desde `develop`).
+
 > Estado de integración: esta historia **ya estaba implementada y funcionando al 100%** (reporte
 > filtrable con exportación a PDF/Excel/CSV, con screenshots reales confirmados). Se retiró
 > deliberadamente para convertirla en ejercicio de programación del equipo — esta guía documenta
@@ -74,6 +76,23 @@ separado, y puede descargar exactamente lo mismo que está viendo en PDF, Excel 
 
 - Ninguna nueva: requiere que existan matrículas y pagos (HU-017/019/020, ya existen y siguen
   funcionando).
+
+## 🔑 Punto de oro — con quién coordinar
+
+Puedes arrancar ya, sin esperar a nadie. Solo dos avisos puntuales, no bloqueos, con **Joel y Juan**
+(HU-020, controlar matrículas y pagos — comparten `MatriculaServicio`, `MatriculaControlador` y
+`matricula-api.service.ts` con ustedes):
+
+1. **`normalizar(String)` / `normalizarEstado(String)`** — ninguno de los dos existe hoy en
+   `MatriculaServicio`; los necesitas tú (`reportePaginado`/`reporte`) y también HU-020
+   (`listarAdministrativas`). **El que los cree primero avisa en el grupo** — el segundo los
+   reutiliza, no los vuelve a crear (si los duplica, no compila).
+2. **Bloques separados en los archivos compartidos** — agrega tus métodos/endpoints en un bloque
+   propio y comentado (`// HU-041 — ...`), no intercalado con los de HU-020, para que el merge de Git
+   sea automático.
+
+No hay nada que coordinar con HU-008 (usuarios) ni con HU-027 (sesiones) — son archivos completamente
+aparte.
 
 ## Contratos que deben acordarse
 

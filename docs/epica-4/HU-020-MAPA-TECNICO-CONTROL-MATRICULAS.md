@@ -1,5 +1,7 @@
 # HU-020 — Mapa técnico para controlar matrículas y pagos
 
+> **Equipo: Joel y Juan** · Rama: `feature/HU-020-matriculas` (desde `develop`).
+
 > Estado de integración: esta historia **ya estaba implementada y funcionando** (listado, detalle y
 > cancelación de matrículas, con datos reales). Se retiró deliberadamente para convertirla en ejercicio
 > de programación del equipo — esta guía documenta exactamente cómo estaba construida, con el código
@@ -30,17 +32,48 @@ motivo. El vencimiento se recalcula de forma idempotente antes de cada consulta.
   `MatriculaDetalleAdministrativaRespuesta`, `PagoMatriculaDetalleRespuesta`,
   `HistorialEstadoMatriculaRespuesta`, `CancelarMatriculaPeticion`.
 - En `MatriculaServicio` (que se queda, no se borra) ya están disponibles como helpers privados:
-  `procesarVencimientos()`, `exigirAdministrador()`, `normalizar(String)`, `normalizarEstado(String)`,
-  `registrarCambio(...)`, `respuesta(Matricula, String)`. Reutilízalos, no los reescribas.
+  `procesarVencimientos()`, `exigirAdministrador()`, `registrarCambio(...)`, `respuesta(Matricula, String)`.
+  Reutilízalos, no los reescribas.
+- **`normalizar(String)` y `normalizarEstado(String)` NO están** (los usaba también HU-041, que se
+  retiró después y se los llevó porque ya no los usaba nadie). Son triviales, créalos de nuevo:
+  ```java
+  private static String normalizar(String valor) {
+      return valor == null ? "" : valor.strip().toLowerCase();
+  }
+
+  private static String normalizarEstado(String valor) {
+      return valor == null ? "" : valor.strip().toUpperCase();
+  }
+  ```
+  Si para cuando implementes esto HU-041 ya está reconstruida y los volvió a crear, no los dupliques —
+  solo revisa que existan antes de agregarlos tú.
 - En Angular, `MatriculaApiService` (`features/matriculas/matricula-api.service.ts`) ya existe y ya tiene
-  `matricularGratis`, `misCursos`, `crearAdministrativa`, `advertenciaAcademica`, `reenviarConfirmacion` y
-  los métodos de reporte — solo le faltan los 3 métodos de esta historia.
+  `matricularGratis`, `misCursos`, `crearAdministrativa`, `advertenciaAcademica`, `reenviarConfirmacion`
+  — solo le faltan los 3 métodos de esta historia (los métodos de reporte son de HU-041, otra guía
+  aparte, no te conciernen).
 - El componente `features/admin/matriculas/matriculas-listado/*` ya existe con el botón "+ Nueva
   matrícula" y su modal completos y funcionando (HU-019) — amplíalo, no lo reescribas desde cero.
 
 ## Dependencias
 
 - Ninguna nueva: requiere que existan matrículas (HU-017 o HU-019, ya existen y siguen funcionando).
+
+## 🔑 Punto de oro — con quién coordinar
+
+Puedes arrancar ya, sin esperar a nadie. Solo dos avisos puntuales, no bloqueos, con **Ariana y
+Gabriel** (HU-041, reporte de matrículas — comparten `MatriculaServicio`, `MatriculaControlador` y
+`matricula-api.service.ts` con ustedes):
+
+1. **`normalizar(String)` / `normalizarEstado(String)`** — ninguno de los dos existe hoy en
+   `MatriculaServicio`; los necesitan tanto tú (`listarAdministrativas`) como HU-041
+   (`reportePaginado`/`reporte`). **El que los cree primero avisa en el grupo** — el segundo los
+   reutiliza, no los vuelve a crear (si los duplica, no compila).
+2. **Bloques separados en los archivos compartidos** — agrega tus 3 métodos/endpoints en un bloque
+   propio y comentado (`// HU-020 — ...`), no intercalado con los de HU-041, para que el merge de Git
+   sea automático.
+
+No hay nada que coordinar con HU-008 (usuarios) ni con HU-027 (sesiones) — son archivos completamente
+aparte.
 
 ## Contratos que deben acordarse
 

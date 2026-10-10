@@ -3,10 +3,12 @@
 Guías técnicas (backend + frontend) de las 4 historias en construcción ahora mismo. Cada una tiene
 versión `.md` y `.docx` con el mismo contenido:
 
-- `HU-008-MAPA-TECNICO-GESTIONAR-USUARIOS` — Gestionar usuarios administrativamente
-- `HU-020-MAPA-TECNICO-CONTROL-MATRICULAS` — Controlar matrículas y pagos
-- `HU-027-MAPA-TECNICO-CAMBIOS-SESIONES` — Administrar cambios en sesiones en vivo
-- `HU-041-MAPA-TECNICO-REPORTE-MATRICULAS` — Consultar el reporte de matrículas
+| Historia | Equipo | Rama |
+|---|---|---|
+| `HU-008-MAPA-TECNICO-GESTIONAR-USUARIOS` — Gestionar usuarios administrativamente | Miguel | `feature/HU-008-usuarios` |
+| `HU-020-MAPA-TECNICO-CONTROL-MATRICULAS` — Controlar matrículas y pagos | Joel y Juan | `feature/HU-020-matriculas` |
+| `HU-027-MAPA-TECNICO-CAMBIOS-SESIONES` — Administrar cambios en sesiones en vivo | Enrique | — |
+| `HU-041-MAPA-TECNICO-REPORTE-MATRICULAS` — Consultar el reporte de matrículas | Ariana y Gabriel | `feature/HU-041-reporte-matriculas` |
 
 > HU-008, HU-020 y HU-041 ya estaban implementadas y funcionando — se retiraron deliberadamente
 > (código y tests) para convertirlas en ejercicio de programación del equipo. Cada guía trae el código
