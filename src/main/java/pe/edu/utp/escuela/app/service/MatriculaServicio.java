@@ -10,12 +10,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utp.escuela.app.dto.AdvertenciaMatriculaRespuesta;
+import pe.edu.utp.escuela.app.dto.CancelarMatriculaPeticion;
 import pe.edu.utp.escuela.app.dto.CrearMatriculaAdministrativaPeticion;
+import pe.edu.utp.escuela.app.dto.HistorialEstadoMatriculaRespuesta;
+import pe.edu.utp.escuela.app.dto.MatriculaAdministrativaRespuesta;
+import pe.edu.utp.escuela.app.dto.MatriculaDetalleAdministrativaRespuesta;
 import pe.edu.utp.escuela.app.dto.MatriculaRespuesta;
+import pe.edu.utp.escuela.app.dto.PagoMatriculaDetalleRespuesta;
 import pe.edu.utp.escuela.app.dto.ReenvioMatriculaRespuesta;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.HistorialEstadoMatricula;
@@ -141,8 +148,77 @@ public class MatriculaServicio {
                 .map(m -> respuesta(m, null)).toList();
     }
 
-    // HU-020 (listarAdministrativas, detalleAdministrativo, cancelar) se retiró deliberadamente —
-    // ver docs/epica-4/HU-020-MAPA-TECNICO-CONTROL-MATRICULAS.md para reconstruirla.
+    // ---------------------------------------------------------------- HU-020 --
+
+    @Transactional
+    public Page<MatriculaAdministrativaRespuesta> listarAdministrativas(
+            String texto, String estado, Pageable pageable) {
+        procesarVencimientos();
+        exigirAdministrador();
+        return matriculas.buscarAdministrativas(normalizar(texto), normalizarEstado(estado), pageable);
+    }
+
+    @Transactional
+    public MatriculaDetalleAdministrativaRespuesta detalleAdministrativo(Long matriculaId) {
+        procesarVencimientos();
+        exigirAdministrador();
+        Matricula matricula = matriculas.findWithDetalleById(matriculaId)
+                .orElseThrow(() -> new ResourceNotFoundException("La matrícula no existe."));
+
+        List<PagoMatriculaDetalleRespuesta> pagosRespuesta = pagos
+                .findByMatricula_IdOrderByResultadoEnDesc(matriculaId)
+                .stream()
+                .map(pago -> new PagoMatriculaDetalleRespuesta(
+                        pago.getId(), pago.getOrigen(), pago.getEstado(), pago.getImporte(), pago.getMoneda(),
+                        pago.getMedio(), pago.getReferenciaExterna(), pago.getMotivo(),
+                        pago.getRegistradoPorUsuarioId(), nombreUsuario(pago.getRegistradoPorUsuarioId()),
+                        pago.getResultadoEn()))
+                .toList();
+        List<HistorialEstadoMatriculaRespuesta> estadosRespuesta = historial
+                .findByMatricula_IdOrderByRealizadoEnDesc(matriculaId)
+                .stream()
+                .map(cambio -> new HistorialEstadoMatriculaRespuesta(
+                        cambio.getEstadoAnterior(), cambio.getEstadoNuevo(), cambio.getMotivo(),
+                        cambio.getRealizadoPorUsuarioId(), nombreUsuario(cambio.getRealizadoPorUsuarioId()),
+                        cambio.getRealizadoEn()))
+                .toList();
+
+        return new MatriculaDetalleAdministrativaRespuesta(
+                matricula.getId(), matricula.getUsuario().getId(), matricula.getUsuario().getPersona().nombreCompleto(),
+                matricula.getUsuario().getCorreo(), matricula.getCurso().getId(), matricula.getCurso().getTitulo(),
+                matricula.getCurso().getModalidad(), matricula.getEstado(), matricula.getFormaIngreso(),
+                matricula.getFechaMatricula(), matricula.getFechaActivacion(), matricula.getFechaVencimiento(),
+                matricula.getFechaFinalizacion(), matricula.getMotivoCancelacion(), matricula.getCreadoPorUsuarioId(),
+                nombreUsuario(matricula.getCreadoPorUsuarioId()), pagosRespuesta, estadosRespuesta);
+    }
+
+    @Transactional
+    public MatriculaRespuesta cancelar(Long matriculaId, CancelarMatriculaPeticion peticion) {
+        procesarVencimientos();
+        exigirAdministrador();
+        Matricula matricula = matriculas.findWithDetalleById(matriculaId)
+                .orElseThrow(() -> new ResourceNotFoundException("La matrícula no existe."));
+        if (!"ACTIVA".equals(matricula.getEstado())) {
+            throw new BusinessValidationException("Solo puedes cancelar una matrícula activa.");
+        }
+
+        String motivo = peticion.motivo().strip();
+        String estadoAnterior = matricula.getEstado();
+        Long administradorId = actual.get().userId();
+        matricula.setEstado("CANCELADA");
+        matricula.setMotivoCancelacion(motivo);
+        matricula.setCanceladaEn(clock.instant());
+        matricula.setCanceladaPorUsuarioId(administradorId);
+        registrarCambio(matricula, estadoAnterior, "CANCELADA", motivo, administradorId);
+        return respuesta(matricula, null);
+    }
+
+    private String nombreUsuario(Long usuarioId) {
+        if (usuarioId == null) return "Autoservicio / sistema";
+        return usuarios.findWithPersonaById(usuarioId)
+                .map(usuario -> usuario.getPersona().nombreCompleto())
+                .orElse("Usuario " + usuarioId);
+    }
 
     // HU-041 (reportePaginado, reporte) se retiró deliberadamente — ver
     // docs/epica-4/HU-041-MAPA-TECNICO-REPORTE-MATRICULAS.md para reconstruirla.
@@ -353,5 +429,13 @@ public class MatriculaServicio {
 
     private static String limpiar(String valor) {
         return valor == null || valor.isBlank() ? null : valor.strip();
+    }
+
+    private static String normalizar(String valor) {
+        return valor == null ? "" : valor.strip().toLowerCase();
+    }
+
+    private static String normalizarEstado(String valor) {
+        return valor == null ? "" : valor.strip().toUpperCase();
     }
 }

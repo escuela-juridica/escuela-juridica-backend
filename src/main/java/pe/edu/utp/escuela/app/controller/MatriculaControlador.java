@@ -3,11 +3,17 @@ package pe.edu.utp.escuela.app.controller;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pe.edu.utp.escuela.app.dto.AdvertenciaMatriculaRespuesta;
+import pe.edu.utp.escuela.app.dto.CancelarMatriculaPeticion;
 import pe.edu.utp.escuela.app.dto.CrearMatriculaAdministrativaPeticion;
+import pe.edu.utp.escuela.app.dto.MatriculaAdministrativaRespuesta;
+import pe.edu.utp.escuela.app.dto.MatriculaDetalleAdministrativaRespuesta;
 import pe.edu.utp.escuela.app.dto.MatriculaRespuesta;
+import pe.edu.utp.escuela.app.dto.PageResponse;
 import pe.edu.utp.escuela.app.dto.ReenvioMatriculaRespuesta;
 import pe.edu.utp.escuela.app.service.MatriculaServicio;
 
@@ -38,8 +44,31 @@ public class MatriculaControlador {
         return ResponseEntity.ok(servicio.consultarAdvertenciaAdministrativa(cursoId));
     }
 
-    // HU-020 (detalle, listarAdministrativas, cancelar) se retiró deliberadamente — ver
-    // docs/epica-4/HU-020-MAPA-TECNICO-CONTROL-MATRICULAS.md para reconstruirla.
+    // ---------------------------------------------------------------- HU-020 --
+
+    @GetMapping("/admin/matriculas/{matriculaId}")
+    public ResponseEntity<MatriculaDetalleAdministrativaRespuesta> detalle(@PathVariable Long matriculaId) {
+        return ResponseEntity.ok(servicio.detalleAdministrativo(matriculaId));
+    }
+
+    @GetMapping("/admin/matriculas")
+    public ResponseEntity<PageResponse<MatriculaAdministrativaRespuesta>> listarAdministrativas(
+            @RequestParam(defaultValue = "") String texto,
+            @RequestParam(defaultValue = "") String estado,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        int tamano = Math.min(Math.max(size, 1), 50);
+        Page<MatriculaAdministrativaRespuesta> pagina = servicio.listarAdministrativas(
+                texto, estado, PageRequest.of(Math.max(page, 0), tamano));
+        return ResponseEntity.ok(PageResponse.from(pagina));
+    }
+
+    @PatchMapping("/admin/matriculas/{matriculaId}/cancelacion")
+    public ResponseEntity<MatriculaRespuesta> cancelar(
+            @PathVariable Long matriculaId,
+            @Valid @RequestBody CancelarMatriculaPeticion peticion) {
+        return ResponseEntity.ok(servicio.cancelar(matriculaId, peticion));
+    }
 
     @PostMapping("/matriculas/{matriculaId}/reenviar-confirmacion")
     public ResponseEntity<ReenvioMatriculaRespuesta> reenviarConfirmacion(@PathVariable Long matriculaId) {

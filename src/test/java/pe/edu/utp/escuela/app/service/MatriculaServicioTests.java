@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.lenient;
 
@@ -19,16 +20,26 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import pe.edu.utp.escuela.app.dto.CancelarMatriculaPeticion;
 import pe.edu.utp.escuela.app.dto.CondicionCuentaAdmin;
 import pe.edu.utp.escuela.app.dto.CrearMatriculaAdministrativaPeticion;
+import pe.edu.utp.escuela.app.dto.MatriculaAdministrativaRespuesta;
+import pe.edu.utp.escuela.app.dto.MatriculaDetalleAdministrativaRespuesta;
 import pe.edu.utp.escuela.app.dto.MatriculaRespuesta;
 import pe.edu.utp.escuela.app.dto.RolUsuarioAdmin;
 import pe.edu.utp.escuela.app.dto.UsuarioAdminRespuesta;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.EstadoCurso;
+import pe.edu.utp.escuela.app.entity.HistorialEstadoMatricula;
 import pe.edu.utp.escuela.app.entity.Matricula;
+import pe.edu.utp.escuela.app.entity.Pago;
 import pe.edu.utp.escuela.app.entity.Persona;
 import pe.edu.utp.escuela.app.entity.Usuario;
 import pe.edu.utp.escuela.app.exception.BusinessValidationException;
@@ -340,7 +351,124 @@ class MatriculaServicioTests {
         org.mockito.Mockito.verify(pagos).save(any());
     }
 
-    // HU-020 se retiró deliberadamente (ver docs/epica-4/HU-020-MAPA-TECNICO-CONTROL-MATRICULAS.md).
+    // ---------------------------------------------------------------- HU-020 --
+
+    private Matricula matriculaActivaAdministrativa() {
+        Matricula matricula = new Matricula();
+        matricula.setId(500L);
+        matricula.setUsuario(alumnoHabilitado(5L));
+        matricula.setCurso(cursoPublicadoGratuito());
+        matricula.setEstado("ACTIVA");
+        matricula.setFormaIngreso("ADMINISTRADOR");
+        matricula.setFechaMatricula(Instant.parse("2026-09-01T12:00:00Z"));
+        matricula.setFechaActivacion(Instant.parse("2026-09-01T12:00:00Z"));
+        matricula.setCreadoPorUsuarioId(1L);
+        return matricula;
+    }
+
+    @Test
+    void listarAdministrativasNormalizaYDelegaLosFiltros() {
+        comoAdministrador(1L);
+        Pageable pageable = PageRequest.of(1, 20);
+        MatriculaAdministrativaRespuesta fila = new MatriculaAdministrativaRespuesta(
+                500L, 5L, "Ana Pérez", "ana@example.com", 200L, "Curso gratuito",
+                "ACTIVA", "ADMINISTRADOR", Instant.parse("2026-09-01T12:00:00Z"), null);
+        Page<MatriculaAdministrativaRespuesta> pagina = new PageImpl<>(List.of(fila), pageable, 1);
+        when(matriculas.buscarAdministrativas("ana pérez", "ACTIVA", pageable)).thenReturn(pagina);
+
+        Page<MatriculaAdministrativaRespuesta> resultado = servicio.listarAdministrativas(
+                "  Ana Pérez  ", " activa ", pageable);
+
+        assertEquals(List.of(fila), resultado.getContent());
+        verify(matriculas).buscarAdministrativas("ana pérez", "ACTIVA", pageable);
+    }
+
+    @Test
+    void cancelarMatriculaActivaGuardaMotivoActorEHistorial() {
+        comoAdministrador(1L);
+        Matricula matricula = matriculaActivaAdministrativa();
+        when(matriculas.findWithDetalleById(500L)).thenReturn(Optional.of(matricula));
+
+        MatriculaRespuesta respuesta = servicio.cancelar(
+                500L, new CancelarMatriculaPeticion("  Solicitud del alumno  "));
+
+        assertEquals("CANCELADA", respuesta.estado());
+        assertEquals("CANCELADA", matricula.getEstado());
+        assertEquals("Solicitud del alumno", matricula.getMotivoCancelacion());
+        assertEquals(clock.instant(), matricula.getCanceladaEn());
+        assertEquals(1L, matricula.getCanceladaPorUsuarioId());
+        ArgumentCaptor<HistorialEstadoMatricula> captor = ArgumentCaptor.forClass(HistorialEstadoMatricula.class);
+        verify(historial).save(captor.capture());
+        HistorialEstadoMatricula cambio = captor.getValue();
+        assertEquals(matricula, cambio.getMatricula());
+        assertEquals("ACTIVA", cambio.getEstadoAnterior());
+        assertEquals("CANCELADA", cambio.getEstadoNuevo());
+        assertEquals("Solicitud del alumno", cambio.getMotivo());
+        assertEquals(1L, cambio.getRealizadoPorUsuarioId());
+    }
+
+    @Test
+    void cancelarMatriculaYaCanceladaLanzaValidacion() {
+        comoAdministrador(1L);
+        Matricula matricula = matriculaActivaAdministrativa();
+        matricula.setEstado("CANCELADA");
+        when(matriculas.findWithDetalleById(500L)).thenReturn(Optional.of(matricula));
+
+        assertThrows(BusinessValidationException.class,
+                () -> servicio.cancelar(500L, new CancelarMatriculaPeticion("Segundo intento")));
+    }
+
+    @Test
+    void cancelarMatriculaInexistenteLanzaResourceNotFound() {
+        comoAdministrador(1L);
+        when(matriculas.findWithDetalleById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> servicio.cancelar(999L, new CancelarMatriculaPeticion("Solicitud del alumno")));
+    }
+
+    @Test
+    void detalleAdministrativoSeparaPagosDeHistorialDeEstados() {
+        comoAdministrador(1L);
+        Matricula matricula = matriculaActivaAdministrativa();
+        Usuario administrador = alumnoHabilitado(1L);
+        administrador.getPersona().setNombres("Mario");
+        administrador.getPersona().setApellidoPaterno("Salas");
+
+        Pago pago = new Pago();
+        pago.setId(700L);
+        pago.setOrigen("MANUAL");
+        pago.setEstado("REGISTRADO_MANUAL");
+        pago.setImporte(BigDecimal.valueOf(150));
+        pago.setMoneda("PEN");
+        pago.setMedio("Yape");
+        pago.setReferenciaExterna("OP-123");
+        pago.setMotivo("Pago validado");
+        pago.setRegistradoPorUsuarioId(1L);
+        pago.setResultadoEn(Instant.parse("2026-09-01T12:00:00Z"));
+
+        HistorialEstadoMatricula cambio = new HistorialEstadoMatricula();
+        cambio.setEstadoAnterior(null);
+        cambio.setEstadoNuevo("ACTIVA");
+        cambio.setMotivo("Matrícula creada");
+        cambio.setRealizadoPorUsuarioId(null);
+        cambio.setRealizadoEn(Instant.parse("2026-09-01T12:00:00Z"));
+
+        when(matriculas.findWithDetalleById(500L)).thenReturn(Optional.of(matricula));
+        when(pagos.findByMatricula_IdOrderByResultadoEnDesc(500L)).thenReturn(List.of(pago));
+        when(historial.findByMatricula_IdOrderByRealizadoEnDesc(500L)).thenReturn(List.of(cambio));
+        when(usuarios.findWithPersonaById(1L)).thenReturn(Optional.of(administrador));
+
+        MatriculaDetalleAdministrativaRespuesta respuesta = servicio.detalleAdministrativo(500L);
+
+        assertEquals(1, respuesta.pagos().size());
+        assertEquals(700L, respuesta.pagos().get(0).pagoId());
+        assertEquals("Mario Salas", respuesta.pagos().get(0).registradoPor());
+        assertEquals(1, respuesta.historialEstados().size());
+        assertEquals("ACTIVA", respuesta.historialEstados().get(0).estadoNuevo());
+        assertEquals("Autoservicio / sistema", respuesta.historialEstados().get(0).realizadoPor());
+        assertEquals("Mario Salas", respuesta.responsable());
+    }
 
     // ---------------------------------------------------------------- HU-021 --
 
