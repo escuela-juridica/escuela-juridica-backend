@@ -24,6 +24,7 @@ import pe.edu.utp.escuela.app.dto.MatriculaDetalleAdministrativaRespuesta;
 import pe.edu.utp.escuela.app.dto.MatriculaRespuesta;
 import pe.edu.utp.escuela.app.dto.PagoMatriculaDetalleRespuesta;
 import pe.edu.utp.escuela.app.dto.ReenvioMatriculaRespuesta;
+import pe.edu.utp.escuela.app.dto.ReporteMatriculaRespuesta;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.HistorialEstadoMatricula;
 import pe.edu.utp.escuela.app.entity.Leccion;
@@ -214,14 +215,89 @@ public class MatriculaServicio {
     }
 
     private String nombreUsuario(Long usuarioId) {
-        if (usuarioId == null) return "Autoservicio / sistema";
+        if (usuarioId == null)
+            return "Autoservicio / sistema";
         return usuarios.findWithPersonaById(usuarioId)
                 .map(usuario -> usuario.getPersona().nombreCompleto())
                 .orElse("Usuario " + usuarioId);
     }
 
-    // HU-041 (reportePaginado, reporte) se retiró deliberadamente — ver
-    // docs/epica-4/HU-041-MAPA-TECNICO-REPORTE-MATRICULAS.md para reconstruirla.
+    // --- HU-041 ---
+
+    @Transactional
+    public Page<ReporteMatriculaRespuesta> reportePaginado(
+            String texto, String estado, Long cursoId, String modalidad,
+            LocalDate desde, LocalDate hasta, Pageable pageable) {
+        procesarVencimientos();
+        exigirAdministrador();
+        validarRango(desde, hasta);
+        Page<ReporteMatriculaRespuesta> pagina = matriculas.buscarReporte(
+                normalizar(texto), normalizarEstado(estado), cursoId,
+                normalizarEstado(modalidad), inicio(desde), finExclusivo(hasta), pageable);
+        Map<Long, String> origenes = origenesReporte(pagina.getContent());
+        return pagina.map(f -> conOrigen(f, origenes.getOrDefault(f.matriculaId(), f.formaIngreso())));
+    }
+
+    @Transactional
+    public List<ReporteMatriculaRespuesta> reporte(
+            String texto, String estado, Long cursoId, String modalidad,
+            LocalDate desde, LocalDate hasta) {
+        procesarVencimientos();
+        exigirAdministrador();
+        validarRango(desde, hasta);
+        List<ReporteMatriculaRespuesta> filas = matriculas.exportarReporte(
+                normalizar(texto), normalizarEstado(estado), cursoId,
+                normalizarEstado(modalidad), inicio(desde), finExclusivo(hasta));
+        Map<Long, String> origenes = origenesReporte(filas);
+        return filas.stream()
+                .map(f -> conOrigen(f, origenes.getOrDefault(f.matriculaId(), f.formaIngreso())))
+                .toList();
+    }
+
+    // Metodos auxiliares HU-041
+    private Map<Long, String> origenesReporte(List<ReporteMatriculaRespuesta> filas) {
+        if (filas.isEmpty())
+            return Map.of();
+        List<Long> ids = filas.stream().map(ReporteMatriculaRespuesta::matriculaId).toList();
+        Map<Long, List<Pago>> pagosPorMatricula = pagos.findByMatricula_IdIn(ids).stream()
+                .collect(Collectors.groupingBy(p -> p.getMatricula().getId()));
+        return pagosPorMatricula.entrySet().stream().collect(Collectors.toMap(
+                Map.Entry::getKey, entry -> origenReporte(entry.getValue())));
+    }
+
+    private String origenReporte(List<Pago> pagosDeMatricula) {
+        if (pagosDeMatricula.stream().anyMatch(p -> "EXONERADO".equals(p.getOrigen())))
+            return "EXONERADO";
+        if (pagosDeMatricula.stream().anyMatch(p -> "MANUAL".equals(p.getOrigen())))
+            return "REGISTRADO_MANUAL";
+        if (pagosDeMatricula.stream().anyMatch(p -> "APROBADO".equals(p.getEstado())))
+            return "PAGO_EN_LINEA";
+        return pagosDeMatricula.getFirst().getOrigen();
+    }
+
+    private ReporteMatriculaRespuesta conOrigen(ReporteMatriculaRespuesta f, String origen) {
+        return new ReporteMatriculaRespuesta(f.matriculaId(), f.alumno(), f.correo(), f.curso(), f.modalidad(),
+                f.fechaMatricula(), f.fechaActivacion(), f.estadoMatricula(), origen,
+                f.situacionAcademica(), f.estadoCertificado());
+    }
+
+    private static void validarRango(LocalDate desde, LocalDate hasta) {
+        if (desde != null && hasta != null && hasta.isBefore(desde)) {
+            throw new BusinessValidationException("La fecha final no puede ser anterior a la fecha inicial.");
+        }
+    }
+
+    private static Instant inicio(LocalDate fecha) {
+        return fecha == null
+                ? LocalDate.of(1, 1, 1).atStartOfDay(LIMA).toInstant()
+                : fecha.atStartOfDay(LIMA).toInstant();
+    }
+
+    private static Instant finExclusivo(LocalDate fecha) {
+        return fecha == null
+                ? LocalDate.of(9999, 12, 31).plusDays(1).atStartOfDay(LIMA).toInstant()
+                : fecha.plusDays(1).atStartOfDay(LIMA).toInstant();
+    }
 
     @Transactional
     public ReenvioMatriculaRespuesta reenviarConfirmacion(Long matriculaId) {
@@ -235,7 +311,8 @@ public class MatriculaServicio {
                 ? "El curso es gratuito; no se realizó ningún cobro."
                 : "Confirmación de matrícula administrativa.");
         return new ReenvioMatriculaRespuesta("ENVIADO".equals(estado),
-                "ENVIADO".equals(estado) ? "Correo enviado correctamente." : "No se pudo enviar el correo. Puedes volver a intentarlo.");
+                "ENVIADO".equals(estado) ? "Correo enviado correctamente."
+                        : "No se pudo enviar el correo. Puedes volver a intentarlo.");
     }
 
     @Scheduled(fixedDelay = 60_000, initialDelay = 10_000)
@@ -293,7 +370,8 @@ public class MatriculaServicio {
     private void validarSesionesFuturas(Curso curso, boolean autoservicio) {
         AdvertenciaMatriculaRespuesta advertencia = advertenciaAdministrativa(curso.getId());
         if (autoservicio && advertencia.requiereConfirmacion()) {
-            throw new BusinessValidationException("No es posible matricularse automáticamente: " + advertencia.mensaje());
+            throw new BusinessValidationException(
+                    "No es posible matricularse automáticamente: " + advertencia.mensaje());
         }
     }
 
@@ -310,15 +388,18 @@ public class MatriculaServicio {
 
     private void validarCupo(Curso curso) {
         if (curso.getCupoMaximo() != null
-                && matriculas.contarActivas(List.of(curso.getId())).getOrDefault(curso.getId(), 0L) >= curso.getCupoMaximo()) {
+                && matriculas.contarActivas(List.of(curso.getId())).getOrDefault(curso.getId(), 0L) >= curso
+                        .getCupoMaximo()) {
             throw new BusinessValidationException("El curso ya no tiene cupos disponibles.");
         }
     }
 
     private Instant vencimiento(Curso curso, Instant activacion) {
-        if (curso.getVigenciaAccesoDias() == null) return null;
+        if (curso.getVigenciaAccesoDias() == null)
+            return null;
         LocalDate base = LocalDate.ofInstant(activacion, LIMA);
-        if (curso.getFechaInicio() != null && curso.getFechaInicio().isAfter(base)) base = curso.getFechaInicio();
+        if (curso.getFechaInicio() != null && curso.getFechaInicio().isAfter(base))
+            base = curso.getFechaInicio();
         return base.plusDays(curso.getVigenciaAccesoDias() - 1L).atTime(23, 59, 59).atZone(LIMA).toInstant();
     }
 
@@ -343,8 +424,8 @@ public class MatriculaServicio {
                 && m.getUsuario().getCorreoVerificadoEn() != null && !m.getUsuario().isRequiereCambioContrasena();
         String mensaje = efectivo ? "Disponible para continuar."
                 : !inicio ? "El curso aún no inicia."
-                : !vigente || "VENCIDA".equals(m.getEstado()) ? "El acceso venció."
-                : "El acceso no está disponible.";
+                        : !vigente || "VENCIDA".equals(m.getEstado()) ? "El acceso venció."
+                                : "El acceso no está disponible.";
         List<Modulo> modulosCurso = modulos.findByCursoIdAndActivoTrueOrderByOrdenAsc(m.getCurso().getId());
         List<Long> idsModulos = modulosCurso.stream().map(Modulo::getId).toList();
         List<Leccion> obligatorias = idsModulos.isEmpty() ? List.of()
@@ -355,12 +436,14 @@ public class MatriculaServicio {
         long hechas = obligatorias.stream().filter(l -> Boolean.TRUE.equals(completadas.get(l.getId()))).count();
         int porcentaje = total == 0 ? 0 : (int) Math.round(hechas * 100.0 / total);
         String siguiente = obligatorias.stream().filter(l -> !Boolean.TRUE.equals(completadas.get(l.getId())))
-                .map(Leccion::getTitulo).findFirst().orElse(total == 0 ? "Aún no hay lecciones obligatorias" : "Lecciones obligatorias completadas");
+                .map(Leccion::getTitulo).findFirst()
+                .orElse(total == 0 ? "Aún no hay lecciones obligatorias" : "Lecciones obligatorias completadas");
         String estadoCorreoActual = estadoCorreo != null ? estadoCorreo
                 : notificaciones.findTopByTipoOrderByCreadoEnDesc("MAT_" + m.getId() + "_CONF")
                         .map(Notificacion::getEstadoEnvio).orElse(null);
         return new MatriculaRespuesta(m.getId(), m.getCurso().getId(), m.getCurso().getTitulo(),
-                m.getCurso().getUrlAmigable(), m.getCurso().getImagenPortadaUrl(), m.getCurso().getModalidad(), m.getEstado(), m.getFormaIngreso(),
+                m.getCurso().getUrlAmigable(), m.getCurso().getImagenPortadaUrl(), m.getCurso().getModalidad(),
+                m.getEstado(), m.getFormaIngreso(),
                 m.getFechaMatricula(), m.getFechaActivacion(), m.getFechaVencimiento(), m.getFechaFinalizacion(),
                 m.getCurso().getFechaInicio(), efectivo, mensaje, porcentaje, (int) hechas, (int) total, siguiente,
                 estadoCorreoActual);
@@ -380,8 +463,9 @@ public class MatriculaServicio {
         try {
             String fechaAcceso = matricula.getCurso().getFechaInicio() != null
                     && matricula.getCurso().getFechaInicio().isAfter(LocalDate.now(clock.withZone(LIMA)))
-                    ? "Desde el " + matricula.getCurso().getFechaInicio().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-                    : "Inmediato, al iniciar sesión con tu cuenta habilitada";
+                            ? "Desde el " + matricula.getCurso().getFechaInicio()
+                                    .format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                            : "Inmediato, al iniciar sesión con tu cuenta habilitada";
             mailService.sendHtml(HtmlMailMessage.to(n.getDestinatario(), n.getAsunto(),
                     "mail/confirmacion-matricula.html", Map.of(
                             "nombre", matricula.getUsuario().getPersona().getNombres(),
@@ -420,7 +504,8 @@ public class MatriculaServicio {
     }
 
     private void exigirAdministrador() {
-        if (!actual.get().hasRole("ADMINISTRADOR")) throw new ForbiddenException();
+        if (!actual.get().hasRole("ADMINISTRADOR"))
+            throw new ForbiddenException();
     }
 
     private static boolean esVacio(String valor) {
