@@ -105,7 +105,7 @@ public class MatriculaControlador {
         return ResponseEntity.ok(PageResponse.from(pagina));
     }
 
-    @GetMapping("/admin/reportes/matriculas/exportar/csv")
+    @GetMapping("/admin/reportes/matriculas/exportar")
     public ResponseEntity<byte[]> exportarCsv(
             @RequestParam(defaultValue = "") String texto,
             @RequestParam(defaultValue = "") String estado,
@@ -126,7 +126,7 @@ public class MatriculaControlador {
                 .body(archivo);
     }
 
-    @GetMapping("/admin/reportes/matriculas/exportar/excel")
+    @GetMapping("/admin/reportes/matriculas/exportar-excel")
     public ResponseEntity<byte[]> exportarExcel(
             @RequestParam(defaultValue = "") String texto,
             @RequestParam(defaultValue = "") String estado,
@@ -148,7 +148,7 @@ public class MatriculaControlador {
                 .body(archivo);
     }
 
-    @GetMapping("/admin/reportes/matriculas/exportar/pdf")
+    @GetMapping("/admin/reportes/matriculas/exportar-pdf")
     public ResponseEntity<byte[]> exportarPdf(
             @RequestParam(defaultValue = "") String texto,
             @RequestParam(defaultValue = "") String estado,
