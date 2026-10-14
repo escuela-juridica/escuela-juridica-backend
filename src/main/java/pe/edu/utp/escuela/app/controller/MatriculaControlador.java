@@ -16,12 +16,19 @@ import pe.edu.utp.escuela.app.dto.MatriculaRespuesta;
 import pe.edu.utp.escuela.app.dto.PageResponse;
 import pe.edu.utp.escuela.app.dto.ReenvioMatriculaRespuesta;
 import pe.edu.utp.escuela.app.service.MatriculaServicio;
+import java.time.LocalDate;
+import org.springframework.format.annotation.DateTimeFormat;
+import pe.edu.utp.escuela.app.dto.ReporteMatriculaRespuesta;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import pe.edu.utp.escuela.app.export.ReporteMatriculaExportador;
 
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
 public class MatriculaControlador {
     private final MatriculaServicio servicio;
+    private final ReporteMatriculaExportador exportador;
 
     @PostMapping("/cursos/{cursoId}/matricula-gratuita")
     public ResponseEntity<MatriculaRespuesta> matricularGratis(@PathVariable Long cursoId) {
@@ -75,8 +82,91 @@ public class MatriculaControlador {
         return ResponseEntity.ok(servicio.reenviarConfirmacion(matriculaId));
     }
 
-    // HU-041 (reporte, exportarReporte, exportarExcel, exportarPdf, y el campo `exportador`) se
-    // retiró deliberadamente — ver docs/epica-4/HU-041-MAPA-TECNICO-REPORTE-MATRICULAS.md para
-    // reconstruirla.
+    // ---------------- HU-041: REPORTE DE MATRÍCULAS ----------------
+
+    @GetMapping("/admin/reportes/matriculas")
+    public ResponseEntity<PageResponse<ReporteMatriculaRespuesta>> reporte(
+            @RequestParam(defaultValue = "") String texto,
+            @RequestParam(defaultValue = "") String estado,
+            @RequestParam(required = false) Long cursoId,
+            @RequestParam(defaultValue = "") String modalidad,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaDesde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaHasta,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        int tamano = Math.min(Math.max(size, 1), 50);
+
+        Page<ReporteMatriculaRespuesta> pagina = servicio.reportePaginado(
+                texto, estado, cursoId, modalidad,
+                fechaDesde, fechaHasta,
+                PageRequest.of(Math.max(page, 0), tamano));
+
+        return ResponseEntity.ok(PageResponse.from(pagina));
+    }
+
+    @GetMapping("/admin/reportes/matriculas/exportar")
+    public ResponseEntity<byte[]> exportarCsv(
+            @RequestParam(defaultValue = "") String texto,
+            @RequestParam(defaultValue = "") String estado,
+            @RequestParam(required = false) Long cursoId,
+            @RequestParam(defaultValue = "") String modalidad,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaDesde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaHasta) {
+
+        List<ReporteMatriculaRespuesta> filas = servicio.reporte(
+                texto, estado, cursoId, modalidad, fechaDesde, fechaHasta);
+
+        byte[] archivo = exportador.csv(filas);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"reporte-matriculas.csv\"")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(archivo);
+    }
+
+    @GetMapping("/admin/reportes/matriculas/exportar-excel")
+    public ResponseEntity<byte[]> exportarExcel(
+            @RequestParam(defaultValue = "") String texto,
+            @RequestParam(defaultValue = "") String estado,
+            @RequestParam(required = false) Long cursoId,
+            @RequestParam(defaultValue = "") String modalidad,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaDesde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaHasta) {
+
+        List<ReporteMatriculaRespuesta> filas = servicio.reporte(
+                texto, estado, cursoId, modalidad, fechaDesde, fechaHasta);
+
+        byte[] archivo = exportador.excel(filas);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"reporte-matriculas.xlsx\"")
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(archivo);
+    }
+
+    @GetMapping("/admin/reportes/matriculas/exportar-pdf")
+    public ResponseEntity<byte[]> exportarPdf(
+            @RequestParam(defaultValue = "") String texto,
+            @RequestParam(defaultValue = "") String estado,
+            @RequestParam(required = false) Long cursoId,
+            @RequestParam(defaultValue = "") String modalidad,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaDesde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaHasta) {
+
+        List<ReporteMatriculaRespuesta> filas = servicio.reporte(
+                texto, estado, cursoId, modalidad, fechaDesde, fechaHasta);
+
+        byte[] archivo = exportador.pdf(filas, texto, estado);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"reporte-matriculas.pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(archivo);
+    }
 
 }
