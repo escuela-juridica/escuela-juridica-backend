@@ -47,4 +47,11 @@ public interface MaterialLeccionRepositorio extends JpaRepository<MaterialLeccio
             """)
     List<RecursoVistaPreviaFila> buscarVistaPrevia(
             @Param("slug") String slug, @Param("leccionId") Long leccionId);
+
+    /** HU-026: lecciones (de las dadas) que ya tienen al menos un material activo, p. ej. la grabación. */
+    @Query("""
+            select distinct ml.leccion.id from MaterialLeccion ml
+            where ml.leccion.id in :leccionIds and ml.activo = true
+            """)
+    List<Long> buscarLeccionesConMaterialActivo(@Param("leccionIds") Collection<Long> leccionIds);
 }

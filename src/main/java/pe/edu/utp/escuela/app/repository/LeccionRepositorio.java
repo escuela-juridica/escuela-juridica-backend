@@ -31,4 +31,44 @@ public interface LeccionRepositorio extends JpaRepository<Leccion, Long> {
     long contarSesionesFuturasActivas(@Param("cursoId") Long cursoId, @Param("desde") Instant desde);
 
     void deleteAllByModulo_IdIn(Collection<Long> moduloIds);
+
+    // ---------------------------------------------------------------- HU-026 --
+
+    /** Calendario del alumno: sesiones en vivo de sus cursos matriculados dentro de un rango. */
+    @Query("""
+            select l from Leccion l
+            join fetch l.modulo m
+            join fetch m.curso c
+            where c.id in :cursoIds and l.tipo = 'EN_VIVO' and l.activo = true
+              and l.fechaHoraInicio >= :desde and l.fechaHoraInicio < :hasta
+            order by l.fechaHoraInicio asc
+            """)
+    List<Leccion> buscarSesionesEnVivoDeCursosEntre(
+            @Param("cursoIds") Collection<Long> cursoIds,
+            @Param("desde") Instant desde, @Param("hasta") Instant hasta);
+
+    /** Universo de sesiones en vivo de un curso (sin filtro de fecha), para calcular elegibilidad. */
+    @Query("select l from Leccion l where l.modulo.curso.id = :cursoId and l.tipo = 'EN_VIVO' and l.activo = true")
+    List<Leccion> buscarSesionesEnVivoDeCurso(@Param("cursoId") Long cursoId);
+
+    /** Job de cierre: sesiones en vivo no canceladas ya finalizadas (fecha de fin pasada). */
+    @Query("""
+            select l from Leccion l
+            join fetch l.modulo m
+            join fetch m.curso c
+            where l.tipo = 'EN_VIVO' and l.activo = true and l.estado <> 'CANCELADA'
+              and l.fechaHoraFin is not null and l.fechaHoraFin <= :ahora
+            """)
+    List<Leccion> buscarSesionesFinalizadasNoCanceladas(@Param("ahora") Instant ahora);
+
+    /** Job de recordatorio: sesiones en vivo no canceladas que inician dentro del rango dado. */
+    @Query("""
+            select l from Leccion l
+            join fetch l.modulo m
+            join fetch m.curso c
+            where l.tipo = 'EN_VIVO' and l.activo = true and l.estado <> 'CANCELADA'
+              and l.fechaHoraInicio >= :desde and l.fechaHoraInicio < :hasta
+            """)
+    List<Leccion> buscarSesionesEnVivoQueInicianEntre(
+            @Param("desde") Instant desde, @Param("hasta") Instant hasta);
 }
