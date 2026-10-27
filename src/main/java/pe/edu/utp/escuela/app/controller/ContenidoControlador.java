@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
@@ -13,14 +14,21 @@ import org.springframework.web.multipart.MultipartFile;
 import pe.edu.utp.escuela.app.dto.ActivoPeticion;
 import pe.edu.utp.escuela.app.dto.ActualizarMaterialPeticion;
 import pe.edu.utp.escuela.app.dto.ActualizarSesionPeticion;
+import pe.edu.utp.escuela.app.dto.CancelarSesionPeticion;
+import pe.edu.utp.escuela.app.dto.CorregirAsistenciaPeticion;
+import pe.edu.utp.escuela.app.dto.CorregirEnlaceSesionPeticion;
 import pe.edu.utp.escuela.app.dto.CrearLeccionPeticion;
 import pe.edu.utp.escuela.app.dto.CrearMaterialEnlacePeticion;
 import pe.edu.utp.escuela.app.dto.CrearModuloPeticion;
+import pe.edu.utp.escuela.app.dto.HistorialSesionRespuesta;
 import pe.edu.utp.escuela.app.dto.LeccionRespuesta;
 import pe.edu.utp.escuela.app.dto.MaterialRespuesta;
 import pe.edu.utp.escuela.app.dto.ModuloDisponibleRespuesta;
 import pe.edu.utp.escuela.app.dto.ModuloRespuesta;
 import pe.edu.utp.escuela.app.dto.OrdenPeticion;
+import pe.edu.utp.escuela.app.dto.ReprogramarSesionPeticion;
+import pe.edu.utp.escuela.app.dto.ReprogramarSesionResultado;
+import pe.edu.utp.escuela.app.service.AdministrarSesionesServicio;
 import pe.edu.utp.escuela.app.service.ContenidoServicio;
 
 @RestController
@@ -30,6 +38,7 @@ import pe.edu.utp.escuela.app.service.ContenidoServicio;
 public class ContenidoControlador {
 
     private final ContenidoServicio servicio;
+    private final AdministrarSesionesServicio administrarSesionesServicio;
 
     @GetMapping("/cursos/{cursoId}/modulos")
     @Operation(summary = "Consultar la estructura completa de contenido de un curso")
@@ -135,6 +144,59 @@ public class ContenidoControlador {
     public ResponseEntity<LeccionRespuesta> actualizarSesion(
             @PathVariable Long id, @Valid @RequestBody ActualizarSesionPeticion p) {
         return ResponseEntity.ok(servicio.actualizarSesion(id, p));
+    }
+
+    @PatchMapping("/lecciones/{id}/sesion/reprogramar")
+    @Operation(summary = "Reprogramar una sesión en vivo futura",
+            description = "HU-027. Exige motivo, conserva el horario anterior en el historial. Si la nueva fecha "
+                    + "supera el fin del curso, no guarda nada y pide ampliarlo primero (ver fecha-fin).")
+    public ResponseEntity<ReprogramarSesionResultado> reprogramarSesion(
+            @PathVariable Long id, @Valid @RequestBody ReprogramarSesionPeticion p) {
+        return ResponseEntity.ok(administrarSesionesServicio.reprogramar(id, p));
+    }
+
+    @PatchMapping("/cursos/{cursoId}/fecha-fin")
+    @Operation(summary = "Ampliar la fecha de fin de un curso",
+            description = "HU-027. Paso previo cuando una reprogramación de sesión supera el fin vigente del curso.")
+    public ResponseEntity<Void> ampliarFinDeCurso(
+            @PathVariable Long cursoId, @RequestParam LocalDate nuevaFechaFin) {
+        administrarSesionesServicio.ampliarFinDeCurso(cursoId, nuevaFechaFin);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/lecciones/{id}/sesion/cancelar")
+    @Operation(summary = "Cancelar una sesión en vivo futura",
+            description = "HU-027. Definitivo: la sesión queda CANCELADA, excluida de asistencia/progreso.")
+    public ResponseEntity<Void> cancelarSesion(
+            @PathVariable Long id, @Valid @RequestBody CancelarSesionPeticion p) {
+        administrarSesionesServicio.cancelar(id, p);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/lecciones/{id}/sesion/enlace")
+    @Operation(summary = "Corregir el enlace de una sesión ya realizada",
+            description = "HU-027. Solo aplica a una sesión que ya pasó; no cambia fechas.")
+    public ResponseEntity<Void> corregirEnlaceSesion(
+            @PathVariable Long id, @Valid @RequestBody CorregirEnlaceSesionPeticion p) {
+        administrarSesionesServicio.corregirEnlace(id, p);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/asistencias/{id}")
+    @Operation(summary = "Corregir una asistencia registrada",
+            description = "HU-027. Exige motivo; nunca borra el registro original, solo deja el ajuste.")
+    public ResponseEntity<Void> corregirAsistencia(
+            @PathVariable Long id, @Valid @RequestBody CorregirAsistenciaPeticion p) {
+        administrarSesionesServicio.corregirAsistencia(id, p);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/lecciones/{id}/sesion/historial")
+    @Operation(summary = "Consultar el historial de cambios de una sesión",
+            description = "HU-027. Reprogramaciones y cancelaciones anteriores, más reciente primero.")
+    public ResponseEntity<List<HistorialSesionRespuesta>> historialSesion(@PathVariable Long id) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(administrarSesionesServicio.historial(id));
     }
 
     @PostMapping("/lecciones/{id}/materiales")

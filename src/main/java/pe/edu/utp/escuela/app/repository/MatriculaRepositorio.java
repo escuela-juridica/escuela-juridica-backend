@@ -32,6 +32,10 @@ public interface MatriculaRepositorio extends JpaRepository<Matricula, Long> {
     @EntityGraph(attributePaths = { "curso", "usuario", "usuario.persona" })
     List<Matricula> findAllByOrderByFechaMatriculaDesc();
 
+    /** HU-027 — Alumnado a avisar cuando una sesión en vivo de ese curso cambia. */
+    @EntityGraph(attributePaths = { "usuario" })
+    List<Matricula> findByEstadoAndCurso_Id(String estado, Long cursoId);
+
     @EntityGraph(attributePaths = { "curso", "curso.estadoCurso", "usuario", "usuario.persona" })
     List<Matricula> findByEstadoAndFechaVencimientoLessThanEqual(String estado, Instant instante);
 
