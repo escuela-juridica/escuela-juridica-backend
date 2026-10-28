@@ -6,16 +6,16 @@
 > filtrable con exportación a PDF/Excel/CSV, con screenshots reales confirmados). Se retiró
 > deliberadamente para convertirla en ejercicio de programación del equipo — esta guía documenta
 > exactamente cómo estaba construida, con el código real, para que se reconstruya igual o mejor.
-> **Importante:** `MatriculaServicio` y `MatriculaControlador` son archivos **compartidos** con
+> **Importante:** `MatriculaService` y `MatriculaController` son archivos **compartidos** con
 > HU-017 (matrícula gratuita), HU-019 (matricular administrativamente), HU-020 (controlar
 > matrículas y pagos) y HU-021 (mis cursos) — que siguen funcionando exactamente igual, no se tocó
 > nada de esos. Lo único que se retiró son los dos métodos del servicio exclusivos de esta
 > historia (`reportePaginado`, `reporte`) y sus helpers privados exclusivos, los tres endpoints de
-> reporte del controlador, y el campo `exportador`.
+> reporte del controlador, y el campo `export`.
 >
-> La clase `export/ReporteMatriculaExportador.java` es 100% exclusiva de HU-041 (no la usa nada
+> La clase `export/ReporteMatriculaExport.java` es 100% exclusiva de HU-041 (no la usa nada
 > más) y se retiró completa — su código íntegro está más abajo. El DTO `ReporteMatriculaRespuesta`
-> y las dos consultas del repositorio que lo producen (`MatriculaRepositorio.buscarReporte`,
+> y las dos consultas del repositorio que lo producen (`MatriculaRepository.buscarReporte`,
 > `.exportarReporte`) **no se tocaron**: siguen existiendo tal cual, listas para reutilizarse.
 >
 > En el frontend, el componente `reporte-matriculas` es 100% exclusivo de esta historia y se vació
@@ -48,13 +48,13 @@ separado, y puede descargar exactamente lo mismo que está viendo en PDF, Excel 
           String situacionAcademica, String estadoCertificado) {}
   ```
 
-- `MatriculaRepositorio.buscarReporte(texto, estado, cursoId, modalidad, desde, hasta, pageable)` y
+- `MatriculaRepository.buscarReporte(texto, estado, cursoId, modalidad, desde, hasta, pageable)` y
   `.exportarReporte(texto, estado, cursoId, modalidad, desde, hasta)` — ya existen, con la misma
   consulta JPQL (una paginada, otra en lista completa para exportar), incluyendo el `left join` al
   certificado para resolver `estadoCertificado`. No se recrean, solo se llaman desde el servicio.
-- `PagoRepositorio.findByMatricula_IdIn(ids)` — ya existe, se usa para recalcular el origen real
+- `PagoRepository.findByMatricula_IdIn(ids)` — ya existe, se usa para recalcular el origen real
   (ver regla no obvia más abajo).
-- En `MatriculaServicio` (que se queda, no se borra) ya están disponibles como helpers privados:
+- En `MatriculaService` (que se queda, no se borra) ya están disponibles como helpers privados:
   `procesarVencimientos()`, `exigirAdministrador()`. Reutilízalos, no los reescribas.
 - En Angular, `MatriculaApiService` (`features/matriculas/matricula-api.service.ts`) ya existe y ya
   tiene `matricularGratis`, `misCursos`, `crearAdministrativa`, `advertenciaAcademica` y
@@ -80,11 +80,11 @@ separado, y puede descargar exactamente lo mismo que está viendo en PDF, Excel 
 ## 🔑 Punto de oro — con quién coordinar
 
 Puedes arrancar ya, sin esperar a nadie. Solo dos avisos puntuales, no bloqueos, con **Joel y Juan**
-(HU-020, controlar matrículas y pagos — comparten `MatriculaServicio`, `MatriculaControlador` y
+(HU-020, controlar matrículas y pagos — comparten `MatriculaService`, `MatriculaController` y
 `matricula-api.service.ts` con ustedes):
 
 1. **`normalizar(String)` / `normalizarEstado(String)`** — ninguno de los dos existe hoy en
-   `MatriculaServicio`; los necesitas tú (`reportePaginado`/`reporte`) y también HU-020
+   `MatriculaService`; los necesitas tú (`reportePaginado`/`reporte`) y también HU-020
    (`listarAdministrativas`). **El que los cree primero avisa en el grupo** — el segundo los
    reutiliza, no los vuelve a crear (si los duplica, no compila).
 2. **Bloques separados en los archivos compartidos** — agrega tus métodos/endpoints en un bloque
@@ -111,13 +111,13 @@ filtrado").
 
 ### Archivos y responsabilidades
 
-- `service/MatriculaServicio.java` (ya existe, se amplía): agregar `reportePaginado` y `reporte`,
+- `service/MatriculaService.java` (ya existe, se amplía): agregar `reportePaginado` y `reporte`,
   más los helpers privados exclusivos `origenesReporte`, `origenReporte`, `conOrigen`,
   `validarRango`, `inicio`, `finExclusivo`, y los helpers de normalización `normalizar(String)` /
   `normalizarEstado(String)` (si ya existieran por otra historia, reutilízalos; hoy no existen).
-- `controller/MatriculaControlador.java` (ya existe, se amplía): agregar los tres endpoints y el
-  campo `exportador` (inyectado por constructor, vía `@RequiredArgsConstructor`).
-- `export/ReporteMatriculaExportador.java` (se recrea completo, no existe): genera los tres
+- `controller/MatriculaController.java` (ya existe, se amplía): agregar los tres endpoints y el
+  campo `export` (inyectado por constructor, vía `@RequiredArgsConstructor`).
+- `export/ReporteMatriculaExport.java` (se recrea completo, no existe): genera los tres
   formatos a partir de la misma lista de filas que ya filtró el servicio.
 
 ### Reglas en orden
@@ -228,16 +228,16 @@ retirarse — se copia tal cual, no hay que inventar nada.
 
 ### 1. Orden sugerido para reconstruir
 
-1. Backend: completar `MatriculaServicio.java` (ya existe) con `reportePaginado`/`reporte` y sus
+1. Backend: completar `MatriculaService.java` (ya existe) con `reportePaginado`/`reporte` y sus
    helpers del punto 2 de abajo.
-2. Backend: `export/ReporteMatriculaExportador.java` (se recrea completo, no existe) — punto 3.
-3. Backend: completar `MatriculaControlador.java` (ya existe) con los 3 endpoints y el campo
-   `exportador` — punto 4.
+2. Backend: `export/ReporteMatriculaExport.java` (se recrea completo, no existe) — punto 3.
+3. Backend: completar `MatriculaController.java` (ya existe) con los 3 endpoints y el campo
+   `export` — punto 4.
 4. Frontend: completar `matricula-api.service.ts` (ya existe) con los métodos del punto 5.
 5. Frontend: `reporte-matriculas` (ts/html/scss) — reemplazar el placeholder `.pantalla-pendiente`
    por el contenido real del punto 6.
 
-### 2. `MatriculaServicio.java` — métodos y helpers a agregar (ya existe la clase)
+### 2. `MatriculaService.java` — métodos y helpers a agregar (ya existe la clase)
 
 ```java
 @Transactional
@@ -321,7 +321,7 @@ private static Instant finExclusivo(LocalDate fecha) {
 Recuerda agregar los imports correspondientes: `org.springframework.data.domain.Page`,
 `org.springframework.data.domain.Pageable`, `pe.edu.utp.escuela.app.dto.ReporteMatriculaRespuesta`.
 
-### 3. `export/ReporteMatriculaExportador.java` completo (código real original, se recrea)
+### 3. `export/ReporteMatriculaExport.java` completo (código real original, se recrea)
 
 ```java
 package pe.edu.utp.escuela.app.export;
@@ -364,7 +364,7 @@ import pe.edu.utp.escuela.app.dto.ReporteMatriculaRespuesta;
  * reporte-matriculas.ts del frontend) para que el archivo descargado se vea igual de cuidado.
  */
 @Component
-public class ReporteMatriculaExportador {
+public class ReporteMatriculaExport {
 
     private static final String[] ENCABEZADOS = {
             "Alumno", "Correo", "Curso", "Modalidad", "Fecha matricula", "Fecha activacion",
@@ -752,11 +752,11 @@ public class ReporteMatriculaExportador {
 }
 ```
 
-### 4. `MatriculaControlador.java` — endpoints y campo a agregar (ya existe la clase)
+### 4. `MatriculaController.java` — endpoints y campo a agregar (ya existe la clase)
 
 ```java
 // Campo, inyectado por constructor junto al resto (Lombok @RequiredArgsConstructor):
-private final ReporteMatriculaExportador exportador;
+private final ReporteMatriculaExport exportador;
 
 @GetMapping("/admin/reportes/matriculas")
 public ResponseEntity<PageResponse<ReporteMatriculaRespuesta>> reporte(
@@ -820,7 +820,7 @@ Imports que hacen falta en el controlador: `java.time.LocalDate`,
 `org.springframework.format.annotation.DateTimeFormat`, `org.springframework.http.HttpHeaders`,
 `org.springframework.http.MediaType`, `pe.edu.utp.escuela.app.dto.PageResponse`,
 `pe.edu.utp.escuela.app.dto.ReporteMatriculaRespuesta`,
-`pe.edu.utp.escuela.app.export.ReporteMatriculaExportador`.
+`pe.edu.utp.escuela.app.export.ReporteMatriculaExport`.
 
 ### 5. Frontend — métodos a agregar en `matricula-api.service.ts` (ya existe la clase)
 

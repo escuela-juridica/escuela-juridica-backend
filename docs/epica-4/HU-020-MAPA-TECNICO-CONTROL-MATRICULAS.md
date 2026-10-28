@@ -5,8 +5,8 @@
 > Estado de integración: esta historia **ya estaba implementada y funcionando** (listado, detalle y
 > cancelación de matrículas, con datos reales). Se retiró deliberadamente para convertirla en ejercicio
 > de programación del equipo — esta guía documenta exactamente cómo estaba construida, con el código
-> real, para que se reconstruya igual o mejor. **Importante:** `MatriculaServicio` y
-> `MatriculaControlador` son archivos **compartidos** con HU-017 (matrícula gratuita), HU-019 (matricular
+> real, para que se reconstruya igual o mejor. **Importante:** `MatriculaService` y
+> `MatriculaController` son archivos **compartidos** con HU-017 (matrícula gratuita), HU-019 (matricular
 > administrativamente) y HU-021 (mis cursos), que siguen funcionando — no se tocó nada de esos. Tampoco
 > se tocó HU-041 (reporte de matrículas), que vive en los mismos archivos pero es harina de otro costal
 > (otra guía aparte). Lo único que se retiró son los tres métodos/endpoints exclusivos de esta historia.
@@ -24,14 +24,14 @@ motivo. El vencimiento se recalcula de forma idempotente antes de cada consulta.
 ## Punto de partida — ya existe, se reutiliza tal cual
 
 - Entidades `Matricula`, `HistorialEstadoMatricula`, `Pago` — no se tocan.
-- `MatriculaRepositorio.findWithDetalleById`, `.buscarAdministrativas(texto, estado, pageable)` — ya
+- `MatriculaRepository.findWithDetalleById`, `.buscarAdministrativas(texto, estado, pageable)` — ya
   existen y siguen ahí.
-- `HistorialEstadoMatriculaRepositorio`, `PagoRepositorio.findByMatricula_IdOrderByResultadoEnDesc` — ya
+- `HistorialEstadoMatriculaRepository`, `PagoRepository.findByMatricula_IdOrderByResultadoEnDesc` — ya
   existen.
 - DTOs ya existen en `dto/`, no hace falta recrearlos: `MatriculaAdministrativaRespuesta`,
   `MatriculaDetalleAdministrativaRespuesta`, `PagoMatriculaDetalleRespuesta`,
   `HistorialEstadoMatriculaRespuesta`, `CancelarMatriculaPeticion`.
-- En `MatriculaServicio` (que se queda, no se borra) ya están disponibles como helpers privados:
+- En `MatriculaService` (que se queda, no se borra) ya están disponibles como helpers privados:
   `procesarVencimientos()`, `exigirAdministrador()`, `registrarCambio(...)`, `respuesta(Matricula, String)`.
   Reutilízalos, no los reescribas.
 - **`normalizar(String)` y `normalizarEstado(String)` NO están** (los usaba también HU-041, que se
@@ -61,11 +61,11 @@ motivo. El vencimiento se recalcula de forma idempotente antes de cada consulta.
 ## 🔑 Punto de oro — con quién coordinar
 
 Puedes arrancar ya, sin esperar a nadie. Solo dos avisos puntuales, no bloqueos, con **Ariana y
-Gabriel** (HU-041, reporte de matrículas — comparten `MatriculaServicio`, `MatriculaControlador` y
+Gabriel** (HU-041, reporte de matrículas — comparten `MatriculaService`, `MatriculaController` y
 `matricula-api.service.ts` con ustedes):
 
 1. **`normalizar(String)` / `normalizarEstado(String)`** — ninguno de los dos existe hoy en
-   `MatriculaServicio`; los necesitan tanto tú (`listarAdministrativas`) como HU-041
+   `MatriculaService`; los necesitan tanto tú (`listarAdministrativas`) como HU-041
    (`reportePaginado`/`reporte`). **El que los cree primero avisa en el grupo** — el segundo los
    reutiliza, no los vuelve a crear (si los duplica, no compila).
 2. **Bloques separados en los archivos compartidos** — agrega tus 3 métodos/endpoints en un bloque
@@ -87,9 +87,9 @@ aparte.
 
 ### Archivos y responsabilidades
 
-- `service/MatriculaServicio.java` (ya existe, se amplía): agregar los métodos `listarAdministrativas`,
+- `service/MatriculaService.java` (ya existe, se amplía): agregar los métodos `listarAdministrativas`,
   `detalleAdministrativo` y `cancelar`, más el helper privado `nombreUsuario(Long)`.
-- `controller/MatriculaControlador.java` (ya existe, se amplía): agregar los tres endpoints.
+- `controller/MatriculaController.java` (ya existe, se amplía): agregar los tres endpoints.
 
 ### Reglas en orden
 
@@ -163,7 +163,7 @@ igual que antes.
 
 ## Implementación guiada para copiar y adaptar
 
-### 1. Backend — métodos a agregar en `MatriculaServicio` (ya existe la clase)
+### 1. Backend — métodos a agregar en `MatriculaService` (ya existe la clase)
 
 ```java
 @Transactional
@@ -217,7 +217,7 @@ private String nombreUsuario(Long usuarioId) {
 }
 ```
 
-### 2. Backend — endpoints a agregar en `MatriculaControlador` (ya existe la clase)
+### 2. Backend — endpoints a agregar en `MatriculaController` (ya existe la clase)
 
 ```java
 @GetMapping("/admin/matriculas/{matriculaId}")

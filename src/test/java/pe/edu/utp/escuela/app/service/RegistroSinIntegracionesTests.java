@@ -14,9 +14,9 @@ import pe.edu.utp.escuela.app.repository.*;
 @SpringBootTest
 @ActiveProfiles("test")
 class RegistroSinIntegracionesTests {
-    @Autowired RegistroServicio registro;
-    @Autowired UsuarioRepositorio usuarios;
-    @Autowired PersonaRepositorio personas;
+    @Autowired RegistroService registro;
+    @Autowired UsuarioRepository usuarios;
+    @Autowired PersonaRepository personas;
 
     @Test void formularioSinEvidenciaRealNoInserta() {
         long cuentas = usuarios.count(), personasAntes = personas.count();

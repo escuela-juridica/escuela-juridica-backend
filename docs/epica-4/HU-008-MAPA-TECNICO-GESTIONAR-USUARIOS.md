@@ -10,8 +10,8 @@
 > nuevo — documenta exactamente lo que existía, con el código real embebido al final, para que el
 > equipo lo reconstruya aprendiendo de esa referencia en vez de adivinar el diseño desde cero.
 >
-> **Importante — no todo se retiró.** `AdminUsuariosServicio.obtener(Long)` **se mantiene en el
-> backend** porque `MatriculaServicio.tieneRol(...)` (HU-019, matricular administrativamente) lo
+> **Importante — no todo se retiró.** `AdminUsuariosService.obtener(Long)` **se mantiene en el
+> backend** porque `MatriculaService.tieneRol(...)` (HU-019, matricular administrativamente) lo
 > usa para validar que el alumno elegido tenga el rol ALUMNO. De la misma forma,
 > `AdminUsuariosApiService.listar(...)` y los tipos `UsuarioAdminRespuesta` / `RolUsuarioAdmin` /
 > `CondicionCuentaAdmin` / `PageResponse` **se mantienen en el frontend** porque
@@ -32,10 +32,10 @@ ingreso y la envía por correo junto con el código de verificación.
 
 Todo esto ya existe y se reutiliza, no se recrea:
 
-- Entidades y repositorios: `Usuario`/`UsuarioRepositorio`, `Persona`/`PersonaRepositorio`,
-  `Rol`/`RolRepositorio`, `UsuarioRol`/`UsuarioRolRepositorio`,
-  `CodigoVerificacionCorreo`/`CodigoVerificacionRepositorio`,
-  `Notificacion`/`NotificacionRepositorio`.
+- Entidades y repositorios: `Usuario`/`UsuarioRepository`, `Persona`/`PersonaRepository`,
+  `Rol`/`RolRepository`, `UsuarioRol`/`UsuarioRolRepository`,
+  `CodigoVerificacionCorreo`/`CodigoVerificacionRepository`,
+  `Notificacion`/`NotificacionRepository`.
 - `PasswordEncoder`, `MailService` + `HtmlMailMessage` (envío de correo con plantilla),
   `TextNormalizer` (`trimToNull`, `requireText`, `normalizeEmail`), `CurrentUserService` (usuario
   autenticado + sus roles).
@@ -65,8 +65,8 @@ Ninguna dentro de la épica; esta historia es independiente. Pero **dos piezas p
 consumidas por HU-019** (matricular administrativamente, fuera de esta épica) y deben seguir
 existiendo con la misma firma cuando el equipo reconstruya el resto:
 
-- Backend: `AdminUsuariosServicio.obtener(Long usuarioId)` — lo llama
-  `MatriculaServicio.tieneRol(usuarioId, "ROLE_ALUMNO")` antes de matricular a alguien
+- Backend: `AdminUsuariosService.obtener(Long usuarioId)` — lo llama
+  `MatriculaService.tieneRol(usuarioId, "ROLE_ALUMNO")` antes de matricular a alguien
   manualmente.
 - Frontend: `AdminUsuariosApiService.listar(texto, rol, activo, page, size)` y los tipos
   `UsuarioAdminRespuesta`/`RolUsuarioAdmin`/`CondicionCuentaAdmin`/`PageResponse` — los usa
@@ -95,9 +95,9 @@ Todos exigen rol `ADMINISTRADOR` (403 si no lo tiene) y devuelven 404 si la cuen
 
 ### Archivos y responsabilidades
 
-- `controller/AdminUsuariosControlador.java`: expone los 9 endpoints de la tabla, sin lógica de
-  negocio — delega todo a `AdminUsuariosServicio`.
-- `service/AdminUsuariosServicio.java`: concentra toda la lógica de negocio (ver reglas abajo).
+- `controller/AdminUsuariosController.java`: expone los 9 endpoints de la tabla, sin lógica de
+  negocio — delega todo a `AdminUsuariosService`.
+- `service/AdminUsuariosService.java`: concentra toda la lógica de negocio (ver reglas abajo).
   Hoy solo sobrevive `obtener(Long)` en el código (ver nota de integración); el resto se reconstruye
   siguiendo este mapa.
 
@@ -225,7 +225,7 @@ Todos exigen rol `ADMINISTRADOR` (403 si no lo tiene) y devuelven 404 si la cuen
 
 ## Pruebas mínimas
 
-Basadas en los tests reales que existían en `AdminUsuariosServicioTests` (ya retirados; esto es lo
+Basadas en los tests reales que existían en `AdminUsuariosServiceTests` (ya retirados; esto es lo
 que debe seguir cumpliéndose cuando el equipo reconstruya el servicio):
 
 - Cualquier operación sin rol ADMINISTRADOR lanza `ForbiddenException`.
@@ -275,7 +275,7 @@ Un administrador puede buscar, crear, ver, editar, habilitar/deshabilitar y gest
 cualquier cuenta desde el panel, con paginación server-side desde el primer momento. Crear una
 cuenta nunca pide contraseña manualmente. Ningún flujo permite dejar el sistema sin al menos un
 administrador activo, ni que un administrador se quite a sí mismo su propio rol o se desactive a sí
-mismo. `MatriculaServicio.tieneRol(...)` (HU-019) y `matriculas-listado.ts` (HU-019) siguen
+mismo. `MatriculaService.tieneRol(...)` (HU-019) y `matriculas-listado.ts` (HU-019) siguen
 funcionando sin cambios, apoyados en las piezas mínimas que se mantuvieron de esta historia.
 
 ## Implementación guiada para copiar y adaptar
@@ -285,9 +285,9 @@ retirarse — se copia tal cual, no hay que inventar nada.
 
 ### 1. Orden sugerido para reconstruir
 
-1. Backend: completar `AdminUsuariosServicio.java` (ya existe con solo `obtener`) con el resto de
+1. Backend: completar `AdminUsuariosService.java` (ya existe con solo `obtener`) con el resto de
    métodos del punto 2 de abajo.
-2. Backend: `controller/AdminUsuariosControlador.java` (se recrea completo, no existe).
+2. Backend: `controller/AdminUsuariosController.java` (se recrea completo, no existe).
 3. Frontend: completar `usuario-admin.model.ts` y `admin-usuarios-api.service.ts` (ya existen
    recortados) con el resto de tipos/métodos del punto 4 de abajo.
 4. Frontend: recrear `usuario-admin-etiquetas.ts` (no existe).
@@ -295,7 +295,7 @@ retirarse — se copia tal cual, no hay que inventar nada.
    (ts/html/scss) — reemplazar el placeholder `.pantalla-pendiente` de cada uno por el contenido
    real de abajo.
 
-### 2. `AdminUsuariosServicio.java` completo (código real original)
+### 2. `AdminUsuariosService.java` completo (código real original)
 
 ```java
 package pe.edu.utp.escuela.app.service;
@@ -339,26 +339,26 @@ import pe.edu.utp.escuela.app.exception.OperationNotAllowedException;
 import pe.edu.utp.escuela.app.exception.ResourceNotFoundException;
 import pe.edu.utp.escuela.app.mail.HtmlMailMessage;
 import pe.edu.utp.escuela.app.mail.MailService;
-import pe.edu.utp.escuela.app.repository.CodigoVerificacionRepositorio;
-import pe.edu.utp.escuela.app.repository.NotificacionRepositorio;
-import pe.edu.utp.escuela.app.repository.PersonaRepositorio;
-import pe.edu.utp.escuela.app.repository.RolRepositorio;
-import pe.edu.utp.escuela.app.repository.UsuarioRepositorio;
-import pe.edu.utp.escuela.app.repository.UsuarioRolRepositorio;
+import pe.edu.utp.escuela.app.repository.CodigoVerificacionRepository;
+import pe.edu.utp.escuela.app.repository.NotificacionRepository;
+import pe.edu.utp.escuela.app.repository.PersonaRepository;
+import pe.edu.utp.escuela.app.repository.RolRepository;
+import pe.edu.utp.escuela.app.repository.UsuarioRepository;
+import pe.edu.utp.escuela.app.repository.UsuarioRolRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.util.TextNormalizer;
 
 /** HU-008 — Gestionar usuarios administrativamente. */
 @Service
 @RequiredArgsConstructor
-public class AdminUsuariosServicio {
+public class AdminUsuariosService {
 
-    private final UsuarioRepositorio usuarios;
-    private final PersonaRepositorio personas;
-    private final RolRepositorio roles;
-    private final UsuarioRolRepositorio usuarioRoles;
-    private final CodigoVerificacionRepositorio codigos;
-    private final NotificacionRepositorio notificaciones;
+    private final UsuarioRepository usuarios;
+    private final PersonaRepository personas;
+    private final RolRepository roles;
+    private final UsuarioRolRepository usuarioRoles;
+    private final CodigoVerificacionRepository codigos;
+    private final NotificacionRepository notificaciones;
     private final PasswordEncoder encoder;
     private final MailService mailService;
     private final TextNormalizer textos;
@@ -759,7 +759,7 @@ public class AdminUsuariosServicio {
 }
 ```
 
-### 3. `AdminUsuariosControlador.java` completo (código real original)
+### 3. `AdminUsuariosController.java` completo (código real original)
 
 ```java
 package pe.edu.utp.escuela.app.controller;
@@ -783,15 +783,15 @@ import pe.edu.utp.escuela.app.dto.PageResponse;
 import pe.edu.utp.escuela.app.dto.ResetearContrasenaRespuesta;
 import pe.edu.utp.escuela.app.dto.RolUsuarioAdmin;
 import pe.edu.utp.escuela.app.dto.UsuarioAdminRespuesta;
-import pe.edu.utp.escuela.app.service.AdminUsuariosServicio;
+import pe.edu.utp.escuela.app.service.AdminUsuariosService;
 
 @RestController
 @RequestMapping("/api/admin/usuarios")
 @RequiredArgsConstructor
 @Tag(name = "HU-008 Gestionar usuarios", description = "Búsqueda, alta, roles y habilitación de cuentas, para administradores")
-public class AdminUsuariosControlador {
+public class AdminUsuariosController {
 
-    private final AdminUsuariosServicio servicio;
+    private final AdminUsuariosService servicio;
 
     @GetMapping
     @Operation(summary = "Listar usuarios (búsqueda y filtros opcionales, paginado)")

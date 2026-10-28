@@ -25,11 +25,11 @@ import tools.jackson.databind.json.JsonMapper;
 class AntiRobotRegistroHttpTests {
     @Autowired WebApplicationContext contexto;
     @Autowired JsonMapper json;
-    @Autowired UsuarioRepositorio usuarios;
-    @Autowired RolRepositorio roles;
-    @Autowired PersonaRepositorio personas;
-    @Autowired CodigoVerificacionRepositorio codigos;
-    @Autowired UsuarioRolRepositorio asignaciones;
+    @Autowired UsuarioRepository usuarios;
+    @Autowired RolRepository roles;
+    @Autowired PersonaRepository personas;
+    @Autowired CodigoVerificacionRepository codigos;
+    @Autowired UsuarioRolRepository asignaciones;
     @MockitoBean MailService mail;
     MockMvc mvc;
 
