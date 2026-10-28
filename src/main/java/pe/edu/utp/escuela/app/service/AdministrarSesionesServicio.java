@@ -18,6 +18,7 @@ import pe.edu.utp.escuela.app.dto.ReprogramarSesionPeticion;
 import pe.edu.utp.escuela.app.dto.ReprogramarSesionResultado;
 import pe.edu.utp.escuela.app.entity.Asistencia;
 import pe.edu.utp.escuela.app.entity.Curso;
+import pe.edu.utp.escuela.app.entity.ExcepcionAcademica;
 import pe.edu.utp.escuela.app.entity.HistorialSesion;
 import pe.edu.utp.escuela.app.entity.Leccion;
 import pe.edu.utp.escuela.app.entity.Matricula;
@@ -29,6 +30,7 @@ import pe.edu.utp.escuela.app.mail.HtmlMailMessage;
 import pe.edu.utp.escuela.app.mail.MailService;
 import pe.edu.utp.escuela.app.repository.AsistenciaRepositorio;
 import pe.edu.utp.escuela.app.repository.CursoRepositorio;
+import pe.edu.utp.escuela.app.repository.ExcepcionAcademicaRepositorio;
 import pe.edu.utp.escuela.app.repository.HistorialSesionRepositorio;
 import pe.edu.utp.escuela.app.repository.LeccionRepositorio;
 import pe.edu.utp.escuela.app.repository.MatriculaRepositorio;
@@ -53,6 +55,7 @@ public class AdministrarSesionesServicio {
     private final AsistenciaRepositorio asistencias;
     private final HistorialSesionRepositorio historial;
     private final NotificacionRepositorio notificaciones;
+    private final ExcepcionAcademicaRepositorio excepciones;
     private final MailService mailService;
     private final ProgresoServicio progresoServicio;
     private final CurrentUserService actual;
@@ -151,12 +154,29 @@ public class AdministrarSesionesServicio {
         if (p.motivoCorreccion() == null || p.motivoCorreccion().isBlank()) {
             throw new BusinessValidationException("Indica el motivo de la corrección.");
         }
+        if (!List.of("PRESENTE", "AUSENTE", "JUSTIFICADA").contains(p.nuevoEstado())) {
+            throw new BusinessValidationException("El estado de asistencia no es válido.");
+        }
+        String estadoAnterior = a.getEstado();
         // Nunca se borra el registro original: el ajuste queda en el mismo campo.
         a.setEstado(p.nuevoEstado());
         a.setMotivoCorreccion(p.motivoCorreccion());
         a.setRegistradaPorUsuarioId(actual.get().userId());
         a.setModificadaEn(clock.instant());
         asistencias.save(a);
+
+        // HU-031: toda corrección conserva quién, cuándo, por qué y el valor anterior.
+        ExcepcionAcademica excepcion = new ExcepcionAcademica();
+        excepcion.setMatricula(a.getMatricula());
+        excepcion.setTipo(ExcepcionAcademica.CORREGIR_ASISTENCIA);
+        excepcion.setReferenciaTipo("ASISTENCIA");
+        excepcion.setReferenciaId(a.getId());
+        excepcion.setValorAnterior(estadoAnterior);
+        excepcion.setValorNuevo(p.nuevoEstado());
+        excepcion.setMotivo(p.motivoCorreccion());
+        excepcion.setRealizadoPorUsuarioId(actual.get().userId());
+        excepcion.setRealizadoEn(clock.instant());
+        excepciones.save(excepcion);
         progresoServicio.completarPorAsistencia(a.getMatricula(), a.getLeccion(), p.nuevoEstado());
     }
 

@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -30,4 +31,10 @@ public class Certificado {
 
     @Column(nullable = false, length = 15)
     private String estado;
+
+    @Column(nullable = false, length = 80)
+    private String codigo;
+
+    @Column(name = "emitido_en", nullable = false)
+    private Instant emitidoEn;
 }

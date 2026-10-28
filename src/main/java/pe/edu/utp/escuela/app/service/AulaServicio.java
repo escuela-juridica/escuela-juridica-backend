@@ -1,7 +1,5 @@
 package pe.edu.utp.escuela.app.service;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -15,23 +13,20 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utp.escuela.app.dto.AulaRespuesta;
-import pe.edu.utp.escuela.app.dto.AvanceCertificadoRespuesta;
-import pe.edu.utp.escuela.app.dto.CondicionAvanceRespuesta;
 import pe.edu.utp.escuela.app.dto.DuracionLeccionFila;
 import pe.edu.utp.escuela.app.dto.LeccionAulaRespuesta;
 import pe.edu.utp.escuela.app.dto.ModuloAulaRespuesta;
-import pe.edu.utp.escuela.app.entity.Examen;
 import pe.edu.utp.escuela.app.entity.Leccion;
 import pe.edu.utp.escuela.app.entity.MaterialLeccion;
 import pe.edu.utp.escuela.app.entity.Matricula;
 import pe.edu.utp.escuela.app.entity.Modulo;
-import pe.edu.utp.escuela.app.entity.ReglaCurso;
 import pe.edu.utp.escuela.app.exception.BusinessValidationException;
 import pe.edu.utp.escuela.app.exception.ForbiddenException;
 import pe.edu.utp.escuela.app.exception.ResourceNotFoundException;
 import pe.edu.utp.escuela.app.repository.MaterialLeccionRepositorio;
 import pe.edu.utp.escuela.app.repository.MatriculaRepositorio;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
+import pe.edu.utp.escuela.app.service.AvanceAcademicoServicio.AvanceAcademico;
 import pe.edu.utp.escuela.app.service.RutaAcademicaServicio.RutaAcademica;
 
 /** HU-022 — Ingresar y continuar un curso: resuelve el acceso efectivo de la matrícula del
@@ -51,7 +46,7 @@ public class AulaServicio {
     private final MatriculaRepositorio matriculas;
     private final MaterialLeccionRepositorio materiales;
     private final RutaAcademicaServicio rutaAcademica;
-    private final SesionAlumnoServicio sesionAlumno;
+    private final AvanceAcademicoServicio avanceAcademico;
     private final CurrentUserService actual;
     private final Clock clock;
 
@@ -116,84 +111,13 @@ public class AulaServicio {
         List<Leccion> obligatorias = globalOrden.stream()
                 .filter(l -> l.isEsObligatoria() && !"CANCELADA".equals(l.getEstado())).toList();
         List<Leccion> baseParaPorcentaje = obligatorias.isEmpty() ? globalOrden : obligatorias;
-        long total = baseParaPorcentaje.size();
-        long hechas = baseParaPorcentaje.stream()
-                .filter(l -> Boolean.TRUE.equals(completadas.get(l.getId()))).count();
-        int porcentaje = total == 0 ? 0 : (int) Math.round(hechas * 100.0 / total);
+        AvanceAcademico avance = avanceAcademico.calcular(matricula, ruta);
 
         Long ultimaLeccionIdValida = ultimaLeccionValida(baseParaPorcentaje, respuestaPorLeccion);
 
         return new AulaRespuesta(matricula.getId(), matricula.getCurso().getId(), matricula.getCurso().getTitulo(),
-                matricula.getCurso().getModalidad(), porcentaje, modulosRespuesta, ultimaLeccionIdValida,
-                avanceCertificado(matricula, ruta, porcentaje));
-    }
-
-    /** HU-025 — "Tu avance hacia el certificado": solo las condiciones que el curso tiene activas,
-     * cada una con su valor real y su meta, y una frase que dice qué falta. */
-    private AvanceCertificadoRespuesta avanceCertificado(Matricula matricula, RutaAcademica ruta, int porcentaje) {
-        ReglaCurso regla = ruta.regla();
-        List<CondicionAvanceRespuesta> condiciones = new ArrayList<>();
-        List<String> faltantes = new ArrayList<>();
-
-        if (regla.isRequiereProgreso()) {
-            boolean cumplida = BigDecimal.valueOf(porcentaje).compareTo(regla.getProgresoMinimo()) >= 0;
-            condiciones.add(new CondicionAvanceRespuesta("PROGRESO", "Progreso del curso",
-                    porcentaje + " %", "mínimo " + numero(regla.getProgresoMinimo()) + " %", cumplida));
-            if (!cumplida) {
-                faltantes.add("completar al menos " + numero(regla.getProgresoMinimo())
-                        + " % de las lecciones obligatorias (llevas " + porcentaje + " %)");
-            }
-        }
-
-        if (regla.isRequiereExamenes()) {
-            List<Examen> calificados = ruta.examenesCalificados();
-            long aprobados = calificados.stream().filter(e -> ruta.examenesAprobados().contains(e.getId())).count();
-            long pendientes = calificados.size() - aprobados;
-            boolean examenesCumplidos = pendientes == 0;
-            condiciones.add(new CondicionAvanceRespuesta("EXAMENES", "Exámenes calificados",
-                    aprobados + " de " + calificados.size() + " aprobados",
-                    "todos aprobados", examenesCumplidos));
-            if (!examenesCumplidos) {
-                faltantes.add("aprobar " + pendientes + (pendientes == 1 ? " examen más" : " exámenes más"));
-            }
-
-            List<BigDecimal> mejores = calificados.stream()
-                    .map(e -> ruta.mejoresNotas().get(e.getId())).filter(n -> n != null).toList();
-            BigDecimal promedio = mejores.isEmpty() ? null
-                    : mejores.stream().reduce(BigDecimal.ZERO, BigDecimal::add)
-                            .divide(BigDecimal.valueOf(mejores.size()), 2, RoundingMode.HALF_UP);
-            boolean notaCumplida = promedio != null && promedio.compareTo(regla.getNotaMinima()) >= 0;
-            condiciones.add(new CondicionAvanceRespuesta("NOTA", "Nota promedio",
-                    promedio == null ? "Sin notas aún" : numero(promedio),
-                    "mínimo " + numero(regla.getNotaMinima()), notaCumplida));
-            if (!notaCumplida && promedio != null) {
-                faltantes.add("subir tu nota promedio a " + numero(regla.getNotaMinima()) + " (llevas " + numero(promedio) + ")");
-            }
-        }
-
-        if (regla.isRequiereAsistencia()) {
-            Integer asistencia = sesionAlumno.porcentajeAsistencia(matricula.getId());
-            // "No aplica" (cero sesiones elegibles) nunca equivale a cumplido (HU-026).
-            boolean cumplida = asistencia != null && BigDecimal.valueOf(asistencia).compareTo(regla.getAsistenciaMinima()) >= 0;
-            condiciones.add(new CondicionAvanceRespuesta("ASISTENCIA", "Asistencia a sesiones en vivo",
-                    asistencia == null ? "No aplica" : asistencia + " %",
-                    "mínimo " + numero(regla.getAsistenciaMinima()) + " %", cumplida));
-            if (!cumplida) {
-                faltantes.add(asistencia == null
-                        ? "asistir a las sesiones en vivo (aún no hay sesiones que cuenten)"
-                        : "llegar a " + numero(regla.getAsistenciaMinima()) + " % de asistencia (llevas " + asistencia + " %)");
-            }
-        }
-
-        boolean cumpleTodo = faltantes.isEmpty();
-        String frase = cumpleTodo
-                ? "Cumples todos los requisitos activos para tu certificado."
-                : "Te falta: " + String.join("; ", faltantes) + ".";
-        return new AvanceCertificadoRespuesta(condiciones, cumpleTodo, frase);
-    }
-
-    private static String numero(BigDecimal valor) {
-        return valor.stripTrailingZeros().toPlainString();
+                matricula.getCurso().getModalidad(), avance.porcentaje(), modulosRespuesta, ultimaLeccionIdValida,
+                avance.comoRespuesta(), ruta.examenesFinales());
     }
 
     private String estadoSesion(Leccion leccion, Instant ahora) {

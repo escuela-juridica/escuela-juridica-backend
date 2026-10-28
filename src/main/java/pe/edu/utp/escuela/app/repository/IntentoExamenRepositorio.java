@@ -1,7 +1,12 @@
 package pe.edu.utp.escuela.app.repository;
 
+import jakarta.persistence.LockModeType;
+import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import pe.edu.utp.escuela.app.dto.NotaExamenFila;
@@ -19,4 +24,19 @@ public interface IntentoExamenRepositorio extends JpaRepository<IntentoExamen, L
             + "from IntentoExamen i where i.matricula.id = :matriculaId "
             + "and i.estado = 'CALIFICADO' and i.nota is not null group by i.examen.id")
     List<NotaExamenFila> mejoresNotas(@Param("matriculaId") Long matriculaId);
+
+    /** HU-028: todos los intentos de la matrícula (la ruta y el aula los agrupan por examen). */
+    List<IntentoExamen> findByMatricula_IdOrderByIniciadoEnAsc(Long matriculaId);
+
+    List<IntentoExamen> findByMatricula_IdInOrderByIniciadoEnAsc(Collection<Long> matriculaIds);
+
+    List<IntentoExamen> findByMatricula_IdAndExamen_IdOrderByNumeroIntentoAsc(Long matriculaId, Long examenId);
+
+    /** HU-028: intentos en curso cuyo tiempo ya venció (los cierra el job y cualquier lectura). */
+    List<IntentoExamen> findByEstadoAndExpiraEnBefore(String estado, Instant ahora);
+
+    /** Bloqueo de escritura: evita que un envío manual y el cierre por vencimiento califiquen dos veces. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select i from IntentoExamen i where i.id = :id")
+    Optional<IntentoExamen> buscarConBloqueo(@Param("id") Long id);
 }

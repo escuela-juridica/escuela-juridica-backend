@@ -142,4 +142,35 @@ public interface MatriculaRepositorio extends JpaRepository<Matricula, Long> {
         return contarActivasPorCurso(cursoIds).stream()
                 .collect(Collectors.toMap(ConteoMatriculaFila::cursoId, ConteoMatriculaFila::activas));
     }
+
+    /**
+     * HU-043 — Universo y filtros del reporte académico, compartidos por la página, el conteo y la
+     * exportación para que pantalla y Excel nunca discrepen: una fila por matrícula (no pendiente
+     * de pago) cuyo registro cae en el rango pedido. El rango se aplica a {@code fecha_matricula}.
+     */
+    String ALCANCE_ACADEMICO = """
+            from Matricula m
+            join m.curso c join m.usuario u join u.persona p
+            where m.estado in ('ACTIVA', 'VENCIDA', 'FINALIZADA', 'CANCELADA')
+              and (:cursoId is null or c.id = :cursoId)
+              and (:modalidad = '' or c.modalidad = :modalidad)
+              and (:texto = '' or lower(c.titulo) like concat('%', :texto, '%')
+                   or lower(u.correo) like concat('%', :texto, '%')
+                   or lower(concat(p.nombres, ' ', p.apellidoPaterno)) like concat('%', :texto, '%'))
+              and m.fechaMatricula >= :desde and m.fechaMatricula < :hasta
+            """;
+
+    String ORDEN_ACADEMICO = " order by p.apellidoPaterno asc, p.nombres asc, c.titulo asc, m.id asc";
+
+    @EntityGraph(attributePaths = { "curso", "curso.estadoCurso", "usuario", "usuario.persona" })
+    @Query(value = "select m " + ALCANCE_ACADEMICO + ORDEN_ACADEMICO, countQuery = "select count(m) " + ALCANCE_ACADEMICO)
+    Page<Matricula> buscarReporteAcademico(
+            @Param("texto") String texto, @Param("cursoId") Long cursoId, @Param("modalidad") String modalidad,
+            @Param("desde") Instant desde, @Param("hasta") Instant hasta, Pageable pageable);
+
+    @EntityGraph(attributePaths = { "curso", "curso.estadoCurso", "usuario", "usuario.persona" })
+    @Query("select m " + ALCANCE_ACADEMICO + ORDEN_ACADEMICO)
+    List<Matricula> exportarReporteAcademico(
+            @Param("texto") String texto, @Param("cursoId") Long cursoId, @Param("modalidad") String modalidad,
+            @Param("desde") Instant desde, @Param("hasta") Instant hasta);
 }
