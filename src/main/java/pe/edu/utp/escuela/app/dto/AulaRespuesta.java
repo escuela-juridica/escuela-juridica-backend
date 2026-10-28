@@ -11,7 +11,8 @@ public record AulaRespuesta(
         String modalidad,
         int porcentaje,
         List<ModuloAulaRespuesta> modulos,
-        Long ultimaLeccionIdValida) {
+        Long ultimaLeccionIdValida,
+        AvanceCertificadoRespuesta avanceCertificado) {
 
     public AulaRespuesta {
         modulos = List.copyOf(modulos);

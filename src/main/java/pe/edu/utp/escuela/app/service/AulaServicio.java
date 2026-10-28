@@ -1,12 +1,12 @@
 package pe.edu.utp.escuela.app.service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.Clock;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -15,28 +15,29 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utp.escuela.app.dto.AulaRespuesta;
+import pe.edu.utp.escuela.app.dto.AvanceCertificadoRespuesta;
+import pe.edu.utp.escuela.app.dto.CondicionAvanceRespuesta;
 import pe.edu.utp.escuela.app.dto.LeccionAulaRespuesta;
 import pe.edu.utp.escuela.app.dto.ModuloAulaRespuesta;
+import pe.edu.utp.escuela.app.entity.Examen;
 import pe.edu.utp.escuela.app.entity.Leccion;
 import pe.edu.utp.escuela.app.entity.MaterialLeccion;
 import pe.edu.utp.escuela.app.entity.Matricula;
 import pe.edu.utp.escuela.app.entity.Modulo;
-import pe.edu.utp.escuela.app.entity.ProgresoLeccion;
 import pe.edu.utp.escuela.app.entity.ReglaCurso;
 import pe.edu.utp.escuela.app.exception.BusinessValidationException;
 import pe.edu.utp.escuela.app.exception.ForbiddenException;
 import pe.edu.utp.escuela.app.exception.ResourceNotFoundException;
-import pe.edu.utp.escuela.app.repository.LeccionRepositorio;
 import pe.edu.utp.escuela.app.repository.MaterialLeccionRepositorio;
 import pe.edu.utp.escuela.app.repository.MatriculaRepositorio;
-import pe.edu.utp.escuela.app.repository.ModuloRepositorio;
-import pe.edu.utp.escuela.app.repository.ProgresoLeccionRepositorio;
-import pe.edu.utp.escuela.app.repository.ReglaCursoRepositorio;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
+import pe.edu.utp.escuela.app.service.RutaAcademicaServicio.RutaAcademica;
 
 /** HU-022 — Ingresar y continuar un curso: resuelve el acceso efectivo de la matrícula del
  * alumno actual a un curso y construye el temario (módulos → lecciones) con el estado de cada
- * lección y el punto donde "Continuar" debe reabrir el aula.
+ * lección y el punto donde "Continuar" debe reabrir el aula. HU-025 — el orden y los bloqueos
+ * vienen de {@link RutaAcademicaServicio} y el aula suma los exámenes de cada módulo y el bloque
+ * "Tu avance hacia el certificado".
  *
  * <p>El cálculo de "acceso efectivo" replica exactamente, a propósito, el de {@code
  * MatriculaServicio#respuesta(Matricula, String)}: es la definición oficial de acceso efectivo en
@@ -47,11 +48,9 @@ public class AulaServicio {
     private static final ZoneId LIMA = ZoneId.of("America/Lima");
 
     private final MatriculaRepositorio matriculas;
-    private final ModuloRepositorio modulos;
-    private final LeccionRepositorio lecciones;
-    private final ProgresoLeccionRepositorio progresoLecciones;
     private final MaterialLeccionRepositorio materiales;
-    private final ReglaCursoRepositorio reglasCurso;
+    private final RutaAcademicaServicio rutaAcademica;
+    private final SesionAlumnoServicio sesionAlumno;
     private final CurrentUserService actual;
     private final Clock clock;
 
@@ -65,15 +64,9 @@ public class AulaServicio {
 
         verificarAcceso(matricula);
 
-        List<Modulo> modulosCurso = modulos.findByCursoIdAndActivoTrueOrderByOrdenAsc(cursoId);
-        List<Long> idsModulos = modulosCurso.stream().map(Modulo::getId).toList();
-        List<Leccion> globalOrden = ordenGlobalDeLecciones(idsModulos, modulosCurso);
-
-        Map<Long, Boolean> completadas = progresoLecciones.findByMatricula_Id(matricula.getId()).stream()
-                .collect(Collectors.toMap(p -> p.getLeccion().getId(), ProgresoLeccion::isCompletada, (a, b) -> a));
-
-        boolean secuenciaObligatoria = reglasCurso.findByCurso_Id(cursoId)
-                .map(ReglaCurso::isSecuenciaObligatoria).orElse(true);
+        RutaAcademica ruta = rutaAcademica.calcular(matricula);
+        List<Leccion> globalOrden = ruta.globalOrden();
+        Map<Long, Boolean> completadas = ruta.completadas();
 
         List<Long> idsLecciones = globalOrden.stream().map(Leccion::getId).toList();
         Set<Long> leccionesConGrabacion = idsLecciones.isEmpty() ? Set.of()
@@ -83,26 +76,11 @@ public class AulaServicio {
                         .collect(Collectors.toSet());
 
         Instant ahora = clock.instant();
-        Map<Long, List<LeccionAulaRespuesta>> leccionesPorModulo = new LinkedHashMap<>();
-        Map<Long, LeccionAulaRespuesta> respuestaPorLeccion = new HashMap<>();
-        Leccion previaObligatoria = null;
+        Map<Long, LeccionAulaRespuesta> respuestaPorLeccion = new java.util.HashMap<>();
         for (Leccion leccion : globalOrden) {
             boolean completada = Boolean.TRUE.equals(completadas.get(leccion.getId()));
-            boolean bloqueadaPorSecuencia = secuenciaObligatoria && previaObligatoria != null
-                    && !Boolean.TRUE.equals(completadas.get(previaObligatoria.getId()));
-
-            String estado;
-            String motivoBloqueo;
-            if (completada) {
-                estado = "COMPLETADA";
-                motivoBloqueo = null;
-            } else if (bloqueadaPorSecuencia) {
-                estado = "BLOQUEADA";
-                motivoBloqueo = "Completa la lección anterior: " + previaObligatoria.getTitulo();
-            } else {
-                estado = "DISPONIBLE";
-                motivoBloqueo = null;
-            }
+            String motivoBloqueo = completada ? null : ruta.motivoBloqueo(leccion.getId());
+            String estado = completada ? "COMPLETADA" : motivoBloqueo != null ? "BLOQUEADA" : "DISPONIBLE";
 
             String estadoSesion = null;
             boolean grabacionDisponible = false;
@@ -112,22 +90,18 @@ public class AulaServicio {
                         && leccionesConGrabacion.contains(leccion.getId());
             }
 
-            LeccionAulaRespuesta respuesta = new LeccionAulaRespuesta(
+            respuestaPorLeccion.put(leccion.getId(), new LeccionAulaRespuesta(
                     leccion.getId(), leccion.getTitulo(), leccion.getTipo(), leccion.getOrden(),
                     leccion.isEsObligatoria(), estado, motivoBloqueo,
-                    leccion.getFechaHoraInicio(), leccion.getFechaHoraFin(), estadoSesion, grabacionDisponible);
-            leccionesPorModulo.computeIfAbsent(leccion.getModulo().getId(), k -> new ArrayList<>()).add(respuesta);
-            respuestaPorLeccion.put(leccion.getId(), respuesta);
-
-            if (leccion.isEsObligatoria() && !"CANCELADA".equals(leccion.getEstado())) {
-                previaObligatoria = leccion;
-            }
+                    leccion.getFechaHoraInicio(), leccion.getFechaHoraFin(), estadoSesion, grabacionDisponible));
         }
 
         List<ModuloAulaRespuesta> modulosRespuesta = new ArrayList<>();
-        for (Modulo modulo : modulosCurso) {
+        for (Modulo modulo : ruta.modulos()) {
+            List<LeccionAulaRespuesta> delModulo = ruta.leccionesPorModulo().get(modulo.getId()).stream()
+                    .map(l -> respuestaPorLeccion.get(l.getId())).toList();
             modulosRespuesta.add(new ModuloAulaRespuesta(modulo.getId(), modulo.getTitulo(), modulo.getOrden(),
-                    leccionesPorModulo.getOrDefault(modulo.getId(), List.of())));
+                    delModulo, ruta.examenesPorModulo().getOrDefault(modulo.getId(), List.of())));
         }
 
         List<Leccion> obligatorias = globalOrden.stream()
@@ -141,58 +115,76 @@ public class AulaServicio {
         Long ultimaLeccionIdValida = ultimaLeccionValida(baseParaPorcentaje, respuestaPorLeccion);
 
         return new AulaRespuesta(matricula.getId(), matricula.getCurso().getId(), matricula.getCurso().getTitulo(),
-                matricula.getCurso().getModalidad(), porcentaje, modulosRespuesta, ultimaLeccionIdValida);
+                matricula.getCurso().getModalidad(), porcentaje, modulosRespuesta, ultimaLeccionIdValida,
+                avanceCertificado(matricula, ruta, porcentaje));
     }
 
-    /** HU-024 — Aplica del lado servidor la secuencia obligatoria que {@link #temario} solo refleja
-     * en pantalla: devuelve el motivo si la lección todavía no puede trabajarse (hay una lección
-     * obligatoria previa, no cancelada, sin completar), o {@code null} si está libre o ya
-     * completada. Usa el mismo orden global y la misma regla de "previa obligatoria" que
-     * {@code temario}, para que ambos nunca discrepen. */
-    @Transactional(readOnly = true)
-    public String motivoBloqueoPorSecuencia(Matricula matricula, Leccion leccion) {
-        Long cursoId = leccion.getModulo().getCurso().getId();
-        boolean secuenciaObligatoria = reglasCurso.findByCurso_Id(cursoId)
-                .map(ReglaCurso::isSecuenciaObligatoria).orElse(true);
-        if (!secuenciaObligatoria) {
-            return null;
-        }
-        Map<Long, Boolean> completadas = progresoLecciones.findByMatricula_Id(matricula.getId()).stream()
-                .collect(Collectors.toMap(p -> p.getLeccion().getId(), ProgresoLeccion::isCompletada, (a, b) -> a));
-        if (Boolean.TRUE.equals(completadas.get(leccion.getId()))) {
-            return null;
+    /** HU-025 — "Tu avance hacia el certificado": solo las condiciones que el curso tiene activas,
+     * cada una con su valor real y su meta, y una frase que dice qué falta. */
+    private AvanceCertificadoRespuesta avanceCertificado(Matricula matricula, RutaAcademica ruta, int porcentaje) {
+        ReglaCurso regla = ruta.regla();
+        List<CondicionAvanceRespuesta> condiciones = new ArrayList<>();
+        List<String> faltantes = new ArrayList<>();
+
+        if (regla.isRequiereProgreso()) {
+            boolean cumplida = BigDecimal.valueOf(porcentaje).compareTo(regla.getProgresoMinimo()) >= 0;
+            condiciones.add(new CondicionAvanceRespuesta("PROGRESO", "Progreso del curso",
+                    porcentaje + " %", "mínimo " + numero(regla.getProgresoMinimo()) + " %", cumplida));
+            if (!cumplida) {
+                faltantes.add("completar al menos " + numero(regla.getProgresoMinimo())
+                        + " % de las lecciones obligatorias (llevas " + porcentaje + " %)");
+            }
         }
 
-        List<Modulo> modulosCurso = modulos.findByCursoIdAndActivoTrueOrderByOrdenAsc(cursoId);
-        List<Long> idsModulos = modulosCurso.stream().map(Modulo::getId).toList();
-        Leccion previaObligatoria = null;
-        for (Leccion candidata : ordenGlobalDeLecciones(idsModulos, modulosCurso)) {
-            if (candidata.getId().equals(leccion.getId())) {
-                boolean bloqueada = previaObligatoria != null
-                        && !Boolean.TRUE.equals(completadas.get(previaObligatoria.getId()));
-                return bloqueada ? "Completa la lección anterior: " + previaObligatoria.getTitulo() : null;
+        if (regla.isRequiereExamenes()) {
+            List<Examen> calificados = ruta.examenesCalificados();
+            long aprobados = calificados.stream().filter(e -> ruta.examenesAprobados().contains(e.getId())).count();
+            long pendientes = calificados.size() - aprobados;
+            boolean examenesCumplidos = pendientes == 0;
+            condiciones.add(new CondicionAvanceRespuesta("EXAMENES", "Exámenes calificados",
+                    aprobados + " de " + calificados.size() + " aprobados",
+                    "todos aprobados", examenesCumplidos));
+            if (!examenesCumplidos) {
+                faltantes.add("aprobar " + pendientes + (pendientes == 1 ? " examen más" : " exámenes más"));
             }
-            if (candidata.isEsObligatoria() && !"CANCELADA".equals(candidata.getEstado())) {
-                previaObligatoria = candidata;
+
+            List<BigDecimal> mejores = calificados.stream()
+                    .map(e -> ruta.mejoresNotas().get(e.getId())).filter(n -> n != null).toList();
+            BigDecimal promedio = mejores.isEmpty() ? null
+                    : mejores.stream().reduce(BigDecimal.ZERO, BigDecimal::add)
+                            .divide(BigDecimal.valueOf(mejores.size()), 2, RoundingMode.HALF_UP);
+            boolean notaCumplida = promedio != null && promedio.compareTo(regla.getNotaMinima()) >= 0;
+            condiciones.add(new CondicionAvanceRespuesta("NOTA", "Nota promedio",
+                    promedio == null ? "Sin notas aún" : numero(promedio),
+                    "mínimo " + numero(regla.getNotaMinima()), notaCumplida));
+            if (!notaCumplida && promedio != null) {
+                faltantes.add("subir tu nota promedio a " + numero(regla.getNotaMinima()) + " (llevas " + numero(promedio) + ")");
             }
         }
-        return null;
+
+        if (regla.isRequiereAsistencia()) {
+            Integer asistencia = sesionAlumno.porcentajeAsistencia(matricula.getId());
+            // "No aplica" (cero sesiones elegibles) nunca equivale a cumplido (HU-026).
+            boolean cumplida = asistencia != null && BigDecimal.valueOf(asistencia).compareTo(regla.getAsistenciaMinima()) >= 0;
+            condiciones.add(new CondicionAvanceRespuesta("ASISTENCIA", "Asistencia a sesiones en vivo",
+                    asistencia == null ? "No aplica" : asistencia + " %",
+                    "mínimo " + numero(regla.getAsistenciaMinima()) + " %", cumplida));
+            if (!cumplida) {
+                faltantes.add(asistencia == null
+                        ? "asistir a las sesiones en vivo (aún no hay sesiones que cuenten)"
+                        : "llegar a " + numero(regla.getAsistenciaMinima()) + " % de asistencia (llevas " + asistencia + " %)");
+            }
+        }
+
+        boolean cumpleTodo = faltantes.isEmpty();
+        String frase = cumpleTodo
+                ? "Cumples todos los requisitos activos para tu certificado."
+                : "Te falta: " + String.join("; ", faltantes) + ".";
+        return new AvanceCertificadoRespuesta(condiciones, cumpleTodo, frase);
     }
 
-    /** Construye el orden global módulo→lección (por el orden de presentación de cada módulo y,
-     * dentro de él, el de la lección), ya que los repositorios existentes solo ordenan por el id
-     * interno del módulo, no por su campo "orden" visible. */
-    private List<Leccion> ordenGlobalDeLecciones(List<Long> idsModulos, List<Modulo> modulosCurso) {
-        if (idsModulos.isEmpty()) {
-            return List.of();
-        }
-        Map<Long, List<Leccion>> porModulo = lecciones.buscarActivasDeModulos(idsModulos).stream()
-                .collect(Collectors.groupingBy(l -> l.getModulo().getId()));
-        List<Leccion> global = new ArrayList<>();
-        for (Modulo modulo : modulosCurso) {
-            global.addAll(porModulo.getOrDefault(modulo.getId(), List.of()));
-        }
-        return global;
+    private static String numero(BigDecimal valor) {
+        return valor.stripTrailingZeros().toPlainString();
     }
 
     private String estadoSesion(Leccion leccion, Instant ahora) {

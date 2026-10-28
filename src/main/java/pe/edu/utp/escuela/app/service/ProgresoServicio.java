@@ -55,7 +55,7 @@ public class ProgresoServicio {
     private final ReglaCursoRepositorio reglasCurso;
     private final RecursoRepositorio recursos;
     private final AsistenciaRepositorio asistencias;
-    private final AulaServicio aulaServicio;
+    private final RutaAcademicaServicio rutaAcademica;
     private final CurrentUserService actual;
     private final Clock clock;
 
@@ -248,10 +248,10 @@ public class ProgresoServicio {
         progresoLecciones.save(progreso);
     }
 
-    /** La secuencia obligatoria no es solo visual: sin esto, llamar directo a la API permitiría
-     * completar una lección bloqueada y saltarse sus requisitos previos. */
+    /** La ruta académica (secuencia y exámenes bloqueantes) no es solo visual: sin esto, llamar
+     * directo a la API permitiría completar una lección bloqueada y saltarse sus requisitos. */
     private void exigirSecuenciaLibre(Matricula matricula, Leccion leccion) {
-        String motivo = aulaServicio.motivoBloqueoPorSecuencia(matricula, leccion);
+        String motivo = rutaAcademica.calcular(matricula).motivoBloqueo(leccion.getId());
         if (motivo != null) {
             throw new BusinessValidationException(motivo);
         }

@@ -7,9 +7,11 @@ public record ModuloAulaRespuesta(
         Long id,
         String titulo,
         int orden,
-        List<LeccionAulaRespuesta> lecciones) {
+        List<LeccionAulaRespuesta> lecciones,
+        List<ExamenAulaRespuesta> examenes) {
 
     public ModuloAulaRespuesta {
         lecciones = List.copyOf(lecciones);
+        examenes = List.copyOf(examenes);
     }
 }
