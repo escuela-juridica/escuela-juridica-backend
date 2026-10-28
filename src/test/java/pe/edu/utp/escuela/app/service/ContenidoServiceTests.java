@@ -17,12 +17,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import pe.edu.utp.escuela.app.dto.ActualizarSesionPeticion;
-import pe.edu.utp.escuela.app.dto.CrearLeccionPeticion;
-import pe.edu.utp.escuela.app.dto.CrearModuloPeticion;
-import pe.edu.utp.escuela.app.dto.LeccionRespuesta;
-import pe.edu.utp.escuela.app.dto.ModuloRespuesta;
-import pe.edu.utp.escuela.app.dto.OrdenPeticion;
+import pe.edu.utp.escuela.app.dto.ActualizarSesionRequest;
+import pe.edu.utp.escuela.app.dto.CrearLeccionRequest;
+import pe.edu.utp.escuela.app.dto.CrearModuloRequest;
+import pe.edu.utp.escuela.app.dto.LeccionResponse;
+import pe.edu.utp.escuela.app.dto.ModuloResponse;
+import pe.edu.utp.escuela.app.dto.OrdenRequest;
 import pe.edu.utp.escuela.app.dto.TipoLeccion;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.EstadoCurso;
@@ -119,7 +119,7 @@ class ContenidoServiceTests {
         when(cursos.findById(100L)).thenReturn(Optional.of(curso));
         when(modulos.countByCurso_Id(100L)).thenReturn(2L);
 
-        ModuloRespuesta respuesta = service.crearModulo(100L, new CrearModuloPeticion("Módulo 3", null));
+        ModuloResponse respuesta = service.crearModulo(100L, new CrearModuloRequest("Módulo 3", null));
 
         assertEquals("Módulo 3", respuesta.titulo());
         assertEquals(3, respuesta.orden());
@@ -132,7 +132,7 @@ class ContenidoServiceTests {
         when(cursos.findById(100L)).thenReturn(Optional.of(cursoEnEstado("BORRADOR")));
 
         assertThrows(BusinessValidationException.class,
-                () -> service.crearModulo(100L, new CrearModuloPeticion("   ", null)));
+                () -> service.crearModulo(100L, new CrearModuloRequest("   ", null)));
     }
 
     @Test
@@ -141,7 +141,7 @@ class ContenidoServiceTests {
                 .thenReturn(new CurrentUser(2L, "alumno@example.com", Set.of("ALUMNO")));
 
         assertThrows(ForbiddenException.class,
-                () -> service.crearModulo(100L, new CrearModuloPeticion("Módulo", null)));
+                () -> service.crearModulo(100L, new CrearModuloRequest("Módulo", null)));
     }
 
     @Test
@@ -152,7 +152,7 @@ class ContenidoServiceTests {
         when(modulos.findById(10L)).thenReturn(Optional.of(modulo));
         when(lecciones.findByModulo_IdOrderByOrdenAsc(10L)).thenReturn(List.of());
 
-        ModuloRespuesta respuesta = service.cambiarActivoModulo(10L, false);
+        ModuloResponse respuesta = service.cambiarActivoModulo(10L, false);
 
         assertFalse(respuesta.activo());
     }
@@ -177,7 +177,7 @@ class ContenidoServiceTests {
         when(modulos.findById(10L)).thenReturn(Optional.of(modulo));
         when(lecciones.findByModulo_IdOrderByOrdenAsc(10L)).thenReturn(List.of());
 
-        ModuloRespuesta respuesta = service.cambiarActivoModulo(10L, true);
+        ModuloResponse respuesta = service.cambiarActivoModulo(10L, true);
 
         assertTrue(respuesta.activo());
     }
@@ -194,7 +194,7 @@ class ContenidoServiceTests {
         m2.setOrden(2);
         when(modulos.findByCurso_IdOrderByOrdenAsc(100L)).thenReturn(List.of(m1, m2));
 
-        List<ModuloRespuesta> resultado = service.reordenarModulos(100L, new OrdenPeticion(List.of(11L, 10L)));
+        List<ModuloResponse> resultado = service.reordenarModulos(100L, new OrdenRequest(List.of(11L, 10L)));
 
         assertEquals(1, m2.getOrden());
         assertEquals(2, m1.getOrden());
@@ -211,7 +211,7 @@ class ContenidoServiceTests {
         when(modulos.findByCurso_IdOrderByOrdenAsc(100L)).thenReturn(List.of(m1, m2));
 
         assertThrows(BusinessValidationException.class,
-                () -> service.reordenarModulos(100L, new OrdenPeticion(List.of(10L))));
+                () -> service.reordenarModulos(100L, new OrdenRequest(List.of(10L))));
     }
 
     // ---------------------------------------------------------------- Lecciones (HU-011) --
@@ -225,8 +225,8 @@ class ContenidoServiceTests {
         when(modulos.findById(10L)).thenReturn(Optional.of(modulo));
         when(lecciones.countByModulo_Id(10L)).thenReturn(0L);
 
-        LeccionRespuesta respuesta = service.crearLeccion(10L,
-                new CrearLeccionPeticion("Introducción", null, TipoLeccion.GRABADA, true, false));
+        LeccionResponse respuesta = service.crearLeccion(10L,
+                new CrearLeccionRequest("Introducción", null, TipoLeccion.GRABADA, true, false));
 
         assertEquals("GRABADA", respuesta.tipo());
         assertEquals(1, respuesta.orden());
@@ -240,8 +240,8 @@ class ContenidoServiceTests {
         when(modulos.findById(10L)).thenReturn(Optional.of(modulo));
         when(lecciones.countByModulo_Id(10L)).thenReturn(0L);
 
-        LeccionRespuesta respuesta = service.crearLeccion(10L,
-                new CrearLeccionPeticion("Sesión en vivo", null, TipoLeccion.EN_VIVO, true, false));
+        LeccionResponse respuesta = service.crearLeccion(10L,
+                new CrearLeccionRequest("Sesión en vivo", null, TipoLeccion.EN_VIVO, true, false));
 
         assertEquals("EN_VIVO", respuesta.tipo());
         assertEquals(null, respuesta.fechaHoraInicio());
@@ -255,7 +255,7 @@ class ContenidoServiceTests {
         when(modulos.findById(10L)).thenReturn(Optional.of(modulo));
 
         assertThrows(BusinessValidationException.class, () -> service.crearLeccion(10L,
-                new CrearLeccionPeticion("Nueva lección", null, TipoLeccion.GRABADA, true, false)));
+                new CrearLeccionRequest("Nueva lección", null, TipoLeccion.GRABADA, true, false)));
     }
 
     @Test
@@ -266,8 +266,8 @@ class ContenidoServiceTests {
         when(modulos.findById(10L)).thenReturn(Optional.of(modulo));
         when(lecciones.countByModulo_Id(10L)).thenReturn(1L);
 
-        LeccionRespuesta respuesta = service.crearLeccion(10L,
-                new CrearLeccionPeticion("Material extra", null, TipoLeccion.GRABADA, false, false));
+        LeccionResponse respuesta = service.crearLeccion(10L,
+                new CrearLeccionRequest("Material extra", null, TipoLeccion.GRABADA, false, false));
 
         assertFalse(respuesta.esObligatoria());
     }
@@ -280,7 +280,7 @@ class ContenidoServiceTests {
         when(modulos.findById(10L)).thenReturn(Optional.of(modulo));
 
         assertThrows(BusinessValidationException.class, () -> service.crearLeccion(10L,
-                new CrearLeccionPeticion("Sesión", null, TipoLeccion.EN_VIVO, true, true)));
+                new CrearLeccionRequest("Sesión", null, TipoLeccion.EN_VIVO, true, true)));
     }
 
     @Test
@@ -306,8 +306,8 @@ class ContenidoServiceTests {
 
         Instant inicio = Instant.parse("2026-09-20T18:00:00Z");
         Instant fin = Instant.parse("2026-09-20T20:00:00Z");
-        LeccionRespuesta respuesta = service.actualizarSesion(20L,
-                new ActualizarSesionPeticion(inicio, fin, "https://meet.example.com/sesion"));
+        LeccionResponse respuesta = service.actualizarSesion(20L,
+                new ActualizarSesionRequest(inicio, fin, "https://meet.example.com/sesion"));
 
         assertEquals(inicio, respuesta.fechaHoraInicio());
         assertEquals(fin, respuesta.fechaHoraFin());
@@ -328,8 +328,8 @@ class ContenidoServiceTests {
 
         Instant nuevoInicio = Instant.parse("2026-09-22T18:00:00Z");
         Instant nuevoFin = Instant.parse("2026-09-22T20:00:00Z");
-        LeccionRespuesta respuesta = service.actualizarSesion(20L,
-                new ActualizarSesionPeticion(nuevoInicio, nuevoFin, "https://meet.example.com/nueva"));
+        LeccionResponse respuesta = service.actualizarSesion(20L,
+                new ActualizarSesionRequest(nuevoInicio, nuevoFin, "https://meet.example.com/nueva"));
 
         assertEquals(nuevoInicio, respuesta.fechaHoraInicio());
         assertEquals("https://meet.example.com/nueva", respuesta.enlaceReunion());
@@ -346,7 +346,7 @@ class ContenidoServiceTests {
         when(lecciones.findById(20L)).thenReturn(Optional.of(leccion));
 
         assertThrows(BusinessValidationException.class, () -> service.actualizarSesion(20L,
-                new ActualizarSesionPeticion(Instant.parse("2026-09-20T18:00:00Z"),
+                new ActualizarSesionRequest(Instant.parse("2026-09-20T18:00:00Z"),
                         Instant.parse("2026-09-20T20:00:00Z"), "https://meet.example.com/sesion")));
     }
 
@@ -359,7 +359,7 @@ class ContenidoServiceTests {
         when(lecciones.findById(20L)).thenReturn(Optional.of(leccion));
 
         assertThrows(BusinessValidationException.class, () -> service.actualizarSesion(20L,
-                new ActualizarSesionPeticion(Instant.parse("2026-09-20T18:00:00Z"),
+                new ActualizarSesionRequest(Instant.parse("2026-09-20T18:00:00Z"),
                         Instant.parse("2026-09-20T20:00:00Z"), "https://meet.example.com/sesion")));
     }
 
@@ -371,7 +371,7 @@ class ContenidoServiceTests {
         when(lecciones.findById(20L)).thenReturn(Optional.of(leccion));
 
         assertThrows(BusinessValidationException.class, () -> service.actualizarSesion(20L,
-                new ActualizarSesionPeticion(Instant.parse("2026-09-20T20:00:00Z"),
+                new ActualizarSesionRequest(Instant.parse("2026-09-20T20:00:00Z"),
                         Instant.parse("2026-09-20T18:00:00Z"), "https://meet.example.com/sesion")));
     }
 
@@ -384,7 +384,7 @@ class ContenidoServiceTests {
 
         // El curso va del 1 de septiembre al 1 de octubre; esta sesión cae en noviembre.
         assertThrows(BusinessValidationException.class, () -> service.actualizarSesion(20L,
-                new ActualizarSesionPeticion(Instant.parse("2026-11-05T18:00:00Z"),
+                new ActualizarSesionRequest(Instant.parse("2026-11-05T18:00:00Z"),
                         Instant.parse("2026-11-05T20:00:00Z"), "https://meet.example.com/sesion")));
     }
 

@@ -8,8 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.*;
-import pe.edu.utp.escuela.app.dto.ContextoVerificacionRespuesta;
-import pe.edu.utp.escuela.app.dto.VerificarCorreoRespuesta;
+import pe.edu.utp.escuela.app.dto.ContextoVerificacionResponse;
+import pe.edu.utp.escuela.app.dto.VerificarCorreoResponse;
 import pe.edu.utp.escuela.app.entity.*;
 import pe.edu.utp.escuela.app.exception.InvalidCodeException;
 import pe.edu.utp.escuela.app.exception.MailDeliveryException;
@@ -56,12 +56,12 @@ public class CodigoVerificacionService {
     }
 
     @Transactional
-    public VerificarCorreoRespuesta verificar(String correoRecibido, String codigoVisible) {
+    public VerificarCorreoResponse verificar(String correoRecibido, String codigoVisible) {
         Usuario usuario = usuarios.findByCorreoIgnoreCase(textos.normalizeEmail(correoRecibido))
                 .orElseThrow(InvalidCodeException::new);
 
         if (usuario.getCorreoVerificadoEn() != null) {
-            return new VerificarCorreoRespuesta(usuario.isRequiereCambioContrasena());
+            return new VerificarCorreoResponse(usuario.isRequiereCambioContrasena());
         }
 
         CodigoVerificacionCorreo candidato = codigos
@@ -81,15 +81,15 @@ public class CodigoVerificacionService {
         codigo.setModificadoEn(ahora);
         codigo.getUsuario().setCorreoVerificadoEn(ahora);
 
-        return new VerificarCorreoRespuesta(usuario.isRequiereCambioContrasena());
+        return new VerificarCorreoResponse(usuario.isRequiereCambioContrasena());
     }
 
     @Transactional(readOnly = true)
-    public ContextoVerificacionRespuesta obtenerContexto(String referencia) {
+    public ContextoVerificacionResponse obtenerContexto(String referencia) {
         Long usuarioId = referencias.resolverUsuarioId(referencia);
         Usuario usuario = usuarios.findById(usuarioId)
                 .orElseThrow(() -> new ResourceNotFoundException("La referencia no es válida o venció"));
-        return new ContextoVerificacionRespuesta(usuario.getCorreo());
+        return new ContextoVerificacionResponse(usuario.getCorreo());
     }
 
     @Transactional

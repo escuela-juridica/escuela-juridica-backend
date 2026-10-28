@@ -14,11 +14,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestBody;
-import pe.edu.utp.escuela.app.dto.ContextoVerificacionRespuesta;
-import pe.edu.utp.escuela.app.dto.ReenviarCodigoPeticion;
-import pe.edu.utp.escuela.app.dto.ReenvioCorreoRespuesta;
-import pe.edu.utp.escuela.app.dto.VerificarCorreoPeticion;
-import pe.edu.utp.escuela.app.dto.VerificarCorreoRespuesta;
+import pe.edu.utp.escuela.app.dto.ContextoVerificacionResponse;
+import pe.edu.utp.escuela.app.dto.ReenviarCodigoRequest;
+import pe.edu.utp.escuela.app.dto.ReenvioCorreoResponse;
+import pe.edu.utp.escuela.app.dto.VerificarCorreoRequest;
+import pe.edu.utp.escuela.app.dto.VerificarCorreoResponse;
 import pe.edu.utp.escuela.app.service.CodigoVerificacionService;
 
 @RestController
@@ -37,7 +37,7 @@ public class VerificacionCorreoController {
                     + "navegación (recarga o enlace directo). La referencia no autoriza verificar el código.")
     @ApiResponse(responseCode = "200", description = "Referencia vigente; devuelve el correo de la cuenta")
     @ApiResponse(responseCode = "404", description = "Referencia inválida, vencida o cuenta inexistente")
-    public ResponseEntity<ContextoVerificacionRespuesta> contexto(@PathVariable String referencia) {
+    public ResponseEntity<ContextoVerificacionResponse> contexto(@PathVariable String referencia) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(service.obtenerContexto(referencia));
     }
@@ -48,7 +48,7 @@ public class VerificacionCorreoController {
                     + "estaba verificado. Nunca revela si el correo existe o no.")
     @ApiResponse(responseCode = "200", description = "Correo verificado; indica si aún falta cambiar la contraseña")
     @ApiResponse(responseCode = "400", description = "Código inválido, vencido, usado o cuenta inexistente")
-    public ResponseEntity<VerificarCorreoRespuesta> verificar(@Valid @RequestBody VerificarCorreoPeticion p) {
+    public ResponseEntity<VerificarCorreoResponse> verificar(@Valid @RequestBody VerificarCorreoRequest p) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(service.verificar(p.correo(), p.codigo()));
     }
@@ -59,8 +59,8 @@ public class VerificacionCorreoController {
                     + "ni si la cuenta ya estaba verificada; solo informa si el envío fue aceptado.")
     @ApiResponse(responseCode = "202", description = "Solicitud procesada; enviado informa el resultado SMTP")
     @ApiResponse(responseCode = "400", description = "Correo con formato inválido")
-    public ResponseEntity<ReenvioCorreoRespuesta> reenviar(@Valid @RequestBody ReenviarCodigoPeticion p) {
+    public ResponseEntity<ReenvioCorreoResponse> reenviar(@Valid @RequestBody ReenviarCodigoRequest p) {
         return ResponseEntity.status(HttpStatus.ACCEPTED).cacheControl(CacheControl.noStore())
-                .body(new ReenvioCorreoRespuesta(service.reenviar(p.correo())));
+                .body(new ReenvioCorreoResponse(service.reenviar(p.correo())));
     }
 }

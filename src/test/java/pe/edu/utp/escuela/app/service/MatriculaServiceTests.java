@@ -27,14 +27,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import pe.edu.utp.escuela.app.dto.CancelarMatriculaPeticion;
+import pe.edu.utp.escuela.app.dto.CancelarMatriculaRequest;
 import pe.edu.utp.escuela.app.dto.CondicionCuentaAdmin;
-import pe.edu.utp.escuela.app.dto.CrearMatriculaAdministrativaPeticion;
-import pe.edu.utp.escuela.app.dto.MatriculaAdministrativaRespuesta;
-import pe.edu.utp.escuela.app.dto.MatriculaDetalleAdministrativaRespuesta;
-import pe.edu.utp.escuela.app.dto.MatriculaRespuesta;
+import pe.edu.utp.escuela.app.dto.CrearMatriculaAdministrativaRequest;
+import pe.edu.utp.escuela.app.dto.MatriculaAdministrativaResponse;
+import pe.edu.utp.escuela.app.dto.MatriculaDetalleAdministrativaResponse;
+import pe.edu.utp.escuela.app.dto.MatriculaResponse;
 import pe.edu.utp.escuela.app.dto.RolUsuarioAdmin;
-import pe.edu.utp.escuela.app.dto.UsuarioAdminRespuesta;
+import pe.edu.utp.escuela.app.dto.UsuarioAdminResponse;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.EstadoCurso;
 import pe.edu.utp.escuela.app.entity.HistorialEstadoMatricula;
@@ -126,8 +126,8 @@ class MatriculaServiceTests {
         return curso;
     }
 
-    private UsuarioAdminRespuesta respuestaAdminCon(List<RolUsuarioAdmin> rolesDelUsuario) {
-        return new UsuarioAdminRespuesta(5L, "Ana", "Pérez", null, "Ana Pérez", "ana@example.com",
+    private UsuarioAdminResponse respuestaAdminCon(List<RolUsuarioAdmin> rolesDelUsuario) {
+        return new UsuarioAdminResponse(5L, "Ana", "Pérez", null, "Ana Pérez", "ana@example.com",
                 null, null, "FORMULARIO", true, CondicionCuentaAdmin.NINGUNA,
                 rolesDelUsuario.get(0), rolesDelUsuario, Instant.parse("2026-08-01T00:00:00Z"), null);
     }
@@ -144,7 +144,7 @@ class MatriculaServiceTests {
         when(cursos.findWithDetalleById(200L)).thenReturn(Optional.of(curso));
         when(matriculas.existsByUsuario_IdAndCurso_Id(1L, 200L)).thenReturn(false);
 
-        MatriculaRespuesta respuesta = service.matricularGratis(200L);
+        MatriculaResponse respuesta = service.matricularGratis(200L);
 
         assertEquals("ACTIVA", respuesta.estado());
         assertEquals("GRATUITA", respuesta.formaIngreso());
@@ -161,7 +161,7 @@ class MatriculaServiceTests {
         when(cursos.findWithDetalleById(200L)).thenReturn(Optional.of(curso));
         when(matriculas.existsByUsuario_IdAndCurso_Id(1L, 200L)).thenReturn(false);
 
-        MatriculaRespuesta respuesta = service.matricularGratis(200L);
+        MatriculaResponse respuesta = service.matricularGratis(200L);
 
         assertEquals("ACTIVA", respuesta.estado());
         assertEquals("GRATUITA", respuesta.formaIngreso());
@@ -237,8 +237,8 @@ class MatriculaServiceTests {
 
     // ---------------------------------------------------------------- HU-019 --
 
-    private CrearMatriculaAdministrativaPeticion peticionExonerada() {
-        return new CrearMatriculaAdministrativaPeticion(5L, 200L, "EXONERADO", BigDecimal.ZERO, null, null,
+    private CrearMatriculaAdministrativaRequest peticionExonerada() {
+        return new CrearMatriculaAdministrativaRequest(5L, 200L, "EXONERADO", BigDecimal.ZERO, null, null,
                 "Convenio institucional", false);
     }
 
@@ -260,7 +260,7 @@ class MatriculaServiceTests {
         when(matriculas.existsByUsuario_IdAndCurso_Id(5L, 200L)).thenReturn(false);
         prepararPersistenciaDeMatricula();
 
-        MatriculaRespuesta respuesta = service.matricularAdministrativamente(peticionExonerada());
+        MatriculaResponse respuesta = service.matricularAdministrativamente(peticionExonerada());
 
         assertEquals("ACTIVA", respuesta.estado());
         assertEquals("ADMINISTRADOR", respuesta.formaIngreso());
@@ -297,7 +297,7 @@ class MatriculaServiceTests {
         when(adminUsuarios.obtener(5L)).thenReturn(respuestaAdminCon(List.of(RolUsuarioAdmin.ALUMNO)));
         when(cursos.findWithDetalleById(200L)).thenReturn(Optional.of(cursoPublicadoGratuito()));
 
-        CrearMatriculaAdministrativaPeticion peticion = new CrearMatriculaAdministrativaPeticion(5L, 200L,
+        CrearMatriculaAdministrativaRequest peticion = new CrearMatriculaAdministrativaRequest(5L, 200L,
                 "DESCUENTO", null, null, null, "Motivo", false);
 
         assertThrows(BusinessValidationException.class, () -> service.matricularAdministrativamente(peticion));
@@ -312,7 +312,7 @@ class MatriculaServiceTests {
         when(matriculas.existsByUsuario_IdAndCurso_Id(5L, 200L)).thenReturn(false);
         prepararPersistenciaDeMatricula();
 
-        CrearMatriculaAdministrativaPeticion peticion = new CrearMatriculaAdministrativaPeticion(5L, 200L,
+        CrearMatriculaAdministrativaRequest peticion = new CrearMatriculaAdministrativaRequest(5L, 200L,
                 "EXONERADO", BigDecimal.TEN, null, null, "Motivo", false);
 
         assertThrows(BusinessValidationException.class, () -> service.matricularAdministrativamente(peticion));
@@ -327,7 +327,7 @@ class MatriculaServiceTests {
         when(matriculas.existsByUsuario_IdAndCurso_Id(5L, 200L)).thenReturn(false);
         prepararPersistenciaDeMatricula();
 
-        CrearMatriculaAdministrativaPeticion peticion = new CrearMatriculaAdministrativaPeticion(5L, 200L,
+        CrearMatriculaAdministrativaRequest peticion = new CrearMatriculaAdministrativaRequest(5L, 200L,
                 "REGISTRADO_MANUAL", BigDecimal.valueOf(150), null, null, "Pago por Yape", false);
 
         assertThrows(BusinessValidationException.class, () -> service.matricularAdministrativamente(peticion));
@@ -342,10 +342,10 @@ class MatriculaServiceTests {
         when(matriculas.existsByUsuario_IdAndCurso_Id(5L, 200L)).thenReturn(false);
         prepararPersistenciaDeMatricula();
 
-        CrearMatriculaAdministrativaPeticion peticion = new CrearMatriculaAdministrativaPeticion(5L, 200L,
+        CrearMatriculaAdministrativaRequest peticion = new CrearMatriculaAdministrativaRequest(5L, 200L,
                 "REGISTRADO_MANUAL", BigDecimal.valueOf(150), "Yape", "OP-123", "Pago por Yape", false);
 
-        MatriculaRespuesta respuesta = service.matricularAdministrativamente(peticion);
+        MatriculaResponse respuesta = service.matricularAdministrativamente(peticion);
 
         assertEquals("ACTIVA", respuesta.estado());
         org.mockito.Mockito.verify(pagos).save(any());
@@ -370,13 +370,13 @@ class MatriculaServiceTests {
     void listarAdministrativasNormalizaYDelegaLosFiltros() {
         comoAdministrador(1L);
         Pageable pageable = PageRequest.of(1, 20);
-        MatriculaAdministrativaRespuesta fila = new MatriculaAdministrativaRespuesta(
+        MatriculaAdministrativaResponse fila = new MatriculaAdministrativaResponse(
                 500L, 5L, "Ana Pérez", "ana@example.com", 200L, "Curso gratuito",
                 "ACTIVA", "ADMINISTRADOR", Instant.parse("2026-09-01T12:00:00Z"), null);
-        Page<MatriculaAdministrativaRespuesta> pagina = new PageImpl<>(List.of(fila), pageable, 1);
+        Page<MatriculaAdministrativaResponse> pagina = new PageImpl<>(List.of(fila), pageable, 1);
         when(matriculas.buscarAdministrativas("ana pérez", "ACTIVA", pageable)).thenReturn(pagina);
 
-        Page<MatriculaAdministrativaRespuesta> resultado = service.listarAdministrativas(
+        Page<MatriculaAdministrativaResponse> resultado = service.listarAdministrativas(
                 "  Ana Pérez  ", " activa ", pageable);
 
         assertEquals(List.of(fila), resultado.getContent());
@@ -389,8 +389,8 @@ class MatriculaServiceTests {
         Matricula matricula = matriculaActivaAdministrativa();
         when(matriculas.findWithDetalleById(500L)).thenReturn(Optional.of(matricula));
 
-        MatriculaRespuesta respuesta = service.cancelar(
-                500L, new CancelarMatriculaPeticion("  Solicitud del alumno  "));
+        MatriculaResponse respuesta = service.cancelar(
+                500L, new CancelarMatriculaRequest("  Solicitud del alumno  "));
 
         assertEquals("CANCELADA", respuesta.estado());
         assertEquals("CANCELADA", matricula.getEstado());
@@ -415,7 +415,7 @@ class MatriculaServiceTests {
         when(matriculas.findWithDetalleById(500L)).thenReturn(Optional.of(matricula));
 
         assertThrows(BusinessValidationException.class,
-                () -> service.cancelar(500L, new CancelarMatriculaPeticion("Segundo intento")));
+                () -> service.cancelar(500L, new CancelarMatriculaRequest("Segundo intento")));
     }
 
     @Test
@@ -424,7 +424,7 @@ class MatriculaServiceTests {
         when(matriculas.findWithDetalleById(999L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class,
-                () -> service.cancelar(999L, new CancelarMatriculaPeticion("Solicitud del alumno")));
+                () -> service.cancelar(999L, new CancelarMatriculaRequest("Solicitud del alumno")));
     }
 
     @Test
@@ -459,7 +459,7 @@ class MatriculaServiceTests {
         when(historial.findByMatricula_IdOrderByRealizadoEnDesc(500L)).thenReturn(List.of(cambio));
         when(usuarios.findWithPersonaById(1L)).thenReturn(Optional.of(administrador));
 
-        MatriculaDetalleAdministrativaRespuesta respuesta = service.detalleAdministrativo(500L);
+        MatriculaDetalleAdministrativaResponse respuesta = service.detalleAdministrativo(500L);
 
         assertEquals(1, respuesta.pagos().size());
         assertEquals(700L, respuesta.pagos().get(0).pagoId());
@@ -488,7 +488,7 @@ class MatriculaServiceTests {
         m.setFechaMatricula(Instant.parse("2026-09-01T00:00:00Z"));
         when(matriculas.findByUsuario_IdOrderByFechaMatriculaDesc(1L)).thenReturn(List.of(m));
 
-        List<MatriculaRespuesta> resultado = service.misCursos();
+        List<MatriculaResponse> resultado = service.misCursos();
 
         assertTrue(resultado.get(0).accesoEfectivo());
         assertEquals("Disponible para continuar.", resultado.get(0).mensajeAcceso());
@@ -511,7 +511,7 @@ class MatriculaServiceTests {
         m.setFechaVencimiento(Instant.parse("2026-02-01T00:00:00Z"));
         when(matriculas.findByUsuario_IdOrderByFechaMatriculaDesc(1L)).thenReturn(List.of(m));
 
-        List<MatriculaRespuesta> resultado = service.misCursos();
+        List<MatriculaResponse> resultado = service.misCursos();
 
         assertFalse(resultado.get(0).accesoEfectivo());
         assertEquals("El acceso venci\u00f3.", resultado.get(0).mensajeAcceso());
@@ -532,7 +532,7 @@ class MatriculaServiceTests {
         m.setFechaMatricula(Instant.parse("2026-09-01T00:00:00Z"));
         when(matriculas.findByUsuario_IdOrderByFechaMatriculaDesc(1L)).thenReturn(List.of(m));
 
-        List<MatriculaRespuesta> resultado = service.misCursos();
+        List<MatriculaResponse> resultado = service.misCursos();
 
         assertFalse(resultado.get(0).accesoEfectivo());
         assertEquals("El curso a\u00fan no inicia.", resultado.get(0).mensajeAcceso());

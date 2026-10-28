@@ -14,8 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.IngresarSesionRespuesta;
-import pe.edu.utp.escuela.app.dto.SesionCalendarioRespuesta;
+import pe.edu.utp.escuela.app.dto.IngresarSesionResponse;
+import pe.edu.utp.escuela.app.dto.SesionCalendarioResponse;
 import pe.edu.utp.escuela.app.entity.Asistencia;
 import pe.edu.utp.escuela.app.entity.Leccion;
 import pe.edu.utp.escuela.app.entity.Matricula;
@@ -61,7 +61,7 @@ public class SesionAlumnoService {
     // ---------------------------------------------------------------- Calendario --
 
     @Transactional(readOnly = true)
-    public List<SesionCalendarioRespuesta> calendario(LocalDate desde, LocalDate hasta) {
+    public List<SesionCalendarioResponse> calendario(LocalDate desde, LocalDate hasta) {
         usuarioActualAlumno();
         Long usuarioId = actual.get().userId();
 
@@ -99,7 +99,7 @@ public class SesionAlumnoService {
             String estado = estadoSesion(l, ahora);
             String enlace = "EN_VENTANA".equals(estado) ? l.getEnlaceReunion() : null;
             boolean grabacionDisponible = "REALIZADA".equals(estado) && conGrabacion.contains(l.getId());
-            return new SesionCalendarioRespuesta(
+            return new SesionCalendarioResponse(
                     l.getId(), l.getModulo().getCurso().getId(), l.getModulo().getCurso().getTitulo(),
                     l.getTitulo(), l.getFechaHoraInicio(), l.getFechaHoraFin(), estado, enlace,
                     grabacionDisponible);
@@ -109,7 +109,7 @@ public class SesionAlumnoService {
     // ---------------------------------------------------------------- Ingresar --
 
     @Transactional
-    public IngresarSesionRespuesta ingresar(Long leccionId) {
+    public IngresarSesionResponse ingresar(Long leccionId) {
         Usuario usuario = usuarioActualAlumno();
         Leccion leccion = lecciones.findById(leccionId)
                 .orElseThrow(() -> new ResourceNotFoundException("La sesión no existe."));
@@ -144,7 +144,7 @@ public class SesionAlumnoService {
                     nueva.setModificadaEn(ahora);
                     return asistencias.save(nueva);
                 });
-        return new IngresarSesionRespuesta(leccion.getEnlaceReunion());
+        return new IngresarSesionResponse(leccion.getEnlaceReunion());
     }
 
     // ---------------------------------------------------------------- Porcentaje de asistencia --

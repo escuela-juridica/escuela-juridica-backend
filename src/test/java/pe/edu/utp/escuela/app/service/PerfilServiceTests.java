@@ -17,10 +17,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import pe.edu.utp.escuela.app.dto.ActualizarPerfilPeticion;
-import pe.edu.utp.escuela.app.dto.CambiarContrasenaPeticion;
-import pe.edu.utp.escuela.app.dto.NuevaContrasenaPeticion;
-import pe.edu.utp.escuela.app.dto.PerfilRespuesta;
+import pe.edu.utp.escuela.app.dto.ActualizarPerfilRequest;
+import pe.edu.utp.escuela.app.dto.CambiarContrasenaRequest;
+import pe.edu.utp.escuela.app.dto.NuevaContrasenaRequest;
+import pe.edu.utp.escuela.app.dto.PerfilResponse;
 import pe.edu.utp.escuela.app.entity.Persona;
 import pe.edu.utp.escuela.app.entity.Usuario;
 import pe.edu.utp.escuela.app.exception.BusinessValidationException;
@@ -82,7 +82,7 @@ class PerfilServiceTests {
         Usuario usuario = usuarioConPersona(1L, 10L, null, "hash");
         mockUsuarioActual(1L, usuario);
 
-        PerfilRespuesta respuesta = service.obtener();
+        PerfilResponse respuesta = service.obtener();
 
         assertEquals("Ana", respuesta.nombres());
         assertEquals("ana@example.com", respuesta.correo());
@@ -95,7 +95,7 @@ class PerfilServiceTests {
         Usuario usuario = usuarioConPersona(1L, 10L, "google-sub", null);
         mockUsuarioActual(1L, usuario);
 
-        PerfilRespuesta respuesta = service.obtener();
+        PerfilResponse respuesta = service.obtener();
 
         assertTrue(respuesta.accesoGoogle());
         assertTrue(respuesta.puedeCrearContrasena());
@@ -114,8 +114,8 @@ class PerfilServiceTests {
         mockUsuarioActual(1L, usuario);
         when(personas.existsByDocumentoIdentidadAndIdNot(anyString(), eq(10L))).thenReturn(false);
 
-        PerfilRespuesta respuesta = service.actualizar(
-                new ActualizarPerfilPeticion("Ana María", "Gómez", "Ruiz", "988888888", "87654321"));
+        PerfilResponse respuesta = service.actualizar(
+                new ActualizarPerfilRequest("Ana María", "Gómez", "Ruiz", "988888888", "87654321"));
 
         assertEquals("Ana María", respuesta.nombres());
         assertEquals("Gómez", respuesta.apellidoPaterno());
@@ -129,7 +129,7 @@ class PerfilServiceTests {
         when(personas.existsByDocumentoIdentidadAndIdNot("87654321", 10L)).thenReturn(true);
 
         assertThrows(DuplicateResourceException.class, () -> service.actualizar(
-                new ActualizarPerfilPeticion("Ana", "Pérez", "Ruiz", "999999999", "87654321")));
+                new ActualizarPerfilRequest("Ana", "Pérez", "Ruiz", "999999999", "87654321")));
     }
 
     @Test
@@ -137,7 +137,7 @@ class PerfilServiceTests {
         Usuario usuario = usuarioConPersona(1L, 10L, null, "hash");
         mockUsuarioActual(1L, usuario);
 
-        service.actualizar(new ActualizarPerfilPeticion("Ana", "Pérez", "Ruiz", "999999999", "12345678"));
+        service.actualizar(new ActualizarPerfilRequest("Ana", "Pérez", "Ruiz", "999999999", "12345678"));
 
         verify(personas, never()).existsByDocumentoIdentidadAndIdNot(anyString(), eq(10L));
     }
@@ -148,7 +148,7 @@ class PerfilServiceTests {
         mockUsuarioActual(1L, usuario);
 
         assertThrows(BusinessValidationException.class, () -> service.actualizar(
-                new ActualizarPerfilPeticion(" ", "Pérez", "Ruiz", "999999999", "12345678")));
+                new ActualizarPerfilRequest(" ", "Pérez", "Ruiz", "999999999", "12345678")));
     }
 
     @Test
@@ -157,7 +157,7 @@ class PerfilServiceTests {
         mockUsuarioActual(1L, usuario);
         when(encoder.encode("Clave123")).thenReturn("hash-nuevo");
 
-        service.crearContrasena(new NuevaContrasenaPeticion("Clave123", "Clave123"));
+        service.crearContrasena(new NuevaContrasenaRequest("Clave123", "Clave123"));
 
         assertEquals("hash-nuevo", usuario.getContrasenaHash());
     }
@@ -168,7 +168,7 @@ class PerfilServiceTests {
         mockUsuarioActual(1L, usuario);
 
         assertThrows(OperationNotAllowedException.class,
-                () -> service.crearContrasena(new NuevaContrasenaPeticion("Clave123", "Clave123")));
+                () -> service.crearContrasena(new NuevaContrasenaRequest("Clave123", "Clave123")));
     }
 
     @Test
@@ -177,7 +177,7 @@ class PerfilServiceTests {
         mockUsuarioActual(1L, usuario);
 
         assertThrows(OperationNotAllowedException.class,
-                () -> service.crearContrasena(new NuevaContrasenaPeticion("Clave123", "Clave123")));
+                () -> service.crearContrasena(new NuevaContrasenaRequest("Clave123", "Clave123")));
     }
 
     @Test
@@ -186,7 +186,7 @@ class PerfilServiceTests {
         mockUsuarioActual(1L, usuario);
 
         assertThrows(BusinessValidationException.class,
-                () -> service.crearContrasena(new NuevaContrasenaPeticion("Clave123", "Otra123")));
+                () -> service.crearContrasena(new NuevaContrasenaRequest("Clave123", "Otra123")));
     }
 
     @Test
@@ -197,7 +197,7 @@ class PerfilServiceTests {
         when(encoder.encode("NuevaClave1")).thenReturn("hash-nuevo");
 
         service.cambiarContrasena(
-                new CambiarContrasenaPeticion("ActualClave1", "NuevaClave1", "NuevaClave1"));
+                new CambiarContrasenaRequest("ActualClave1", "NuevaClave1", "NuevaClave1"));
 
         assertEquals("hash-nuevo", usuario.getContrasenaHash());
     }
@@ -209,7 +209,7 @@ class PerfilServiceTests {
         when(encoder.matches("Mala", "hash-viejo")).thenReturn(false);
 
         assertThrows(InvalidCurrentPasswordException.class, () -> service.cambiarContrasena(
-                new CambiarContrasenaPeticion("Mala", "NuevaClave1", "NuevaClave1")));
+                new CambiarContrasenaRequest("Mala", "NuevaClave1", "NuevaClave1")));
     }
 
     @Test
@@ -218,7 +218,7 @@ class PerfilServiceTests {
         mockUsuarioActual(1L, usuario);
 
         assertThrows(OperationNotAllowedException.class, () -> service.cambiarContrasena(
-                new CambiarContrasenaPeticion("Cualquiera1", "NuevaClave1", "NuevaClave1")));
+                new CambiarContrasenaRequest("Cualquiera1", "NuevaClave1", "NuevaClave1")));
     }
 
     @Test
@@ -228,6 +228,6 @@ class PerfilServiceTests {
         when(encoder.matches("ActualClave1", "hash-viejo")).thenReturn(true);
 
         assertThrows(BusinessValidationException.class, () -> service.cambiarContrasena(
-                new CambiarContrasenaPeticion("ActualClave1", "NuevaClave1", "OtraClave1")));
+                new CambiarContrasenaRequest("ActualClave1", "NuevaClave1", "OtraClave1")));
     }
 }

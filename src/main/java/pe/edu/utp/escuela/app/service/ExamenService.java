@@ -8,15 +8,15 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.CrearExamenPeticion;
-import pe.edu.utp.escuela.app.dto.CrearOpcionPeticion;
-import pe.edu.utp.escuela.app.dto.CrearPreguntaPeticion;
-import pe.edu.utp.escuela.app.dto.ExamenRespuesta;
+import pe.edu.utp.escuela.app.dto.CrearExamenRequest;
+import pe.edu.utp.escuela.app.dto.CrearOpcionRequest;
+import pe.edu.utp.escuela.app.dto.CrearPreguntaRequest;
+import pe.edu.utp.escuela.app.dto.ExamenResponse;
 import pe.edu.utp.escuela.app.dto.FinalidadExamen;
 import pe.edu.utp.escuela.app.dto.MostrarRespuestas;
-import pe.edu.utp.escuela.app.dto.OpcionRespuesta;
-import pe.edu.utp.escuela.app.dto.OrdenPeticion;
-import pe.edu.utp.escuela.app.dto.PreguntaRespuesta;
+import pe.edu.utp.escuela.app.dto.OpcionResponse;
+import pe.edu.utp.escuela.app.dto.OrdenRequest;
+import pe.edu.utp.escuela.app.dto.PreguntaResponse;
 import pe.edu.utp.escuela.app.dto.TipoExamen;
 import pe.edu.utp.escuela.app.dto.TipoPregunta;
 import pe.edu.utp.escuela.app.entity.Curso;
@@ -54,7 +54,7 @@ public class ExamenService {
     // ---------------------------------------------------------------- Lectura --
 
     @Transactional(readOnly = true)
-    public List<ExamenRespuesta> listarPorCurso(Long cursoId) {
+    public List<ExamenResponse> listarPorCurso(Long cursoId) {
         exigirAdministrador();
         buscarCursoOLanzar(cursoId);
         return construirExamenes(examenes.findByCurso_IdOrderByOrdenAsc(cursoId));
@@ -63,7 +63,7 @@ public class ExamenService {
     // ---------------------------------------------------------------- Exámenes --
 
     @Transactional
-    public ExamenRespuesta crearExamen(Long cursoId, CrearExamenPeticion p) {
+    public ExamenResponse crearExamen(Long cursoId, CrearExamenRequest p) {
         exigirAdministrador();
         Curso curso = buscarCursoOLanzar(cursoId);
         Modulo moduloResuelto = resolverModulo(curso, p.finalidad(), p.moduloId());
@@ -81,7 +81,7 @@ public class ExamenService {
     }
 
     @Transactional
-    public ExamenRespuesta actualizarExamen(Long examenId, CrearExamenPeticion p) {
+    public ExamenResponse actualizarExamen(Long examenId, CrearExamenRequest p) {
         exigirAdministrador();
         Examen examen = buscarExamenOLanzar(examenId);
         Curso curso = examen.getCurso();
@@ -96,7 +96,7 @@ public class ExamenService {
     }
 
     @Transactional
-    public ExamenRespuesta cambiarActivoExamen(Long examenId, boolean activo) {
+    public ExamenResponse cambiarActivoExamen(Long examenId, boolean activo) {
         exigirAdministrador();
         Examen examen = buscarExamenOLanzar(examenId);
         // HU-016: una vez iniciada la convocatoria, un examen CALIFICADO ya no se retira (dejaría
@@ -125,7 +125,7 @@ public class ExamenService {
     }
 
     @Transactional
-    public List<ExamenRespuesta> reordenarExamenes(Long cursoId, OrdenPeticion p) {
+    public List<ExamenResponse> reordenarExamenes(Long cursoId, OrdenRequest p) {
         exigirAdministrador();
         buscarCursoOLanzar(cursoId);
         List<Examen> actuales = examenes.findByCurso_IdOrderByOrdenAsc(cursoId);
@@ -207,10 +207,10 @@ public class ExamenService {
     // ---------------------------------------------------------------- Preguntas --
 
     @Transactional
-    public PreguntaRespuesta crearPregunta(Long examenId, CrearPreguntaPeticion p) {
+    public PreguntaResponse crearPregunta(Long examenId, CrearPreguntaRequest p) {
         exigirAdministrador();
         Examen examen = buscarExamenOLanzar(examenId);
-        List<CrearOpcionPeticion> opcionesValidas = validarOpciones(p.tipo(), p.opciones());
+        List<CrearOpcionRequest> opcionesValidas = validarOpciones(p.tipo(), p.opciones());
 
         Pregunta pregunta = new Pregunta();
         pregunta.setExamen(examen);
@@ -226,10 +226,10 @@ public class ExamenService {
     }
 
     @Transactional
-    public PreguntaRespuesta actualizarPregunta(Long preguntaId, CrearPreguntaPeticion p) {
+    public PreguntaResponse actualizarPregunta(Long preguntaId, CrearPreguntaRequest p) {
         exigirAdministrador();
         Pregunta pregunta = buscarPreguntaOLanzar(preguntaId);
-        List<CrearOpcionPeticion> opcionesValidas = validarOpciones(p.tipo(), p.opciones());
+        List<CrearOpcionRequest> opcionesValidas = validarOpciones(p.tipo(), p.opciones());
 
         pregunta.setTipo(p.tipo().name());
         pregunta.setEnunciado(textos.requireText(p.enunciado(), "Enunciado"));
@@ -242,7 +242,7 @@ public class ExamenService {
     }
 
     @Transactional
-    public PreguntaRespuesta cambiarActivoPregunta(Long preguntaId, boolean activo) {
+    public PreguntaResponse cambiarActivoPregunta(Long preguntaId, boolean activo) {
         exigirAdministrador();
         Pregunta pregunta = buscarPreguntaOLanzar(preguntaId);
         pregunta.setActivo(activo);
@@ -259,7 +259,7 @@ public class ExamenService {
     }
 
     @Transactional
-    public List<PreguntaRespuesta> reordenarPreguntas(Long examenId, OrdenPeticion p) {
+    public List<PreguntaResponse> reordenarPreguntas(Long examenId, OrdenRequest p) {
         exigirAdministrador();
         buscarExamenOLanzar(examenId);
         List<Pregunta> actuales = preguntas.findByExamen_IdOrderByOrdenAsc(examenId);
@@ -300,7 +300,7 @@ public class ExamenService {
     }
 
     private void aplicarCamposExamen(
-            Examen examen, Curso curso, Modulo moduloResuelto, CrearExamenPeticion p, boolean esActualizacion) {
+            Examen examen, Curso curso, Modulo moduloResuelto, CrearExamenRequest p, boolean esActualizacion) {
         boolean practica = p.tipo() == TipoExamen.PRACTICA;
         boolean esFinal = p.finalidad() == FinalidadExamen.FINAL;
 
@@ -352,15 +352,15 @@ public class ExamenService {
         return "EN_CURSO".equals(codigo) || "CERRADO".equals(codigo);
     }
 
-    private List<CrearOpcionPeticion> validarOpciones(TipoPregunta tipo, List<CrearOpcionPeticion> opcionesPedidas) {
-        List<CrearOpcionPeticion> lista = opcionesPedidas == null ? List.of() : opcionesPedidas;
+    private List<CrearOpcionRequest> validarOpciones(TipoPregunta tipo, List<CrearOpcionRequest> opcionesPedidas) {
+        List<CrearOpcionRequest> lista = opcionesPedidas == null ? List.of() : opcionesPedidas;
         if (tipo == TipoPregunta.RESPUESTA_ABIERTA) {
             if (!lista.isEmpty()) {
                 throw new BusinessValidationException("Una pregunta de respuesta abierta no lleva alternativas.");
             }
             return lista;
         }
-        long correctas = lista.stream().filter(CrearOpcionPeticion::esCorrecta).count();
+        long correctas = lista.stream().filter(CrearOpcionRequest::esCorrecta).count();
         if (tipo == TipoPregunta.VERDADERO_FALSO) {
             if (lista.size() != 2) {
                 throw new BusinessValidationException("Verdadero o falso exige exactamente dos alternativas.");
@@ -382,9 +382,9 @@ public class ExamenService {
         return lista;
     }
 
-    private void guardarOpciones(Pregunta pregunta, List<CrearOpcionPeticion> lista) {
+    private void guardarOpciones(Pregunta pregunta, List<CrearOpcionRequest> lista) {
         int orden = 1;
-        for (CrearOpcionPeticion op : lista) {
+        for (CrearOpcionRequest op : lista) {
             OpcionPregunta entidad = new OpcionPregunta();
             entidad.setPregunta(pregunta);
             entidad.setTexto(textos.requireText(op.texto(), "Alternativa"));
@@ -438,7 +438,7 @@ public class ExamenService {
 
     // ---------------------------------------------------------------- Mapeo --
 
-    private List<ExamenRespuesta> construirExamenes(List<Examen> lista) {
+    private List<ExamenResponse> construirExamenes(List<Examen> lista) {
         List<Long> examenIds = lista.stream().map(Examen::getId).toList();
         List<Pregunta> todasPreguntas = examenIds.isEmpty() ? List.of() : preguntasDeExamenes(examenIds);
         Map<Long, List<Pregunta>> preguntasPorExamen = todasPreguntas.stream()
@@ -456,13 +456,13 @@ public class ExamenService {
                 .toList();
     }
 
-    private ExamenRespuesta mapearExamen(Examen e, List<Pregunta> preguntasDelExamen) {
-        List<PreguntaRespuesta> preguntasRespuesta = preguntasDelExamen.stream()
+    private ExamenResponse mapearExamen(Examen e, List<Pregunta> preguntasDelExamen) {
+        List<PreguntaResponse> preguntasRespuesta = preguntasDelExamen.stream()
                 .sorted(Comparator.comparing(Pregunta::getOrden))
                 .map(preg -> mapearPregunta(preg, opciones.findByPregunta_IdOrderByOrdenAsc(preg.getId())))
                 .toList();
         Modulo modulo = e.getModulo();
-        return new ExamenRespuesta(
+        return new ExamenResponse(
                 e.getId(), e.getCurso().getId(), modulo == null ? null : modulo.getId(),
                 modulo == null ? null : modulo.getTitulo(), e.getTitulo(), e.getDescripcion(),
                 e.getTipo(), e.getFinalidad(), e.getOrden(), e.getMaximoIntentos(), e.getTiempoLimiteMinutos(),
@@ -471,12 +471,12 @@ public class ExamenService {
                 preguntasRespuesta);
     }
 
-    private PreguntaRespuesta mapearPregunta(Pregunta p, List<OpcionPregunta> opcionesDePregunta) {
-        List<OpcionRespuesta> opcionesRespuesta = opcionesDePregunta.stream()
+    private PreguntaResponse mapearPregunta(Pregunta p, List<OpcionPregunta> opcionesDePregunta) {
+        List<OpcionResponse> opcionesRespuesta = opcionesDePregunta.stream()
                 .sorted(Comparator.comparing(OpcionPregunta::getOrden))
-                .map(op -> new OpcionRespuesta(op.getId(), op.getTexto(), op.isEsCorrecta(), op.getOrden()))
+                .map(op -> new OpcionResponse(op.getId(), op.getTexto(), op.isEsCorrecta(), op.getOrden()))
                 .toList();
-        return new PreguntaRespuesta(
+        return new PreguntaResponse(
                 p.getId(), p.getTipo(), p.getEnunciado(), p.getPuntaje(), p.getOrden(), p.isActivo(),
                 opcionesRespuesta);
     }

@@ -15,7 +15,7 @@ import pe.edu.utp.escuela.app.dto.DuracionLeccionFila;
 import pe.edu.utp.escuela.app.dto.ErrorValidacionCurso;
 import pe.edu.utp.escuela.app.dto.ModalidadCurso;
 import pe.edu.utp.escuela.app.dto.TipoVentaCurso;
-import pe.edu.utp.escuela.app.dto.ValidacionPublicacionRespuesta;
+import pe.edu.utp.escuela.app.dto.ValidacionPublicacionResponse;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.CursoDocente;
 import pe.edu.utp.escuela.app.entity.CursoFirmante;
@@ -68,29 +68,29 @@ public class PublicacionService {
     private final Clock clock;
 
     @Transactional(readOnly = true)
-    public ValidacionPublicacionRespuesta validar(Long cursoId) {
+    public ValidacionPublicacionResponse validar(Long cursoId) {
         exigirAdministrador();
         Curso curso = buscarOLanzar(cursoId);
         if (!"BORRADOR".equals(curso.getEstadoCurso().getCodigo())) {
-            return new ValidacionPublicacionRespuesta(false, List.of(), false, curso.getEstadoCurso().getCodigo());
+            return new ValidacionPublicacionResponse(false, List.of(), false, curso.getEstadoCurso().getCodigo());
         }
         List<ErrorValidacionCurso> hallazgos = evaluar(curso);
-        return new ValidacionPublicacionRespuesta(puedePublicarse(hallazgos), hallazgos, false,
+        return new ValidacionPublicacionResponse(puedePublicarse(hallazgos), hallazgos, false,
                 curso.getEstadoCurso().getCodigo());
     }
 
     @Transactional
-    public ValidacionPublicacionRespuesta publicar(Long cursoId) {
+    public ValidacionPublicacionResponse publicar(Long cursoId) {
         exigirAdministrador();
         Curso curso = buscarOLanzar(cursoId);
         if (!"BORRADOR".equals(curso.getEstadoCurso().getCodigo())) {
             // Doble solicitud (o un ciclo de vida ya avanzado, HU-016): no hay nada que repetir.
-            return new ValidacionPublicacionRespuesta(false, List.of(), false, curso.getEstadoCurso().getCodigo());
+            return new ValidacionPublicacionResponse(false, List.of(), false, curso.getEstadoCurso().getCodigo());
         }
 
         List<ErrorValidacionCurso> hallazgos = evaluar(curso);
         if (!puedePublicarse(hallazgos)) {
-            return new ValidacionPublicacionRespuesta(false, hallazgos, false, curso.getEstadoCurso().getCodigo());
+            return new ValidacionPublicacionResponse(false, hallazgos, false, curso.getEstadoCurso().getCodigo());
         }
 
         ModalidadCurso modalidad = ModalidadCurso.valueOf(curso.getModalidad());
@@ -106,7 +106,7 @@ public class PublicacionService {
                 ? "Publicado: al ser virtual sin fecha de inicio, queda EN_CURSO de inmediato."
                 : "Publicado.");
 
-        return new ValidacionPublicacionRespuesta(true, hallazgos, true, destino.getCodigo());
+        return new ValidacionPublicacionResponse(true, hallazgos, true, destino.getCodigo());
     }
 
     private boolean puedePublicarse(List<ErrorValidacionCurso> hallazgos) {

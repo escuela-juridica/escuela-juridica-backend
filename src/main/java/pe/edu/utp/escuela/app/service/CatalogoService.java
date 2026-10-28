@@ -14,12 +14,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utp.escuela.app.dto.CursoTarjetaFila;
-import pe.edu.utp.escuela.app.dto.CursoTarjetaRespuesta;
-import pe.edu.utp.escuela.app.dto.DocenteBreveRespuesta;
+import pe.edu.utp.escuela.app.dto.CursoTarjetaResponse;
+import pe.edu.utp.escuela.app.dto.DocenteBreveResponse;
 import pe.edu.utp.escuela.app.dto.DocenteCursoFila;
-import pe.edu.utp.escuela.app.dto.EstadoComercialRespuesta;
-import pe.edu.utp.escuela.app.dto.FiltrosCursoRespuesta;
-import pe.edu.utp.escuela.app.dto.OpcionFiltroRespuesta;
+import pe.edu.utp.escuela.app.dto.EstadoComercialResponse;
+import pe.edu.utp.escuela.app.dto.FiltrosCursoResponse;
+import pe.edu.utp.escuela.app.dto.OpcionFiltroResponse;
 import pe.edu.utp.escuela.app.dto.PageResponse;
 import pe.edu.utp.escuela.app.repository.CategoriaTematicaRepository;
 import pe.edu.utp.escuela.app.repository.CursoDocenteRepository;
@@ -47,7 +47,7 @@ public class CatalogoService {
     private final Clock clock;
 
     @Transactional(readOnly = true)
-    public PageResponse<CursoTarjetaRespuesta> listar(
+    public PageResponse<CursoTarjetaResponse> listar(
             String texto, String tipo, String categoria, int pagina, int tamano) {
         int limite = Math.max(TAMANO_MINIMO, Math.min(tamano, TAMANO_MAXIMO));
         Page<CursoTarjetaFila> filas = cursoRepository.buscarPublicados(
@@ -63,9 +63,9 @@ public class CatalogoService {
 
         List<Long> cursoIds = filas.getContent().stream().map(CursoTarjetaFila::cursoId).toList();
         Map<Long, Long> activas = matriculaRepository.contarActivas(cursoIds);
-        Map<Long, List<DocenteBreveRespuesta>> docentes = agruparDocentes(cursoIds);
+        Map<Long, List<DocenteBreveResponse>> docentes = agruparDocentes(cursoIds);
 
-        List<CursoTarjetaRespuesta> elementos = filas.getContent().stream()
+        List<CursoTarjetaResponse> elementos = filas.getContent().stream()
                 .map(fila -> mapear(
                         fila,
                         activas.getOrDefault(fila.cursoId(), 0L),
@@ -76,20 +76,20 @@ public class CatalogoService {
     }
 
     @Transactional(readOnly = true)
-    public FiltrosCursoRespuesta filtros() {
-        List<OpcionFiltroRespuesta> tipos = tipoCursoRepository
+    public FiltrosCursoResponse filtros() {
+        List<OpcionFiltroResponse> tipos = tipoCursoRepository
                 .findByActivoTrueOrderByOrdenAscNombreAsc(Pageable.unpaged()).stream()
-                .map(tipo -> new OpcionFiltroRespuesta(tipo.getCodigo(), tipo.getNombre()))
+                .map(tipo -> new OpcionFiltroResponse(tipo.getCodigo(), tipo.getNombre()))
                 .toList();
-        List<OpcionFiltroRespuesta> categorias = categoriaTematicaRepository
+        List<OpcionFiltroResponse> categorias = categoriaTematicaRepository
                 .findByActivoTrueOrderByOrdenAscNombreAsc(Pageable.unpaged()).stream()
-                .map(categoria -> new OpcionFiltroRespuesta(
+                .map(categoria -> new OpcionFiltroResponse(
                         categoria.getCodigo(), categoria.getNombre()))
                 .toList();
-        return new FiltrosCursoRespuesta(tipos, categorias);
+        return new FiltrosCursoResponse(tipos, categorias);
     }
 
-    private Map<Long, List<DocenteBreveRespuesta>> agruparDocentes(List<Long> cursoIds) {
+    private Map<Long, List<DocenteBreveResponse>> agruparDocentes(List<Long> cursoIds) {
         return cursoDocenteRepository.buscarDocentesDeCursos(cursoIds).stream()
                 .sorted(Comparator.comparing(DocenteCursoFila::orden))
                 .collect(Collectors.groupingBy(
@@ -97,10 +97,10 @@ public class CatalogoService {
                         Collectors.mapping(this::mapearDocente, Collectors.toList())));
     }
 
-    private DocenteBreveRespuesta mapearDocente(DocenteCursoFila fila) {
+    private DocenteBreveResponse mapearDocente(DocenteCursoFila fila) {
         String nombreCompleto = componerNombre(
                 fila.nombres(), fila.apellidoPaterno(), fila.apellidoMaterno());
-        return new DocenteBreveRespuesta(
+        return new DocenteBreveResponse(
                 fila.personaId(),
                 nombreCompleto,
                 componerIniciales(fila.nombres(), fila.apellidoPaterno()),
@@ -122,8 +122,8 @@ public class CatalogoService {
         return ("" + inicialNombre + inicialApellido).toUpperCase(Locale.ROOT);
     }
 
-    private CursoTarjetaRespuesta mapear(
-            CursoTarjetaFila fila, long activas, List<DocenteBreveRespuesta> docentes) {
+    private CursoTarjetaResponse mapear(
+            CursoTarjetaFila fila, long activas, List<DocenteBreveResponse> docentes) {
         CourseCommercialData datos = new CourseCommercialData(
                 fila.modalidad(),
                 fila.tipoVenta(),
@@ -137,7 +137,7 @@ public class CatalogoService {
                 fila.cupoMaximo());
         CourseCommercialStatus estado = courseCommercialStatusService.calculate(datos, activas);
 
-        return new CursoTarjetaRespuesta(
+        return new CursoTarjetaResponse(
                 fila.urlAmigable(),
                 fila.titulo(),
                 fila.descripcion(),
@@ -151,7 +151,7 @@ public class CatalogoService {
                 fila.destacado(),
                 fila.horasAcademicas(),
                 docentes,
-                new EstadoComercialRespuesta(
+                new EstadoComercialResponse(
                         estado.code().name(),
                         estado.label(),
                         estado.startDate(),

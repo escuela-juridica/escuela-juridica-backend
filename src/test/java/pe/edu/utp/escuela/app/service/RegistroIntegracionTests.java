@@ -52,12 +52,12 @@ class RegistroIntegracionTests {
         when(google.obtenerVerificada(anyString())).thenThrow(new InvalidTokenException());
         Rol rol = new Rol(); rol.setCodigo("ROLE_ALUMNO"); rol.setNombre("Alumno"); roles.saveAndFlush(rol);
     }
-    private RegistroPeticion peticion(String correo) {
-        return new RegistroPeticion("Lucía", "Caminos", " ", correo, "", " ",
+    private RegistroRequest peticion(String correo) {
+        return new RegistroRequest("Lucía", "Caminos", " ", correo, "", " ",
                 "Clave123", "Clave123", true, "token-control");
     }
     @Test void creaCuentaPendienteConOpcionalesNulosYHashSinExponerCodigo() {
-        RegistroRespuesta r = service.registrar(peticion("LUCIA@example.com"));
+        RegistroResponse r = service.registrar(peticion("LUCIA@example.com"));
         assertEquals("lucia@example.com", r.correo());
         assertTrue(r.envioAceptado());
         assertNotEquals(r.usuarioId().toString(), r.referenciaVerificacion());
@@ -125,10 +125,10 @@ class RegistroIntegracionTests {
     }
     @Test void validaLegalConfirmacionYAntirobotAntesDeGuardar() {
         var p = peticion("valida@example.com");
-        var ilegal = new RegistroPeticion(p.nombres(), p.apellidoPaterno(), null, p.correo(), null, null,
+        var ilegal = new RegistroRequest(p.nombres(), p.apellidoPaterno(), null, p.correo(), null, null,
                 p.contrasena(), p.confirmarContrasena(), false, p.evidenciaAntiRobot());
         assertThrows(CampoRegistroException.class, () -> service.registrar(ilegal));
-        var distinta = new RegistroPeticion(p.nombres(), p.apellidoPaterno(), null, p.correo(), null, null,
+        var distinta = new RegistroRequest(p.nombres(), p.apellidoPaterno(), null, p.correo(), null, null,
                 p.contrasena(), "Distinta123", true, p.evidenciaAntiRobot());
         assertThrows(CampoRegistroException.class, () -> service.registrar(distinta));
         doThrow(new BusinessValidationException("Control inválido")).when(antiRobot).verificar(any());
@@ -140,7 +140,7 @@ class RegistroIntegracionTests {
         String ref = contextoValido("referencia-hu001", "google-sub", "google@example.com");
         var contexto = service.contextoGoogle(ref);
         assertEquals("Caminos Quiroz", contexto.apellidos());
-        var sesion = service.completarGoogle(new RegistroGooglePeticion(ref, "Lucía", "Caminos Quiroz", null, null, null, true));
+        var sesion = service.completarGoogle(new RegistroGoogleRequest(ref, "Lucía", "Caminos Quiroz", null, null, null, true));
         Long id = Long.valueOf(sesionDecoder.decode(sesion.token()).getSubject());
         var usuario = usuarios.findById(id).orElseThrow();
         assertNotNull(usuario.getCorreoVerificadoEn());
@@ -149,7 +149,7 @@ class RegistroIntegracionTests {
         assertEquals(0, codigos.count());
         verifyNoInteractions(mail, antiRobot);
         assertThrows(CampoRegistroException.class, () -> service.completarGoogle(
-                new RegistroGooglePeticion(ref, "Lucía", "Caminos Quiroz", null, null, null, true)));
+                new RegistroGoogleRequest(ref, "Lucía", "Caminos Quiroz", null, null, null, true)));
         assertEquals(1, usuarios.count());
     }
     @Test void referenciaManipuladaNoPermiteCrearCuenta() {
@@ -185,7 +185,7 @@ class RegistroIntegracionTests {
 
     @Test void googleCompletaEIniciaSesionUsandoServicesCompartidos() throws Exception {
         String ref = contextoValido("contexto-cookie", "google-cookie", "cookie@example.com");
-        String cuerpo = json.writeValueAsString(new RegistroGooglePeticion(ref, "Lucía", "Caminos", null, null, null, true));
+        String cuerpo = json.writeValueAsString(new RegistroGoogleRequest(ref, "Lucía", "Caminos", null, null, null, true));
         var respuesta = mvc.perform(post("/api/auth/registro/google")
                 .contentType("application/json").content(cuerpo))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.rol").value("alumno"))
@@ -200,14 +200,14 @@ class RegistroIntegracionTests {
 
     @Test void documentoDuplicadoYPasswordExtensaNoCreanPersonasHuerfanas() {
         var p = peticion("doc1@example.com");
-        service.registrar(new RegistroPeticion(p.nombres(), p.apellidoPaterno(), null, p.correo(),
+        service.registrar(new RegistroRequest(p.nombres(), p.apellidoPaterno(), null, p.correo(),
                 null, "12345678", p.contrasena(), p.confirmarContrasena(), true, p.evidenciaAntiRobot()));
-        var e = assertThrows(CampoRegistroException.class, () -> service.registrar(new RegistroPeticion(
+        var e = assertThrows(CampoRegistroException.class, () -> service.registrar(new RegistroRequest(
                 p.nombres(), p.apellidoPaterno(), null, "doc2@example.com", null, "12345678",
                 p.contrasena(), p.confirmarContrasena(), true, p.evidenciaAntiRobot())));
         assertEquals("DOCUMENTO_DUPLICADO", e.getCode());
         String extensa = "Á".repeat(35) + "bc123";
-        assertThrows(CampoRegistroException.class, () -> service.registrar(new RegistroPeticion(
+        assertThrows(CampoRegistroException.class, () -> service.registrar(new RegistroRequest(
                 p.nombres(), p.apellidoPaterno(), null, "larga@example.com", null, null,
                 extensa, extensa, true, p.evidenciaAntiRobot())));
         assertEquals(1, usuarios.count()); assertEquals(1, personas.count());
@@ -217,7 +217,7 @@ class RegistroIntegracionTests {
     @org.junit.jupiter.params.provider.ValueSource(strings = {"Cla1", "clave123", "CLAVE123", "Claveabc"})
     void rechazaCadaIncumplimientoDeLaPolitica(String password) {
         var p = peticion("politica@example.com");
-        assertThrows(BusinessValidationException.class, () -> service.registrar(new RegistroPeticion(
+        assertThrows(BusinessValidationException.class, () -> service.registrar(new RegistroRequest(
                 p.nombres(), p.apellidoPaterno(), null, p.correo(), null, null,
                 password, password, true, p.evidenciaAntiRobot())));
         assertEquals(0, usuarios.count());
@@ -226,7 +226,7 @@ class RegistroIntegracionTests {
 
     @Test void evidenciaAusenteNoCreaCuenta() {
         var p = peticion("sin-evidencia@example.com");
-        assertThrows(CampoRegistroException.class, () -> service.registrar(new RegistroPeticion(
+        assertThrows(CampoRegistroException.class, () -> service.registrar(new RegistroRequest(
                 p.nombres(), p.apellidoPaterno(), null, p.correo(), null, null,
                 p.contrasena(), p.confirmarContrasena(), true, "")));
         assertEquals(0, personas.count());
@@ -237,7 +237,7 @@ class RegistroIntegracionTests {
         doReturn(new ContextoGoogleRegistroIntegration.Identidad("sub-vencido", "vencido@example.com", "Ana", "Pérez", "",
                 clock.instant().minusSeconds(1))).when(google).obtenerVerificada("vencido");
         assertThrows(InvalidTokenException.class, () -> service.completarGoogle(
-                new RegistroGooglePeticion("vencido", "Ana", "Pérez", null, null, null, true)));
+                new RegistroGoogleRequest("vencido", "Ana", "Pérez", null, null, null, true)));
         assertEquals(0, personas.count()); assertEquals(0, usuarios.count());
         verifyNoInteractions(mail);
     }
@@ -245,11 +245,11 @@ class RegistroIntegracionTests {
     @Test void googleExigeAceptacionYNoDuplicaCorreoDeFormulario() {
         String ref = contextoValido("contexto-legal", "sub-legal", "legal@example.com");
         assertThrows(CampoRegistroException.class, () -> service.completarGoogle(
-                new RegistroGooglePeticion(ref, "Ana", "Pérez", null, null, null, false)));
+                new RegistroGoogleRequest(ref, "Ana", "Pérez", null, null, null, false)));
         assertEquals(0, usuarios.count());
         service.registrar(peticion("legal@example.com"));
         assertThrows(CampoRegistroException.class, () -> service.completarGoogle(
-                new RegistroGooglePeticion(ref, "Ana", "Pérez", null, null, null, true)));
+                new RegistroGoogleRequest(ref, "Ana", "Pérez", null, null, null, true)));
         assertEquals(1, usuarios.count()); assertEquals(1, personas.count());
     }
 

@@ -12,10 +12,10 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.AulaRespuesta;
+import pe.edu.utp.escuela.app.dto.AulaResponse;
 import pe.edu.utp.escuela.app.dto.DuracionLeccionFila;
-import pe.edu.utp.escuela.app.dto.LeccionAulaRespuesta;
-import pe.edu.utp.escuela.app.dto.ModuloAulaRespuesta;
+import pe.edu.utp.escuela.app.dto.LeccionAulaResponse;
+import pe.edu.utp.escuela.app.dto.ModuloAulaResponse;
 import pe.edu.utp.escuela.app.entity.Leccion;
 import pe.edu.utp.escuela.app.entity.MaterialLeccion;
 import pe.edu.utp.escuela.app.entity.Matricula;
@@ -51,7 +51,7 @@ public class AulaService {
     private final Clock clock;
 
     @Transactional(readOnly = true)
-    public AulaRespuesta temario(Long cursoId) {
+    public AulaResponse temario(Long cursoId) {
         if (!actual.get().hasRole("ALUMNO")) {
             throw new ForbiddenException();
         }
@@ -79,7 +79,7 @@ public class AulaService {
                                 DuracionLeccionFila::getDuracionSegundos, (a, b) -> a));
 
         Instant ahora = clock.instant();
-        Map<Long, LeccionAulaRespuesta> respuestaPorLeccion = new java.util.HashMap<>();
+        Map<Long, LeccionAulaResponse> respuestaPorLeccion = new java.util.HashMap<>();
         for (Leccion leccion : globalOrden) {
             boolean completada = Boolean.TRUE.equals(completadas.get(leccion.getId()));
             String motivoBloqueo = completada ? null : ruta.motivoBloqueo(leccion.getId());
@@ -93,18 +93,18 @@ public class AulaService {
                         && leccionesConGrabacion.contains(leccion.getId());
             }
 
-            respuestaPorLeccion.put(leccion.getId(), new LeccionAulaRespuesta(
+            respuestaPorLeccion.put(leccion.getId(), new LeccionAulaResponse(
                     leccion.getId(), leccion.getTitulo(), leccion.getTipo(), leccion.getOrden(),
                     leccion.isEsObligatoria(), estado, motivoBloqueo,
                     leccion.getFechaHoraInicio(), leccion.getFechaHoraFin(), estadoSesion, grabacionDisponible,
                     leccion.getDescripcion(), duraciones.get(leccion.getId())));
         }
 
-        List<ModuloAulaRespuesta> modulosRespuesta = new ArrayList<>();
+        List<ModuloAulaResponse> modulosRespuesta = new ArrayList<>();
         for (Modulo modulo : ruta.modulos()) {
-            List<LeccionAulaRespuesta> delModulo = ruta.leccionesPorModulo().get(modulo.getId()).stream()
+            List<LeccionAulaResponse> delModulo = ruta.leccionesPorModulo().get(modulo.getId()).stream()
                     .map(l -> respuestaPorLeccion.get(l.getId())).toList();
-            modulosRespuesta.add(new ModuloAulaRespuesta(modulo.getId(), modulo.getTitulo(), modulo.getOrden(),
+            modulosRespuesta.add(new ModuloAulaResponse(modulo.getId(), modulo.getTitulo(), modulo.getOrden(),
                     delModulo, ruta.examenesPorModulo().getOrDefault(modulo.getId(), List.of())));
         }
 
@@ -115,7 +115,7 @@ public class AulaService {
 
         Long ultimaLeccionIdValida = ultimaLeccionValida(baseParaPorcentaje, respuestaPorLeccion);
 
-        return new AulaRespuesta(matricula.getId(), matricula.getCurso().getId(), matricula.getCurso().getTitulo(),
+        return new AulaResponse(matricula.getId(), matricula.getCurso().getId(), matricula.getCurso().getTitulo(),
                 matricula.getCurso().getModalidad(), avance.porcentaje(), modulosRespuesta, ultimaLeccionIdValida,
                 avance.comoRespuesta(), ruta.examenesFinales());
     }
@@ -141,10 +141,10 @@ public class AulaService {
     /** La primera lección (de la base considerada: obligatorias, o todas si no hay obligatorias)
      * que esté DISPONIBLE marca el punto de continuación; si todas están completadas, se usa la
      * última para reabrir el final del curso en vez de no abrir nada. */
-    private Long ultimaLeccionValida(List<Leccion> base, Map<Long, LeccionAulaRespuesta> respuestaPorLeccion) {
+    private Long ultimaLeccionValida(List<Leccion> base, Map<Long, LeccionAulaResponse> respuestaPorLeccion) {
         Leccion ultimaCompletada = null;
         for (Leccion leccion : base) {
-            LeccionAulaRespuesta r = respuestaPorLeccion.get(leccion.getId());
+            LeccionAulaResponse r = respuestaPorLeccion.get(leccion.getId());
             if ("DISPONIBLE".equals(r.estado())) {
                 return leccion.getId();
             }

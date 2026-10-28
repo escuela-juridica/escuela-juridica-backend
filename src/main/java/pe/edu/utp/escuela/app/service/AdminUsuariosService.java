@@ -15,16 +15,16 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.ActualizarPerfilPeticion;
-import pe.edu.utp.escuela.app.dto.CambiarActivoPeticion;
-import pe.edu.utp.escuela.app.dto.ConcederRolPeticion;
+import pe.edu.utp.escuela.app.dto.ActualizarPerfilRequest;
+import pe.edu.utp.escuela.app.dto.CambiarActivoRequest;
+import pe.edu.utp.escuela.app.dto.ConcederRolRequest;
 import pe.edu.utp.escuela.app.dto.CondicionCuentaAdmin;
-import pe.edu.utp.escuela.app.dto.CrearUsuarioAdminPeticion;
-import pe.edu.utp.escuela.app.dto.CrearUsuarioAdminRespuesta;
+import pe.edu.utp.escuela.app.dto.CrearUsuarioAdminRequest;
+import pe.edu.utp.escuela.app.dto.CrearUsuarioAdminResponse;
 import pe.edu.utp.escuela.app.dto.PageResponse;
-import pe.edu.utp.escuela.app.dto.ResetearContrasenaRespuesta;
+import pe.edu.utp.escuela.app.dto.ResetearContrasenaResponse;
 import pe.edu.utp.escuela.app.dto.RolUsuarioAdmin;
-import pe.edu.utp.escuela.app.dto.UsuarioAdminRespuesta;
+import pe.edu.utp.escuela.app.dto.UsuarioAdminResponse;
 import pe.edu.utp.escuela.app.dto.UsuarioRolFila;
 import pe.edu.utp.escuela.app.entity.CodigoVerificacionCorreo;
 import pe.edu.utp.escuela.app.entity.Notificacion;
@@ -67,7 +67,7 @@ public class AdminUsuariosService {
     private final SecureRandom random = new SecureRandom();
 
     @Transactional(readOnly = true)
-    public PageResponse<UsuarioAdminRespuesta> listar(
+    public PageResponse<UsuarioAdminResponse> listar(
             String texto, Boolean activo, RolUsuarioAdmin rol, Pageable pageable) {
         exigirAdministrador();
         String termino = texto == null ? "" : texto.strip().toLowerCase(Locale.ROOT);
@@ -79,14 +79,14 @@ public class AdminUsuariosService {
                 : usuarioRoles.buscarPorUsuarios(ids).stream()
                         .collect(Collectors.groupingBy(UsuarioRolFila::usuarioId));
 
-        List<UsuarioAdminRespuesta> items = pagina.getContent().stream()
+        List<UsuarioAdminResponse> items = pagina.getContent().stream()
                 .map(usuario -> mapear(usuario, rolesPorUsuario.getOrDefault(usuario.getId(), List.of()), null))
                 .toList();
         return PageResponse.from(items, pagina);
     }
 
     @Transactional(readOnly = true)
-    public UsuarioAdminRespuesta obtener(Long usuarioId) {
+    public UsuarioAdminResponse obtener(Long usuarioId) {
         exigirAdministrador();
         return detalleDe(buscarOLanzar(usuarioId));
     }
@@ -98,7 +98,7 @@ public class AdminUsuariosService {
      * una cuenta ajena.
      */
     @Transactional
-    public UsuarioAdminRespuesta actualizarDatosPersonales(Long usuarioId, ActualizarPerfilPeticion p) {
+    public UsuarioAdminResponse actualizarDatosPersonales(Long usuarioId, ActualizarPerfilRequest p) {
         exigirAdministrador();
         Usuario usuario = buscarOLanzar(usuarioId);
         Persona persona = usuario.getPersona();
@@ -119,7 +119,7 @@ public class AdminUsuariosService {
     }
 
     @Transactional
-    public CrearUsuarioAdminRespuesta crear(CrearUsuarioAdminPeticion p) {
+    public CrearUsuarioAdminResponse crear(CrearUsuarioAdminRequest p) {
         exigirAdministrador();
         String correo = textos.normalizeEmail(p.correo());
         List<RolUsuarioAdmin> rolesSolicitados = p.roles().stream().distinct().toList();
@@ -131,7 +131,7 @@ public class AdminUsuariosService {
             for (RolUsuarioAdmin rol : rolesSolicitados) {
                 concederRolSiFalta(usuario, rol);
             }
-            return new CrearUsuarioAdminRespuesta(detalleDe(usuario), true, null);
+            return new CrearUsuarioAdminResponse(detalleDe(usuario), true, null);
         }
 
         String documento = textos.trimToNull(p.documentoIdentidad());
@@ -166,7 +166,7 @@ public class AdminUsuariosService {
         String codigo = generarCodigo(usuario);
         enviarBienvenida(usuario, contrasenaTemporal, codigo);
 
-        return new CrearUsuarioAdminRespuesta(detalleDe(usuario), false, contrasenaTemporal);
+        return new CrearUsuarioAdminResponse(detalleDe(usuario), false, contrasenaTemporal);
     }
 
     /** Ya no se pregunta ni se infiere "cuál se guardó primero": con un solo rol, ese es el
@@ -199,7 +199,7 @@ public class AdminUsuariosService {
     }
 
     @Transactional
-    public UsuarioAdminRespuesta concederRol(Long usuarioId, ConcederRolPeticion p) {
+    public UsuarioAdminResponse concederRol(Long usuarioId, ConcederRolRequest p) {
         exigirAdministrador();
         Usuario usuario = buscarOLanzar(usuarioId);
         concederRolSiFalta(usuario, p.rol());
@@ -214,7 +214,7 @@ public class AdminUsuariosService {
      * administrador activo, y nunca puedes dejar una cuenta sin ningún rol.
      */
     @Transactional
-    public UsuarioAdminRespuesta revocarRol(Long usuarioId, RolUsuarioAdmin rolSolicitado) {
+    public UsuarioAdminResponse revocarRol(Long usuarioId, RolUsuarioAdmin rolSolicitado) {
         exigirAdministrador();
         Usuario usuario = buscarOLanzar(usuarioId);
         Rol rol = rolPorCodigo(rolSolicitado);
@@ -258,7 +258,7 @@ public class AdminUsuariosService {
     }
 
     @Transactional
-    public UsuarioAdminRespuesta cambiarActivo(Long usuarioId, CambiarActivoPeticion p) {
+    public UsuarioAdminResponse cambiarActivo(Long usuarioId, CambiarActivoRequest p) {
         exigirAdministrador();
         Usuario usuario = buscarOLanzar(usuarioId);
 
@@ -302,14 +302,14 @@ public class AdminUsuariosService {
      * existía forma de que el administrador restableciera el acceso de alguien). La respuesta la
      * trae una sola vez, igual que al crear la cuenta; también se envía por correo. */
     @Transactional
-    public ResetearContrasenaRespuesta resetearContrasena(Long usuarioId) {
+    public ResetearContrasenaResponse resetearContrasena(Long usuarioId) {
         exigirAdministrador();
         Usuario usuario = buscarOLanzar(usuarioId);
         String contrasenaTemporal = generarContrasenaTemporal();
         usuario.setContrasenaHash(encoder.encode(contrasenaTemporal));
         usuario.setRequiereCambioContrasena(true);
         enviarContrasenaRestablecida(usuario, contrasenaTemporal);
-        return new ResetearContrasenaRespuesta(detalleDe(usuario), contrasenaTemporal);
+        return new ResetearContrasenaResponse(detalleDe(usuario), contrasenaTemporal);
     }
 
     private void exigirAdministrador() {
@@ -414,7 +414,7 @@ public class AdminUsuariosService {
         notificaciones.saveAndFlush(notificacion);
     }
 
-    private UsuarioAdminRespuesta detalleDe(Usuario usuario) {
+    private UsuarioAdminResponse detalleDe(Usuario usuario) {
         List<UsuarioRolFila> filas = usuarioRoles.buscarPorUsuario(usuario.getId());
         String concedidoPorNombre = filas.stream()
                 .filter(f -> f.rolCodigo().equals(RolUsuarioAdmin.ADMINISTRADOR.codigo()))
@@ -426,7 +426,7 @@ public class AdminUsuariosService {
         return mapear(usuario, filas, concedidoPorNombre);
     }
 
-    private UsuarioAdminRespuesta mapear(Usuario usuario, List<UsuarioRolFila> filas, String concedidoPorNombre) {
+    private UsuarioAdminResponse mapear(Usuario usuario, List<UsuarioRolFila> filas, String concedidoPorNombre) {
         Persona persona = usuario.getPersona();
         List<RolUsuarioAdmin> rolesDeUsuario = filas.stream()
                 .map(f -> RolUsuarioAdmin.desdeCodigo(f.rolCodigo()))
@@ -439,7 +439,7 @@ public class AdminUsuariosService {
         CondicionCuentaAdmin condicion = CondicionCuentaAdmin.de(
                 usuario.getCorreoVerificadoEn() != null, usuario.isRequiereCambioContrasena());
 
-        return new UsuarioAdminRespuesta(
+        return new UsuarioAdminResponse(
                 usuario.getId(),
                 persona.getNombres(),
                 persona.getApellidoPaterno(),

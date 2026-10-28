@@ -20,7 +20,7 @@ class RegistroSinIntegracionesTests {
 
     @Test void formularioSinEvidenciaRealNoInserta() {
         long cuentas = usuarios.count(), personasAntes = personas.count();
-        var p = new RegistroPeticion("Ana", "Pérez", null, "sin-adaptador@example.com", null, null,
+        var p = new RegistroRequest("Ana", "Pérez", null, "sin-adaptador@example.com", null, null,
                 "Clave123", "Clave123", true, "texto-no-verificado");
         var error = assertThrows(BusinessException.class, () -> registro.registrar(p));
         assertEquals(HttpStatus.BAD_REQUEST, error.getStatus());
@@ -30,7 +30,7 @@ class RegistroSinIntegracionesTests {
 
     @Test void googleSinHu001NoInserta() {
         long cuentas = usuarios.count(), personasAntes = personas.count();
-        var p = new RegistroGooglePeticion("referencia-no-verificada", "Ana", "Pérez", null, null, null, true);
+        var p = new RegistroGoogleRequest("referencia-no-verificada", "Ana", "Pérez", null, null, null, true);
         var error = assertThrows(BusinessException.class, () -> registro.completarGoogle(p));
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, error.getStatus());
         assertEquals("GOOGLE_PENDIENTE", error.getCode());

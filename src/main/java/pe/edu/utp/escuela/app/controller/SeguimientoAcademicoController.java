@@ -12,9 +12,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import pe.edu.utp.escuela.app.dto.CorregirAsistenciaPeticion;
-import pe.edu.utp.escuela.app.dto.OtorgarIntentoPeticion;
-import pe.edu.utp.escuela.app.dto.SeguimientoAcademicoRespuesta;
+import pe.edu.utp.escuela.app.dto.CorregirAsistenciaRequest;
+import pe.edu.utp.escuela.app.dto.OtorgarIntentoRequest;
+import pe.edu.utp.escuela.app.dto.SeguimientoAcademicoResponse;
 import pe.edu.utp.escuela.app.service.SeguimientoAcademicoService;
 
 @RestController
@@ -33,7 +33,7 @@ public class SeguimientoAcademicoController {
                     + "condiciones del curso, certificado y el historial de excepciones.")
     @ApiResponse(responseCode = "403", description = "La cuenta autenticada no es administradora")
     @ApiResponse(responseCode = "404", description = "La matrícula no existe")
-    public SeguimientoAcademicoRespuesta consultar(@PathVariable Long matriculaId) {
+    public SeguimientoAcademicoResponse consultar(@PathVariable Long matriculaId) {
         return service.consultar(matriculaId);
     }
 
@@ -44,7 +44,7 @@ public class SeguimientoAcademicoController {
     @ApiResponse(responseCode = "204", description = "Intento adicional concedido")
     @ApiResponse(responseCode = "400", description = "El examen no admite un intento adicional ahora")
     public ResponseEntity<Void> otorgarIntento(@PathVariable Long matriculaId,
-            @Valid @RequestBody OtorgarIntentoPeticion peticion) {
+            @Valid @RequestBody OtorgarIntentoRequest peticion) {
         service.otorgarIntento(matriculaId, peticion);
         return ResponseEntity.noContent().build();
     }
@@ -56,7 +56,7 @@ public class SeguimientoAcademicoController {
     @ApiResponse(responseCode = "204", description = "Asistencia corregida")
     @ApiResponse(responseCode = "400", description = "Sesión no realizada o estado no válido")
     public ResponseEntity<Void> corregirAsistencia(@PathVariable Long matriculaId, @PathVariable Long asistenciaId,
-            @Valid @RequestBody CorregirAsistenciaPeticion peticion) {
+            @Valid @RequestBody CorregirAsistenciaRequest peticion) {
         service.corregirAsistencia(matriculaId, asistenciaId, peticion);
         return ResponseEntity.noContent().build();
     }

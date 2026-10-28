@@ -57,9 +57,9 @@ material de esa lección.
 
 - `entity/HistorialSesion.java` (nueva).
 - `repository/HistorialSesionRepository.java` (nuevo).
-- `dto/ReprogramarSesionPeticion.java`, `dto/CancelarSesionPeticion.java`,
-  `dto/CorregirEnlaceSesionPeticion.java`, `dto/CorregirAsistenciaPeticion.java`,
-  `dto/HistorialSesionRespuesta.java`.
+- `dto/ReprogramarSesionRequest.java`, `dto/CancelarSesionRequest.java`,
+  `dto/CorregirEnlaceSesionRequest.java`, `dto/CorregirAsistenciaRequest.java`,
+  `dto/HistorialSesionResponse.java`.
 - `service/AdministrarSesionesService.java` (nuevo).
 - `controller/ContenidoController.java`: se amplían los endpoints de sesión (ya existe el controlador
   admin de contenido desde HU-011/HU-012; no se crea uno paralelo).
@@ -220,9 +220,9 @@ demuestra pidiendo ampliarla antes de poder guardar.
 ### 1. Archivos que se crean en orden
 
 1. `entity/HistorialSesion.java` + `repository/HistorialSesionRepository.java`.
-2. `dto/ReprogramarSesionPeticion.java`, `dto/ReprogramarSesionResultado.java`,
-   `dto/CancelarSesionPeticion.java`, `dto/CorregirEnlaceSesionPeticion.java`,
-   `dto/CorregirAsistenciaPeticion.java`, `dto/HistorialSesionRespuesta.java`.
+2. `dto/ReprogramarSesionRequest.java`, `dto/ReprogramarSesionResultado.java`,
+   `dto/CancelarSesionRequest.java`, `dto/CorregirEnlaceSesionRequest.java`,
+   `dto/CorregirAsistenciaRequest.java`, `dto/HistorialSesionResponse.java`.
 3. `service/AdministrarSesionesService.java`.
 4. Métodos nuevos en `controller/ContenidoController.java`.
 5. Angular: `features/admin/cursos/sesiones-admin-api.service.ts` + modales en la pestaña de contenido
@@ -231,7 +231,7 @@ demuestra pidiendo ampliarla antes de poder guardar.
 ### 2. DTOs
 
 ```java
-public record ReprogramarSesionPeticion(Instant nuevaFechaHoraInicio, Instant nuevaFechaHoraFin, String motivo) {}
+public record ReprogramarSesionRequest(Instant nuevaFechaHoraInicio, Instant nuevaFechaHoraFin, String motivo) {}
 
 public record ReprogramarSesionResultado(
         boolean aplicado,
@@ -239,11 +239,11 @@ public record ReprogramarSesionResultado(
         LocalDate fechaFinCursoSugerida // = nuevaFechaHoraFin en fecha, solo informativo
 ) {}
 
-public record CancelarSesionPeticion(String motivo) {}
-public record CorregirEnlaceSesionPeticion(String enlaceReunion) {}
-public record CorregirAsistenciaPeticion(String nuevoEstado, String motivoCorreccion) {}
+public record CancelarSesionRequest(String motivo) {}
+public record CorregirEnlaceSesionRequest(String enlaceReunion) {}
+public record CorregirAsistenciaRequest(String nuevoEstado, String motivoCorreccion) {}
 
-public record HistorialSesionRespuesta(
+public record HistorialSesionResponse(
         String accion, Instant inicioAnterior, Instant finAnterior, Instant inicioNuevo, Instant finNuevo,
         String motivo, Long realizadoPorUsuarioId, Instant realizadoEn
 ) {}
@@ -285,7 +285,7 @@ public class AdministrarSesionesService {
     private final Clock clock;
 
     @Transactional
-    public ReprogramarSesionResultado reprogramar(Long leccionId, ReprogramarSesionPeticion p) {
+    public ReprogramarSesionResultado reprogramar(Long leccionId, ReprogramarSesionRequest p) {
         exigirAdministrador();
         Leccion l = leccionSesionEditable(leccionId);
 
@@ -331,7 +331,7 @@ public class AdministrarSesionesService {
     }
 
     @Transactional
-    public void cancelar(Long leccionId, CancelarSesionPeticion p) {
+    public void cancelar(Long leccionId, CancelarSesionRequest p) {
         exigirAdministrador();
         Leccion l = leccionSesionEditable(leccionId);
         if (p.motivo() == null || p.motivo().isBlank()) {
@@ -349,7 +349,7 @@ public class AdministrarSesionesService {
     }
 
     @Transactional
-    public void corregirEnlace(Long leccionId, CorregirEnlaceSesionPeticion p) {
+    public void corregirEnlace(Long leccionId, CorregirEnlaceSesionRequest p) {
         exigirAdministrador();
         Leccion l = lecciones.findById(leccionId)
                 .orElseThrow(() -> new BusinessValidationException("La sesión no existe."));
@@ -361,7 +361,7 @@ public class AdministrarSesionesService {
     }
 
     @Transactional
-    public void corregirAsistencia(Long asistenciaId, CorregirAsistenciaPeticion p) {
+    public void corregirAsistencia(Long asistenciaId, CorregirAsistenciaRequest p) {
         exigirAdministrador();
         Asistencia a = asistencias.findById(asistenciaId)
                 .orElseThrow(() -> new BusinessValidationException("La asistencia no existe."));
@@ -376,9 +376,9 @@ public class AdministrarSesionesService {
     }
 
     @Transactional(readOnly = true)
-    public List<HistorialSesionRespuesta> historial(Long leccionId) {
+    public List<HistorialSesionResponse> historial(Long leccionId) {
         return historial.findByLeccion_IdOrderByRealizadoEnDesc(leccionId).stream()
-                .map(h -> new HistorialSesionRespuesta(h.getAccion(), h.getInicioAnterior(),
+                .map(h -> new HistorialSesionResponse(h.getAccion(), h.getInicioAnterior(),
                         h.getFinAnterior(), h.getInicioNuevo(), h.getFinNuevo(), h.getMotivo(),
                         h.getRealizadoPorUsuarioId(), h.getRealizadoEn()))
                 .toList();
@@ -460,7 +460,7 @@ public class AdministrarSesionesService {
 private final AdministrarSesionesService administrarSesionesService;
 
 @PatchMapping("/lecciones/{id}/sesion/reprogramar")
-public ReprogramarSesionResultado reprogramar(@PathVariable Long id, @RequestBody ReprogramarSesionPeticion p) {
+public ReprogramarSesionResultado reprogramar(@PathVariable Long id, @RequestBody ReprogramarSesionRequest p) {
     return administrarSesionesService.reprogramar(id, p);
 }
 
@@ -470,22 +470,22 @@ public void ampliarFinDeCurso(@PathVariable Long cursoId, @RequestParam LocalDat
 }
 
 @PatchMapping("/lecciones/{id}/sesion/cancelar")
-public void cancelar(@PathVariable Long id, @RequestBody CancelarSesionPeticion p) {
+public void cancelar(@PathVariable Long id, @RequestBody CancelarSesionRequest p) {
     administrarSesionesService.cancelar(id, p);
 }
 
 @PatchMapping("/lecciones/{id}/sesion/enlace")
-public void corregirEnlace(@PathVariable Long id, @RequestBody CorregirEnlaceSesionPeticion p) {
+public void corregirEnlace(@PathVariable Long id, @RequestBody CorregirEnlaceSesionRequest p) {
     administrarSesionesService.corregirEnlace(id, p);
 }
 
 @PatchMapping("/asistencias/{id}")
-public void corregirAsistencia(@PathVariable Long id, @RequestBody CorregirAsistenciaPeticion p) {
+public void corregirAsistencia(@PathVariable Long id, @RequestBody CorregirAsistenciaRequest p) {
     administrarSesionesService.corregirAsistencia(id, p);
 }
 
 @GetMapping("/lecciones/{id}/sesion/historial")
-public List<HistorialSesionRespuesta> historial(@PathVariable Long id) {
+public List<HistorialSesionResponse> historial(@PathVariable Long id) {
     return administrarSesionesService.historial(id);
 }
 ```

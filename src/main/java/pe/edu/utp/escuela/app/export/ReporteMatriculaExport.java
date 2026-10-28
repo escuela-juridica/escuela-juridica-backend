@@ -5,7 +5,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import pe.edu.utp.escuela.app.dto.ReporteMatriculaRespuesta;
+import pe.edu.utp.escuela.app.dto.ReporteMatriculaResponse;
 import org.springframework.stereotype.Component;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -63,9 +63,9 @@ public class ReporteMatriculaExport {
         };
     }
 
-    public byte[] csv(List<ReporteMatriculaRespuesta> filas) {
+    public byte[] csv(List<ReporteMatriculaResponse> filas) {
         StringBuilder csv = new StringBuilder(String.join(";", ENCABEZADOS)).append('\n');
-        for (ReporteMatriculaRespuesta fila : filas) {
+        for (ReporteMatriculaResponse fila : filas) {
             csv.append(valorCsv(fila.alumno())).append(';').append(valorCsv(fila.correo())).append(';')
                     .append(valorCsv(fila.curso())).append(';').append(valorCsv(fila.modalidad())).append(';')
                     .append(formatoFecha(fila.fechaMatricula())).append(';')
@@ -125,7 +125,7 @@ public class ReporteMatriculaExport {
         };
     }
 
-    public byte[] excel(List<ReporteMatriculaRespuesta> filas) {
+    public byte[] excel(List<ReporteMatriculaResponse> filas) {
         try (Workbook libro = new XSSFWorkbook();
                 ByteArrayOutputStream salida = new ByteArrayOutputStream()) {
 
@@ -155,7 +155,7 @@ public class ReporteMatriculaExport {
             // Agregar las matrículas
             int numeroFila = 1;
 
-            for (ReporteMatriculaRespuesta fila : filas) {
+            for (ReporteMatriculaResponse fila : filas) {
                 Row filaExcel = hoja.createRow(numeroFila++);
 
                 String[] valores = {
@@ -191,7 +191,7 @@ public class ReporteMatriculaExport {
         }
     }
 
-    public byte[] pdf(List<ReporteMatriculaRespuesta> filas, String textoFiltro, String estadoFiltro) {
+    public byte[] pdf(List<ReporteMatriculaResponse> filas, String textoFiltro, String estadoFiltro) {
         float[] anchos = { 90, 105, 105, 52, 62, 62, 55, 72, 68, 65 };
         float margen = 25f;
         float altoFila = 17f;
@@ -213,7 +213,7 @@ public class ReporteMatriculaExport {
             dibujarPie(flujo, margen, tamano.getWidth(), numeroPagina, fuenteNormal);
 
             int indiceFila = 0;
-            for (ReporteMatriculaRespuesta fila : filas) {
+            for (ReporteMatriculaResponse fila : filas) {
                 if (y - altoFila < margen) {
                     flujo.close();
                     numeroPagina++;
@@ -284,7 +284,7 @@ public class ReporteMatriculaExport {
         return y - altoEncabezado;
     }
 
-    private float dibujarFila(PDPageContentStream flujo, ReporteMatriculaRespuesta fila, float[] anchos,
+    private float dibujarFila(PDPageContentStream flujo, ReporteMatriculaResponse fila, float[] anchos,
             float margen, float y, float altoFila, float anchoTotal, boolean par,
             PDType1Font fuenteNormal, PDType1Font fuenteNegrita) throws IOException {
         float yInferior = y - altoFila;

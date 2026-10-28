@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import pe.edu.utp.escuela.app.dto.MaterialAlumnoRespuesta;
+import pe.edu.utp.escuela.app.dto.MaterialAlumnoResponse;
 import pe.edu.utp.escuela.app.service.MaterialAlumnoService;
 import pe.edu.utp.escuela.app.service.MaterialAlumnoService.ContenidoMaterial;
 
@@ -46,7 +46,7 @@ public class MaterialAlumnoController {
     @ApiResponse(responseCode = "404",
             description = "No existe la lección, o el alumno no tiene matrícula en su curso")
     @GetMapping("/lecciones/{leccionId}/materiales")
-    public List<MaterialAlumnoRespuesta> listar(
+    public List<MaterialAlumnoResponse> listar(
             @Parameter(description = "Identificador de la lección", example = "1")
             @PathVariable Long leccionId) {
         return service.listar(leccionId);

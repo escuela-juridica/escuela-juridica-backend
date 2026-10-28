@@ -10,7 +10,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
-import pe.edu.utp.escuela.app.dto.NuevaContrasenaPeticion;
+import pe.edu.utp.escuela.app.dto.NuevaContrasenaRequest;
 import pe.edu.utp.escuela.app.entity.TokenRecuperacionAcceso;
 import pe.edu.utp.escuela.app.entity.Usuario;
 import pe.edu.utp.escuela.app.exception.BusinessValidationException;
@@ -115,7 +115,7 @@ public class RecuperacionAccesoService {
     }
 
     @Transactional
-    public void cambiar(String tokenVisible, NuevaContrasenaPeticion peticion) {
+    public void cambiar(String tokenVisible, NuevaContrasenaRequest peticion) {
         if (!peticion.contrasena().equals(peticion.confirmacion())) {
             throw new BusinessValidationException("Las contraseñas no coinciden");
         }

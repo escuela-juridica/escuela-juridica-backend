@@ -23,7 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import pe.edu.utp.escuela.app.dto.NuevaContrasenaPeticion;
+import pe.edu.utp.escuela.app.dto.NuevaContrasenaRequest;
 import pe.edu.utp.escuela.app.entity.Persona;
 import pe.edu.utp.escuela.app.entity.TokenRecuperacionAcceso;
 import pe.edu.utp.escuela.app.entity.Usuario;
@@ -185,7 +185,7 @@ class RecuperacionAccesoServiceTests {
 
     @Test
     void cambiarConContrasenasDiferentesLanzaValidacionSinConsultarToken() {
-        NuevaContrasenaPeticion peticion = new NuevaContrasenaPeticion("Clave123", "Otra123");
+        NuevaContrasenaRequest peticion = new NuevaContrasenaRequest("Clave123", "Otra123");
 
         assertThrows(BusinessValidationException.class, () -> service.cambiar("token", peticion));
 
@@ -194,7 +194,7 @@ class RecuperacionAccesoServiceTests {
 
     @Test
     void cambiarConTokenInexistenteLanzaTokenInvalido() {
-        NuevaContrasenaPeticion peticion = new NuevaContrasenaPeticion("Clave123", "Clave123");
+        NuevaContrasenaRequest peticion = new NuevaContrasenaRequest("Clave123", "Clave123");
         when(hashTokenService.sha256("token-random")).thenReturn("hash-random");
         when(repository.bloquearPorHash("hash-random")).thenReturn(Optional.empty());
 
@@ -206,7 +206,7 @@ class RecuperacionAccesoServiceTests {
         Usuario usuario = usuarioRecuperable(1L, "hash-real");
         TokenRecuperacionAcceso token = tokenVigente(10L, usuario);
         token.setExpiraEn(Instant.parse("2026-09-09T11:59:59Z"));
-        NuevaContrasenaPeticion peticion = new NuevaContrasenaPeticion("Clave123", "Clave123");
+        NuevaContrasenaRequest peticion = new NuevaContrasenaRequest("Clave123", "Clave123");
         when(hashTokenService.sha256("token-visible")).thenReturn("hash-token");
         when(repository.bloquearPorHash("hash-token")).thenReturn(Optional.of(token));
 
@@ -218,7 +218,7 @@ class RecuperacionAccesoServiceTests {
         Usuario usuario = usuarioRecuperable(1L, "hash-real");
         TokenRecuperacionAcceso token = tokenVigente(10L, usuario);
         token.setUtilizadoEn(Instant.parse("2026-09-09T11:30:00Z"));
-        NuevaContrasenaPeticion peticion = new NuevaContrasenaPeticion("Clave123", "Clave123");
+        NuevaContrasenaRequest peticion = new NuevaContrasenaRequest("Clave123", "Clave123");
         when(hashTokenService.sha256("token-visible")).thenReturn("hash-token");
         when(repository.bloquearPorHash("hash-token")).thenReturn(Optional.of(token));
 
@@ -229,7 +229,7 @@ class RecuperacionAccesoServiceTests {
     void cambiarConTokenVigenteActualizaContrasenaYConsumeElToken() {
         Usuario usuario = usuarioRecuperable(1L, "hash-viejo");
         TokenRecuperacionAcceso token = tokenVigente(10L, usuario);
-        NuevaContrasenaPeticion peticion = new NuevaContrasenaPeticion("Clave123", "Clave123");
+        NuevaContrasenaRequest peticion = new NuevaContrasenaRequest("Clave123", "Clave123");
         when(hashTokenService.sha256("token-visible")).thenReturn("hash-token");
         when(repository.bloquearPorHash("hash-token")).thenReturn(Optional.of(token));
         when(passwordEncoder.encode("Clave123")).thenReturn("hash-nuevo");

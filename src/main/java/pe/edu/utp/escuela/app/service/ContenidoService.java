@@ -13,19 +13,19 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import pe.edu.utp.escuela.app.dto.ActualizarMaterialPeticion;
-import pe.edu.utp.escuela.app.dto.ActualizarSesionPeticion;
+import pe.edu.utp.escuela.app.dto.ActualizarMaterialRequest;
+import pe.edu.utp.escuela.app.dto.ActualizarSesionRequest;
 import pe.edu.utp.escuela.app.dto.ArchivoGuardado;
-import pe.edu.utp.escuela.app.dto.CrearLeccionPeticion;
-import pe.edu.utp.escuela.app.dto.CrearMaterialEnlacePeticion;
-import pe.edu.utp.escuela.app.dto.CrearModuloPeticion;
-import pe.edu.utp.escuela.app.dto.LeccionRespuesta;
-import pe.edu.utp.escuela.app.dto.MaterialRespuesta;
-import pe.edu.utp.escuela.app.dto.ModuloDisponibleRespuesta;
-import pe.edu.utp.escuela.app.dto.ModuloRespuesta;
-import pe.edu.utp.escuela.app.dto.OrdenPeticion;
+import pe.edu.utp.escuela.app.dto.CrearLeccionRequest;
+import pe.edu.utp.escuela.app.dto.CrearMaterialEnlaceRequest;
+import pe.edu.utp.escuela.app.dto.CrearModuloRequest;
+import pe.edu.utp.escuela.app.dto.LeccionResponse;
+import pe.edu.utp.escuela.app.dto.MaterialResponse;
+import pe.edu.utp.escuela.app.dto.ModuloDisponibleResponse;
+import pe.edu.utp.escuela.app.dto.ModuloResponse;
+import pe.edu.utp.escuela.app.dto.OrdenRequest;
 import pe.edu.utp.escuela.app.dto.OrigenRecurso;
-import pe.edu.utp.escuela.app.dto.RecursoRespuesta;
+import pe.edu.utp.escuela.app.dto.RecursoResponse;
 import pe.edu.utp.escuela.app.dto.TipoLeccion;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.Examen;
@@ -77,7 +77,7 @@ public class ContenidoService {
     // ---------------------------------------------------------------- Lectura --
 
     @Transactional(readOnly = true)
-    public List<ModuloRespuesta> obtenerEstructura(Long cursoId) {
+    public List<ModuloResponse> obtenerEstructura(Long cursoId) {
         exigirAdministrador();
         buscarCursoOLanzar(cursoId);
         List<Modulo> modulosDelCurso = modulos.findByCurso_IdOrderByOrdenAsc(cursoId);
@@ -85,14 +85,14 @@ public class ContenidoService {
     }
 
     @Transactional(readOnly = true)
-    public List<ModuloDisponibleRespuesta> listarModulosDisponibles(String texto, Long excluirCursoId) {
+    public List<ModuloDisponibleResponse> listarModulosDisponibles(String texto, Long excluirCursoId) {
         exigirAdministrador();
         String termino = texto == null ? "" : texto.strip().toLowerCase(Locale.ROOT);
         return modulos.findAll().stream()
                 .filter(m -> m.isActivo())
                 .filter(m -> excluirCursoId == null || !m.getCurso().getId().equals(excluirCursoId))
                 .filter(m -> termino.isEmpty() || m.getTitulo().toLowerCase(Locale.ROOT).contains(termino))
-                .map(m -> new ModuloDisponibleRespuesta(
+                .map(m -> new ModuloDisponibleResponse(
                         m.getId(), m.getTitulo(), m.getCurso().getId(), m.getCurso().getTitulo(),
                         lecciones.countByModulo_Id(m.getId())))
                 .limit(15)
@@ -102,7 +102,7 @@ public class ContenidoService {
     // ---------------------------------------------------------------- Módulos --
 
     @Transactional
-    public ModuloRespuesta crearModulo(Long cursoId, CrearModuloPeticion p) {
+    public ModuloResponse crearModulo(Long cursoId, CrearModuloRequest p) {
         exigirAdministrador();
         Curso curso = buscarCursoOLanzar(cursoId);
         Modulo modulo = new Modulo();
@@ -116,7 +116,7 @@ public class ContenidoService {
     }
 
     @Transactional
-    public ModuloRespuesta actualizarModulo(Long moduloId, CrearModuloPeticion p) {
+    public ModuloResponse actualizarModulo(Long moduloId, CrearModuloRequest p) {
         exigirAdministrador();
         Modulo modulo = buscarModuloOLanzar(moduloId);
         modulo.setTitulo(textos.requireText(p.titulo(), "Título"));
@@ -125,7 +125,7 @@ public class ContenidoService {
     }
 
     @Transactional
-    public ModuloRespuesta cambiarActivoModulo(Long moduloId, boolean activo) {
+    public ModuloResponse cambiarActivoModulo(Long moduloId, boolean activo) {
         exigirAdministrador();
         Modulo modulo = buscarModuloOLanzar(moduloId);
         // HU-016: un módulo ya no se retira después de iniciar la convocatoria (quien ya cursa
@@ -138,7 +138,7 @@ public class ContenidoService {
     }
 
     @Transactional
-    public List<ModuloRespuesta> reordenarModulos(Long cursoId, OrdenPeticion p) {
+    public List<ModuloResponse> reordenarModulos(Long cursoId, OrdenRequest p) {
         exigirAdministrador();
         buscarCursoOLanzar(cursoId);
         List<Modulo> actuales = modulos.findByCurso_IdOrderByOrdenAsc(cursoId);
@@ -159,7 +159,7 @@ public class ContenidoService {
     // ---------------------------------------------------------------- Lecciones --
 
     @Transactional
-    public LeccionRespuesta crearLeccion(Long moduloId, CrearLeccionPeticion p) {
+    public LeccionResponse crearLeccion(Long moduloId, CrearLeccionRequest p) {
         exigirAdministrador();
         Modulo modulo = buscarModuloOLanzar(moduloId);
         // HU-016: tras iniciar, se puede agregar contenido complementario, pero no exigencias
@@ -183,7 +183,7 @@ public class ContenidoService {
     }
 
     @Transactional
-    public LeccionRespuesta actualizarLeccion(Long leccionId, CrearLeccionPeticion p) {
+    public LeccionResponse actualizarLeccion(Long leccionId, CrearLeccionRequest p) {
         exigirAdministrador();
         Leccion leccion = buscarLeccionOLanzar(leccionId);
         leccion.setTitulo(textos.requireText(p.titulo(), "Título"));
@@ -209,7 +209,7 @@ public class ContenidoService {
     /** HU-012 — Programa (o reprograma dentro de esta misma historia) la sesión de una lección
      * EN_VIVO: ventana horaria y enlace de reunión. No crea la reunión ni valida el proveedor. */
     @Transactional
-    public LeccionRespuesta actualizarSesion(Long leccionId, ActualizarSesionPeticion p) {
+    public LeccionResponse actualizarSesion(Long leccionId, ActualizarSesionRequest p) {
         exigirAdministrador();
         Leccion leccion = buscarLeccionOLanzar(leccionId);
         if (!TipoLeccion.EN_VIVO.name().equals(leccion.getTipo())) {
@@ -234,7 +234,7 @@ public class ContenidoService {
     }
 
     @Transactional
-    public LeccionRespuesta cambiarActivoLeccion(Long leccionId, boolean activo) {
+    public LeccionResponse cambiarActivoLeccion(Long leccionId, boolean activo) {
         exigirAdministrador();
         Leccion leccion = buscarLeccionOLanzar(leccionId);
         // HU-016: igual que un módulo, una lección ya no se retira tras iniciar; ocultar contenido
@@ -247,7 +247,7 @@ public class ContenidoService {
     }
 
     @Transactional
-    public List<LeccionRespuesta> reordenarLecciones(Long moduloId, OrdenPeticion p) {
+    public List<LeccionResponse> reordenarLecciones(Long moduloId, OrdenRequest p) {
         exigirAdministrador();
         buscarModuloOLanzar(moduloId);
         List<Leccion> actuales = lecciones.findByModulo_IdOrderByOrdenAsc(moduloId);
@@ -270,7 +270,7 @@ public class ContenidoService {
     // ---------------------------------------------------------------- Materiales --
 
     @Transactional
-    public MaterialRespuesta crearMaterialEnlace(Long leccionId, CrearMaterialEnlacePeticion p) {
+    public MaterialResponse crearMaterialEnlace(Long leccionId, CrearMaterialEnlaceRequest p) {
         exigirAdministrador();
         Leccion leccion = buscarLeccionOLanzar(leccionId);
         TipoMaterial tipoMaterial = tiposMaterial.findById(p.tipoMaterialId())
@@ -299,7 +299,7 @@ public class ContenidoService {
     }
 
     @Transactional
-    public MaterialRespuesta subirMaterialArchivo(
+    public MaterialResponse subirMaterialArchivo(
             Long leccionId, MultipartFile archivo, String titulo, Long tipoMaterialId, boolean permiteDescarga) {
         exigirAdministrador();
         Leccion leccion = buscarLeccionOLanzar(leccionId);
@@ -324,7 +324,7 @@ public class ContenidoService {
         return guardarMaterial(leccion, recurso, tituloFinal != null ? tituloFinal : guardado.nombreOriginal(), permiteDescarga);
     }
 
-    private MaterialRespuesta guardarMaterial(Leccion leccion, Recurso recurso, String titulo, boolean permiteDescarga) {
+    private MaterialResponse guardarMaterial(Leccion leccion, Recurso recurso, String titulo, boolean permiteDescarga) {
         MaterialLeccion material = new MaterialLeccion();
         material.setLeccion(leccion);
         material.setRecurso(recurso);
@@ -337,7 +337,7 @@ public class ContenidoService {
     }
 
     @Transactional
-    public MaterialRespuesta actualizarMaterial(Long materialId, ActualizarMaterialPeticion p) {
+    public MaterialResponse actualizarMaterial(Long materialId, ActualizarMaterialRequest p) {
         exigirAdministrador();
         MaterialLeccion material = buscarMaterialOLanzar(materialId);
         material.setTitulo(textos.requireText(p.titulo(), "Título"));
@@ -354,7 +354,7 @@ public class ContenidoService {
     }
 
     @Transactional
-    public MaterialRespuesta cambiarActivoMaterial(Long materialId, boolean activo) {
+    public MaterialResponse cambiarActivoMaterial(Long materialId, boolean activo) {
         exigirAdministrador();
         MaterialLeccion material = buscarMaterialOLanzar(materialId);
         material.setActivo(activo);
@@ -362,7 +362,7 @@ public class ContenidoService {
     }
 
     @Transactional
-    public List<MaterialRespuesta> reordenarMateriales(Long leccionId, OrdenPeticion p) {
+    public List<MaterialResponse> reordenarMateriales(Long leccionId, OrdenRequest p) {
         exigirAdministrador();
         buscarLeccionOLanzar(leccionId);
         List<MaterialLeccion> actuales = materiales.findByLeccion_IdOrderByOrdenAsc(leccionId);
@@ -385,7 +385,7 @@ public class ContenidoService {
     /** Copia módulo, lecciones, materiales y exámenes de módulo; los materiales de la copia
      * reutilizan el mismo recurso físico (no se duplica el archivo). */
     @Transactional
-    public ModuloRespuesta copiarModulo(Long cursoId, Long moduloOrigenId) {
+    public ModuloResponse copiarModulo(Long cursoId, Long moduloOrigenId) {
         exigirAdministrador();
         Curso cursoDestino = buscarCursoOLanzar(cursoId);
         Modulo origen = buscarModuloOLanzar(moduloOrigenId);
@@ -607,7 +607,7 @@ public class ContenidoService {
         return porId;
     }
 
-    private List<ModuloRespuesta> construirModulos(List<Modulo> modulosDelCurso) {
+    private List<ModuloResponse> construirModulos(List<Modulo> modulosDelCurso) {
         List<Long> moduloIds = modulosDelCurso.stream().map(Modulo::getId).toList();
         List<Leccion> todasLecciones = moduloIds.isEmpty()
                 ? List.of()
@@ -628,41 +628,41 @@ public class ContenidoService {
                 .toList();
     }
 
-    private ModuloRespuesta mapearModulo(Modulo m, List<Leccion> leccionesDelModulo) {
+    private ModuloResponse mapearModulo(Modulo m, List<Leccion> leccionesDelModulo) {
         Map<Long, List<MaterialLeccion>> materialesPorLeccion = leccionesDelModulo.stream()
                 .collect(Collectors.toMap(Leccion::getId, l -> materiales.findByLeccion_IdOrderByOrdenAsc(l.getId())));
         return mapearModulo(m, leccionesDelModulo, materialesPorLeccion);
     }
 
-    private ModuloRespuesta mapearModulo(
+    private ModuloResponse mapearModulo(
             Modulo m, List<Leccion> leccionesDelModulo, Map<Long, List<MaterialLeccion>> materialesPorLeccion) {
-        List<LeccionRespuesta> leccionesRespuesta = leccionesDelModulo.stream()
+        List<LeccionResponse> leccionesRespuesta = leccionesDelModulo.stream()
                 .sorted(Comparator.comparing(Leccion::getOrden))
                 .map(l -> mapearLeccion(l, materialesPorLeccion.getOrDefault(l.getId(), List.of())))
                 .toList();
-        return new ModuloRespuesta(
+        return new ModuloResponse(
                 m.getId(), m.getTitulo(), m.getDescripcion(), m.getOrden(), m.isActivo(),
                 m.getModuloOrigenId(), leccionesRespuesta);
     }
 
-    private LeccionRespuesta mapearLeccion(Leccion l, List<MaterialLeccion> materialesDeLeccion) {
-        List<MaterialRespuesta> materialesRespuesta = materialesDeLeccion.stream()
+    private LeccionResponse mapearLeccion(Leccion l, List<MaterialLeccion> materialesDeLeccion) {
+        List<MaterialResponse> materialesRespuesta = materialesDeLeccion.stream()
                 .sorted(Comparator.comparing(MaterialLeccion::getOrden))
                 .map(this::mapearMaterial)
                 .toList();
-        return new LeccionRespuesta(
+        return new LeccionResponse(
                 l.getId(), l.getTitulo(), l.getDescripcion(), l.getOrden(), l.getTipo(),
                 l.isEsObligatoria(), l.isEsVistaPrevia(), l.getFechaHoraInicio(), l.getFechaHoraFin(),
                 l.getEnlaceReunion(), l.getEstado(), l.getMotivoCancelacion(), l.isActivo(),
                 l.getLeccionOrigenId(), materialesRespuesta);
     }
 
-    private MaterialRespuesta mapearMaterial(MaterialLeccion m) {
+    private MaterialResponse mapearMaterial(MaterialLeccion m) {
         Recurso r = m.getRecurso();
-        RecursoRespuesta recursoRespuesta = new RecursoRespuesta(
+        RecursoResponse recursoRespuesta = new RecursoResponse(
                 r.getId(), r.getTipo(), r.getOrigen(), r.getReferencia(), r.getNombreArchivo(),
                 r.getTipoMime(), r.getTamanoBytes(), r.getDuracionSegundos(), r.isDuracionDetectada(),
                 r.getYoutubeNoListadoConfirmado(), r.getTipoMaterial().getCodigo(), r.getTipoMaterial().getNombre());
-        return new MaterialRespuesta(m.getId(), m.getTitulo(), m.getOrden(), m.isPermiteDescarga(), m.isActivo(), recursoRespuesta);
+        return new MaterialResponse(m.getId(), m.getTitulo(), m.getOrden(), m.isPermiteDescarga(), m.isActivo(), recursoRespuesta);
     }
 }

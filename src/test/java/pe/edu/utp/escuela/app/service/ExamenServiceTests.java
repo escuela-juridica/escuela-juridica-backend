@@ -15,13 +15,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import pe.edu.utp.escuela.app.dto.CrearExamenPeticion;
-import pe.edu.utp.escuela.app.dto.CrearOpcionPeticion;
-import pe.edu.utp.escuela.app.dto.CrearPreguntaPeticion;
-import pe.edu.utp.escuela.app.dto.ExamenRespuesta;
+import pe.edu.utp.escuela.app.dto.CrearExamenRequest;
+import pe.edu.utp.escuela.app.dto.CrearOpcionRequest;
+import pe.edu.utp.escuela.app.dto.CrearPreguntaRequest;
+import pe.edu.utp.escuela.app.dto.ExamenResponse;
 import pe.edu.utp.escuela.app.dto.FinalidadExamen;
 import pe.edu.utp.escuela.app.dto.MostrarRespuestas;
-import pe.edu.utp.escuela.app.dto.PreguntaRespuesta;
+import pe.edu.utp.escuela.app.dto.PreguntaResponse;
 import pe.edu.utp.escuela.app.dto.TipoExamen;
 import pe.edu.utp.escuela.app.dto.TipoPregunta;
 import pe.edu.utp.escuela.app.entity.Curso;
@@ -78,13 +78,13 @@ class ExamenServiceTests {
         return modulo;
     }
 
-    private CrearExamenPeticion peticionModulo(Long moduloId) {
-        return new CrearExamenPeticion(moduloId, "Examen del módulo", null, TipoExamen.CALIFICADO,
+    private CrearExamenRequest peticionModulo(Long moduloId) {
+        return new CrearExamenRequest(moduloId, "Examen del módulo", null, TipoExamen.CALIFICADO,
                 FinalidadExamen.MODULO, 2, 60, false, false, MostrarRespuestas.AL_APROBAR, null, true, 3);
     }
 
-    private CrearExamenPeticion peticionFinal() {
-        return new CrearExamenPeticion(null, "Examen final", null, TipoExamen.CALIFICADO,
+    private CrearExamenRequest peticionFinal() {
+        return new CrearExamenRequest(null, "Examen final", null, TipoExamen.CALIFICADO,
                 FinalidadExamen.FINAL, 1, 90, false, false, MostrarRespuestas.AL_APROBAR, null, true, 3);
     }
 
@@ -100,7 +100,7 @@ class ExamenServiceTests {
         when(examenes.existsByCurso_IdAndTituloIgnoreCase(100L, "Examen del módulo")).thenReturn(false);
         when(examenes.countByCurso_Id(100L)).thenReturn(0L);
 
-        ExamenRespuesta respuesta = service.crearExamen(100L, peticionModulo(10L));
+        ExamenResponse respuesta = service.crearExamen(100L, peticionModulo(10L));
 
         assertEquals("Examen del módulo", respuesta.titulo());
         assertTrue(respuesta.activo());
@@ -112,7 +112,7 @@ class ExamenServiceTests {
         Curso curso = cursoEnEstado("BORRADOR");
         when(cursos.findById(100L)).thenReturn(Optional.of(curso));
 
-        CrearExamenPeticion peticion = new CrearExamenPeticion(10L, "Examen final", null, TipoExamen.CALIFICADO,
+        CrearExamenRequest peticion = new CrearExamenRequest(10L, "Examen final", null, TipoExamen.CALIFICADO,
                 FinalidadExamen.FINAL, 1, 90, false, false, MostrarRespuestas.AL_APROBAR, null, true, 3);
 
         assertThrows(BusinessValidationException.class, () -> service.crearExamen(100L, peticion));
@@ -154,7 +154,7 @@ class ExamenServiceTests {
         when(cursos.findById(100L)).thenReturn(Optional.of(curso));
         when(examenes.existsByCurso_IdAndTituloIgnoreCase(100L, "Examen final")).thenReturn(false);
 
-        CrearExamenPeticion peticion = new CrearExamenPeticion(null, "Examen final", null, TipoExamen.CALIFICADO,
+        CrearExamenRequest peticion = new CrearExamenRequest(null, "Examen final", null, TipoExamen.CALIFICADO,
                 FinalidadExamen.FINAL, 1, 90, false, false, MostrarRespuestas.AL_APROBAR,
                 java.time.Instant.parse("2026-09-20T10:00:00Z"), true, 3);
 
@@ -168,7 +168,7 @@ class ExamenServiceTests {
         when(examenes.existsByCurso_IdAndTituloIgnoreCase(100L, "Examen práctica")).thenReturn(false);
 
         // PRACTICA siempre tiene maximoIntentos=null, así que AL_AGOTAR nunca aplica aquí.
-        CrearExamenPeticion peticion = new CrearExamenPeticion(null, "Examen práctica", null, TipoExamen.PRACTICA,
+        CrearExamenRequest peticion = new CrearExamenRequest(null, "Examen práctica", null, TipoExamen.PRACTICA,
                 FinalidadExamen.FINAL, 5, 90, false, false, MostrarRespuestas.AL_AGOTAR, null, true, 3);
 
         assertThrows(BusinessValidationException.class, () -> service.crearExamen(100L, peticion));
@@ -181,10 +181,10 @@ class ExamenServiceTests {
         when(examenes.existsByCurso_IdAndTituloIgnoreCase(100L, "Práctica")).thenReturn(false);
         when(examenes.countByCurso_Id(100L)).thenReturn(0L);
 
-        CrearExamenPeticion peticion = new CrearExamenPeticion(null, "Práctica", null, TipoExamen.PRACTICA,
+        CrearExamenRequest peticion = new CrearExamenRequest(null, "Práctica", null, TipoExamen.PRACTICA,
                 FinalidadExamen.FINAL, null, null, false, false, MostrarRespuestas.AL_APROBAR, null, true, 3);
 
-        ExamenRespuesta respuesta = service.crearExamen(100L, peticion);
+        ExamenResponse respuesta = service.crearExamen(100L, peticion);
 
         assertFalse(respuesta.bloqueaSiguienteModulo());
     }
@@ -201,7 +201,7 @@ class ExamenServiceTests {
         when(examenes.findById(50L)).thenReturn(Optional.of(examen));
         when(examenes.existsByCurso_IdAndTituloIgnoreCaseAndIdNot(100L, "Examen final", 50L)).thenReturn(false);
 
-        CrearExamenPeticion peticion = new CrearExamenPeticion(null, "Examen final", null, TipoExamen.CALIFICADO,
+        CrearExamenRequest peticion = new CrearExamenRequest(null, "Examen final", null, TipoExamen.CALIFICADO,
                 FinalidadExamen.FINAL, 1, 90, false, false, MostrarRespuestas.AL_APROBAR, null, true, 7);
 
         assertThrows(BusinessValidationException.class, () -> service.actualizarExamen(50L, peticion));
@@ -218,7 +218,7 @@ class ExamenServiceTests {
         when(examenes.findById(50L)).thenReturn(Optional.of(examen));
         when(examenes.existsByCurso_IdAndTituloIgnoreCaseAndIdNot(100L, "Examen final", 50L)).thenReturn(false);
 
-        CrearExamenPeticion peticion = new CrearExamenPeticion(null, "Examen final", null, TipoExamen.PRACTICA,
+        CrearExamenRequest peticion = new CrearExamenRequest(null, "Examen final", null, TipoExamen.PRACTICA,
                 FinalidadExamen.FINAL, null, 90, false, false, MostrarRespuestas.AL_APROBAR, null, true, 3);
 
         assertThrows(BusinessValidationException.class, () -> service.actualizarExamen(50L, peticion));
@@ -237,10 +237,10 @@ class ExamenServiceTests {
         when(examenes.existsByCurso_IdAndTituloIgnoreCaseAndIdNot(100L, "Examen final", 50L)).thenReturn(false);
         when(preguntas.findByExamen_IdOrderByOrdenAsc(50L)).thenReturn(List.of());
 
-        CrearExamenPeticion peticion = new CrearExamenPeticion(null, "Examen final", null, TipoExamen.CALIFICADO,
+        CrearExamenRequest peticion = new CrearExamenRequest(null, "Examen final", null, TipoExamen.CALIFICADO,
                 FinalidadExamen.FINAL, 2, 90, false, false, MostrarRespuestas.AL_APROBAR, null, true, 3);
 
-        ExamenRespuesta respuesta = service.actualizarExamen(50L, peticion);
+        ExamenResponse respuesta = service.actualizarExamen(50L, peticion);
 
         assertEquals("Examen final", respuesta.titulo());
     }
@@ -268,7 +268,7 @@ class ExamenServiceTests {
         when(examenes.findById(50L)).thenReturn(Optional.of(examen));
         when(preguntas.findByExamen_IdOrderByOrdenAsc(50L)).thenReturn(List.of());
 
-        ExamenRespuesta respuesta = service.cambiarActivoExamen(50L, false);
+        ExamenResponse respuesta = service.cambiarActivoExamen(50L, false);
 
         assertFalse(respuesta.activo());
     }
@@ -285,12 +285,12 @@ class ExamenServiceTests {
         when(opciones.findByPregunta_IdOrderByOrdenAsc(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(List.of());
 
-        CrearPreguntaPeticion peticion = new CrearPreguntaPeticion(TipoPregunta.SELECCION_UNICA, "¿2+2?",
+        CrearPreguntaRequest peticion = new CrearPreguntaRequest(TipoPregunta.SELECCION_UNICA, "¿2+2?",
                 BigDecimal.valueOf(2), List.of(
-                        new CrearOpcionPeticion("3", false),
-                        new CrearOpcionPeticion("4", true)));
+                        new CrearOpcionRequest("3", false),
+                        new CrearOpcionRequest("4", true)));
 
-        PreguntaRespuesta respuesta = service.crearPregunta(50L, peticion);
+        PreguntaResponse respuesta = service.crearPregunta(50L, peticion);
 
         assertEquals("¿2+2?", respuesta.enunciado());
     }
@@ -301,10 +301,10 @@ class ExamenServiceTests {
         examen.setId(50L);
         when(examenes.findById(50L)).thenReturn(Optional.of(examen));
 
-        CrearPreguntaPeticion peticion = new CrearPreguntaPeticion(TipoPregunta.SELECCION_UNICA, "¿2+2?",
+        CrearPreguntaRequest peticion = new CrearPreguntaRequest(TipoPregunta.SELECCION_UNICA, "¿2+2?",
                 BigDecimal.valueOf(2), List.of(
-                        new CrearOpcionPeticion("4", true),
-                        new CrearOpcionPeticion("4 también", true)));
+                        new CrearOpcionRequest("4", true),
+                        new CrearOpcionRequest("4 también", true)));
 
         assertThrows(BusinessValidationException.class, () -> service.crearPregunta(50L, peticion));
     }
@@ -315,10 +315,10 @@ class ExamenServiceTests {
         examen.setId(50L);
         when(examenes.findById(50L)).thenReturn(Optional.of(examen));
 
-        CrearPreguntaPeticion peticion = new CrearPreguntaPeticion(TipoPregunta.SELECCION_MULTIPLE, "Marca pares",
+        CrearPreguntaRequest peticion = new CrearPreguntaRequest(TipoPregunta.SELECCION_MULTIPLE, "Marca pares",
                 BigDecimal.valueOf(3), List.of(
-                        new CrearOpcionPeticion("1", false),
-                        new CrearOpcionPeticion("2", false)));
+                        new CrearOpcionRequest("1", false),
+                        new CrearOpcionRequest("2", false)));
 
         assertThrows(BusinessValidationException.class, () -> service.crearPregunta(50L, peticion));
     }
@@ -332,12 +332,12 @@ class ExamenServiceTests {
         when(opciones.findByPregunta_IdOrderByOrdenAsc(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(List.of());
 
-        CrearPreguntaPeticion peticion = new CrearPreguntaPeticion(TipoPregunta.VERDADERO_FALSO, "¿Es correcto?",
+        CrearPreguntaRequest peticion = new CrearPreguntaRequest(TipoPregunta.VERDADERO_FALSO, "¿Es correcto?",
                 BigDecimal.ONE, List.of(
-                        new CrearOpcionPeticion("Verdadero", true),
-                        new CrearOpcionPeticion("Falso", false)));
+                        new CrearOpcionRequest("Verdadero", true),
+                        new CrearOpcionRequest("Falso", false)));
 
-        PreguntaRespuesta respuesta = service.crearPregunta(50L, peticion);
+        PreguntaResponse respuesta = service.crearPregunta(50L, peticion);
 
         assertEquals("VERDADERO_FALSO", respuesta.tipo());
     }
@@ -348,11 +348,11 @@ class ExamenServiceTests {
         examen.setId(50L);
         when(examenes.findById(50L)).thenReturn(Optional.of(examen));
 
-        CrearPreguntaPeticion peticion = new CrearPreguntaPeticion(TipoPregunta.VERDADERO_FALSO, "¿Es correcto?",
+        CrearPreguntaRequest peticion = new CrearPreguntaRequest(TipoPregunta.VERDADERO_FALSO, "¿Es correcto?",
                 BigDecimal.ONE, List.of(
-                        new CrearOpcionPeticion("Verdadero", true),
-                        new CrearOpcionPeticion("Falso", false),
-                        new CrearOpcionPeticion("Tal vez", false)));
+                        new CrearOpcionRequest("Verdadero", true),
+                        new CrearOpcionRequest("Falso", false),
+                        new CrearOpcionRequest("Tal vez", false)));
 
         assertThrows(BusinessValidationException.class, () -> service.crearPregunta(50L, peticion));
     }
@@ -363,8 +363,8 @@ class ExamenServiceTests {
         examen.setId(50L);
         when(examenes.findById(50L)).thenReturn(Optional.of(examen));
 
-        CrearPreguntaPeticion peticion = new CrearPreguntaPeticion(TipoPregunta.RESPUESTA_ABIERTA,
-                "Explica brevemente", BigDecimal.valueOf(5), List.of(new CrearOpcionPeticion("No debería ir", false)));
+        CrearPreguntaRequest peticion = new CrearPreguntaRequest(TipoPregunta.RESPUESTA_ABIERTA,
+                "Explica brevemente", BigDecimal.valueOf(5), List.of(new CrearOpcionRequest("No debería ir", false)));
 
         assertThrows(BusinessValidationException.class, () -> service.crearPregunta(50L, peticion));
     }
@@ -378,10 +378,10 @@ class ExamenServiceTests {
         when(opciones.findByPregunta_IdOrderByOrdenAsc(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(List.of());
 
-        CrearPreguntaPeticion peticion = new CrearPreguntaPeticion(TipoPregunta.RESPUESTA_ABIERTA,
+        CrearPreguntaRequest peticion = new CrearPreguntaRequest(TipoPregunta.RESPUESTA_ABIERTA,
                 "Explica brevemente", BigDecimal.valueOf(5), List.of());
 
-        PreguntaRespuesta respuesta = service.crearPregunta(50L, peticion);
+        PreguntaResponse respuesta = service.crearPregunta(50L, peticion);
 
         assertTrue(respuesta.opciones().isEmpty());
     }

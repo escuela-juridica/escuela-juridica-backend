@@ -11,23 +11,23 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import pe.edu.utp.escuela.app.dto.ActivoPeticion;
-import pe.edu.utp.escuela.app.dto.ActualizarMaterialPeticion;
-import pe.edu.utp.escuela.app.dto.AsistenciaSesionRespuesta;
-import pe.edu.utp.escuela.app.dto.ActualizarSesionPeticion;
-import pe.edu.utp.escuela.app.dto.CancelarSesionPeticion;
-import pe.edu.utp.escuela.app.dto.CorregirAsistenciaPeticion;
-import pe.edu.utp.escuela.app.dto.CorregirEnlaceSesionPeticion;
-import pe.edu.utp.escuela.app.dto.CrearLeccionPeticion;
-import pe.edu.utp.escuela.app.dto.CrearMaterialEnlacePeticion;
-import pe.edu.utp.escuela.app.dto.CrearModuloPeticion;
-import pe.edu.utp.escuela.app.dto.HistorialSesionRespuesta;
-import pe.edu.utp.escuela.app.dto.LeccionRespuesta;
-import pe.edu.utp.escuela.app.dto.MaterialRespuesta;
-import pe.edu.utp.escuela.app.dto.ModuloDisponibleRespuesta;
-import pe.edu.utp.escuela.app.dto.ModuloRespuesta;
-import pe.edu.utp.escuela.app.dto.OrdenPeticion;
-import pe.edu.utp.escuela.app.dto.ReprogramarSesionPeticion;
+import pe.edu.utp.escuela.app.dto.ActivoRequest;
+import pe.edu.utp.escuela.app.dto.ActualizarMaterialRequest;
+import pe.edu.utp.escuela.app.dto.AsistenciaSesionResponse;
+import pe.edu.utp.escuela.app.dto.ActualizarSesionRequest;
+import pe.edu.utp.escuela.app.dto.CancelarSesionRequest;
+import pe.edu.utp.escuela.app.dto.CorregirAsistenciaRequest;
+import pe.edu.utp.escuela.app.dto.CorregirEnlaceSesionRequest;
+import pe.edu.utp.escuela.app.dto.CrearLeccionRequest;
+import pe.edu.utp.escuela.app.dto.CrearMaterialEnlaceRequest;
+import pe.edu.utp.escuela.app.dto.CrearModuloRequest;
+import pe.edu.utp.escuela.app.dto.HistorialSesionResponse;
+import pe.edu.utp.escuela.app.dto.LeccionResponse;
+import pe.edu.utp.escuela.app.dto.MaterialResponse;
+import pe.edu.utp.escuela.app.dto.ModuloDisponibleResponse;
+import pe.edu.utp.escuela.app.dto.ModuloResponse;
+import pe.edu.utp.escuela.app.dto.OrdenRequest;
+import pe.edu.utp.escuela.app.dto.ReprogramarSesionRequest;
 import pe.edu.utp.escuela.app.dto.ReprogramarSesionResultado;
 import pe.edu.utp.escuela.app.service.AdministrarSesionesService;
 import pe.edu.utp.escuela.app.service.ContenidoService;
@@ -43,14 +43,14 @@ public class ContenidoController {
 
     @GetMapping("/cursos/{cursoId}/modulos")
     @Operation(summary = "Consultar la estructura completa de contenido de un curso")
-    public ResponseEntity<List<ModuloRespuesta>> obtenerEstructura(@PathVariable Long cursoId) {
+    public ResponseEntity<List<ModuloResponse>> obtenerEstructura(@PathVariable Long cursoId) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.obtenerEstructura(cursoId));
     }
 
     @GetMapping("/modulos-disponibles")
     @Operation(summary = "Buscar módulos de cualquier curso para copiarlos",
             description = "Usado por \"agregar módulo existente\": la copia es completa e independiente.")
-    public ResponseEntity<List<ModuloDisponibleRespuesta>> listarModulosDisponibles(
+    public ResponseEntity<List<ModuloDisponibleResponse>> listarModulosDisponibles(
             @RequestParam(defaultValue = "") String texto,
             @RequestParam(required = false) Long excluirCursoId) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
@@ -59,8 +59,8 @@ public class ContenidoController {
 
     @PostMapping("/cursos/{cursoId}/modulos")
     @Operation(summary = "Crear un módulo al final del curso")
-    public ResponseEntity<ModuloRespuesta> crearModulo(
-            @PathVariable Long cursoId, @Valid @RequestBody CrearModuloPeticion p) {
+    public ResponseEntity<ModuloResponse> crearModulo(
+            @PathVariable Long cursoId, @Valid @RequestBody CrearModuloRequest p) {
         return ResponseEntity.ok(service.crearModulo(cursoId, p));
     }
 
@@ -68,29 +68,29 @@ public class ContenidoController {
     @Operation(summary = "Copiar un módulo existente dentro de este curso",
             description = "Copia módulos, lecciones, materiales y exámenes de módulo; los materiales reutilizan el mismo recurso físico.")
     @ApiResponse(responseCode = "404", description = "El curso o el módulo de origen ya no existen")
-    public ResponseEntity<ModuloRespuesta> copiarModulo(
+    public ResponseEntity<ModuloResponse> copiarModulo(
             @PathVariable Long cursoId, @PathVariable Long moduloOrigenId) {
         return ResponseEntity.ok(service.copiarModulo(cursoId, moduloOrigenId));
     }
 
     @PutMapping("/cursos/{cursoId}/modulos/orden")
     @Operation(summary = "Reordenar los módulos de un curso")
-    public ResponseEntity<List<ModuloRespuesta>> reordenarModulos(
-            @PathVariable Long cursoId, @Valid @RequestBody OrdenPeticion p) {
+    public ResponseEntity<List<ModuloResponse>> reordenarModulos(
+            @PathVariable Long cursoId, @Valid @RequestBody OrdenRequest p) {
         return ResponseEntity.ok(service.reordenarModulos(cursoId, p));
     }
 
     @PutMapping("/modulos/{id}")
     @Operation(summary = "Editar título y descripción de un módulo")
-    public ResponseEntity<ModuloRespuesta> actualizarModulo(
-            @PathVariable Long id, @Valid @RequestBody CrearModuloPeticion p) {
+    public ResponseEntity<ModuloResponse> actualizarModulo(
+            @PathVariable Long id, @Valid @RequestBody CrearModuloRequest p) {
         return ResponseEntity.ok(service.actualizarModulo(id, p));
     }
 
     @PatchMapping("/modulos/{id}/activo")
     @Operation(summary = "Activar o desactivar un módulo (desactivar nunca borra)")
-    public ResponseEntity<ModuloRespuesta> cambiarActivoModulo(
-            @PathVariable Long id, @Valid @RequestBody ActivoPeticion p) {
+    public ResponseEntity<ModuloResponse> cambiarActivoModulo(
+            @PathVariable Long id, @Valid @RequestBody ActivoRequest p) {
         return ResponseEntity.ok(service.cambiarActivoModulo(id, p.activo()));
     }
 
@@ -104,29 +104,29 @@ public class ContenidoController {
 
     @PostMapping("/modulos/{moduloId}/lecciones")
     @Operation(summary = "Crear una lección al final del módulo")
-    public ResponseEntity<LeccionRespuesta> crearLeccion(
-            @PathVariable Long moduloId, @Valid @RequestBody CrearLeccionPeticion p) {
+    public ResponseEntity<LeccionResponse> crearLeccion(
+            @PathVariable Long moduloId, @Valid @RequestBody CrearLeccionRequest p) {
         return ResponseEntity.ok(service.crearLeccion(moduloId, p));
     }
 
     @PutMapping("/modulos/{id}/lecciones/orden")
     @Operation(summary = "Reordenar las lecciones de un módulo")
-    public ResponseEntity<List<LeccionRespuesta>> reordenarLecciones(
-            @PathVariable Long id, @Valid @RequestBody OrdenPeticion p) {
+    public ResponseEntity<List<LeccionResponse>> reordenarLecciones(
+            @PathVariable Long id, @Valid @RequestBody OrdenRequest p) {
         return ResponseEntity.ok(service.reordenarLecciones(id, p));
     }
 
     @PutMapping("/lecciones/{id}")
     @Operation(summary = "Editar una lección")
-    public ResponseEntity<LeccionRespuesta> actualizarLeccion(
-            @PathVariable Long id, @Valid @RequestBody CrearLeccionPeticion p) {
+    public ResponseEntity<LeccionResponse> actualizarLeccion(
+            @PathVariable Long id, @Valid @RequestBody CrearLeccionRequest p) {
         return ResponseEntity.ok(service.actualizarLeccion(id, p));
     }
 
     @PatchMapping("/lecciones/{id}/activo")
     @Operation(summary = "Activar o desactivar una lección (desactivar nunca borra)")
-    public ResponseEntity<LeccionRespuesta> cambiarActivoLeccion(
-            @PathVariable Long id, @Valid @RequestBody ActivoPeticion p) {
+    public ResponseEntity<LeccionResponse> cambiarActivoLeccion(
+            @PathVariable Long id, @Valid @RequestBody ActivoRequest p) {
         return ResponseEntity.ok(service.cambiarActivoLeccion(id, p.activo()));
     }
 
@@ -142,8 +142,8 @@ public class ContenidoController {
     @Operation(summary = "Programar la sesión de una lección en vivo",
             description = "Fecha, hora y enlace de reunión. Exige modalidad EN_VIVO/HIBRIDO y fechas dentro del periodo del curso.")
     @ApiResponse(responseCode = "400", description = "Lección no es EN_VIVO, curso virtual, horario inválido o fuera del periodo")
-    public ResponseEntity<LeccionRespuesta> actualizarSesion(
-            @PathVariable Long id, @Valid @RequestBody ActualizarSesionPeticion p) {
+    public ResponseEntity<LeccionResponse> actualizarSesion(
+            @PathVariable Long id, @Valid @RequestBody ActualizarSesionRequest p) {
         return ResponseEntity.ok(service.actualizarSesion(id, p));
     }
 
@@ -152,7 +152,7 @@ public class ContenidoController {
             description = "HU-027. Exige motivo, conserva el horario anterior en el historial. Si la nueva fecha "
                     + "supera el fin del curso, no guarda nada y pide ampliarlo primero (ver fecha-fin).")
     public ResponseEntity<ReprogramarSesionResultado> reprogramarSesion(
-            @PathVariable Long id, @Valid @RequestBody ReprogramarSesionPeticion p) {
+            @PathVariable Long id, @Valid @RequestBody ReprogramarSesionRequest p) {
         return ResponseEntity.ok(administrarSesionesService.reprogramar(id, p));
     }
 
@@ -169,7 +169,7 @@ public class ContenidoController {
     @Operation(summary = "Cancelar una sesión en vivo futura",
             description = "HU-027. Definitivo: la sesión queda CANCELADA, excluida de asistencia/progreso.")
     public ResponseEntity<Void> cancelarSesion(
-            @PathVariable Long id, @Valid @RequestBody CancelarSesionPeticion p) {
+            @PathVariable Long id, @Valid @RequestBody CancelarSesionRequest p) {
         administrarSesionesService.cancelar(id, p);
         return ResponseEntity.noContent().build();
     }
@@ -178,7 +178,7 @@ public class ContenidoController {
     @Operation(summary = "Corregir el enlace de una sesión ya realizada",
             description = "HU-027. Solo aplica a una sesión que ya pasó; no cambia fechas.")
     public ResponseEntity<Void> corregirEnlaceSesion(
-            @PathVariable Long id, @Valid @RequestBody CorregirEnlaceSesionPeticion p) {
+            @PathVariable Long id, @Valid @RequestBody CorregirEnlaceSesionRequest p) {
         administrarSesionesService.corregirEnlace(id, p);
         return ResponseEntity.noContent().build();
     }
@@ -187,7 +187,7 @@ public class ContenidoController {
     @Operation(summary = "Corregir una asistencia registrada",
             description = "HU-027. Exige motivo; nunca borra el registro original, solo deja el ajuste.")
     public ResponseEntity<Void> corregirAsistencia(
-            @PathVariable Long id, @Valid @RequestBody CorregirAsistenciaPeticion p) {
+            @PathVariable Long id, @Valid @RequestBody CorregirAsistenciaRequest p) {
         administrarSesionesService.corregirAsistencia(id, p);
         return ResponseEntity.noContent().build();
     }
@@ -195,7 +195,7 @@ public class ContenidoController {
     @GetMapping("/lecciones/{id}/sesion/asistencias")
     @Operation(summary = "Consultar la asistencia de una sesión",
             description = "HU-027. Alumno, estado de asistencia y su identificador, para el modal de corrección.")
-    public ResponseEntity<List<AsistenciaSesionRespuesta>> asistenciasSesion(@PathVariable Long id) {
+    public ResponseEntity<List<AsistenciaSesionResponse>> asistenciasSesion(@PathVariable Long id) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(administrarSesionesService.listarAsistencias(id));
     }
@@ -203,15 +203,15 @@ public class ContenidoController {
     @GetMapping("/lecciones/{id}/sesion/historial")
     @Operation(summary = "Consultar el historial de cambios de una sesión",
             description = "HU-027. Reprogramaciones y cancelaciones anteriores, más reciente primero.")
-    public ResponseEntity<List<HistorialSesionRespuesta>> historialSesion(@PathVariable Long id) {
+    public ResponseEntity<List<HistorialSesionResponse>> historialSesion(@PathVariable Long id) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(administrarSesionesService.historial(id));
     }
 
     @PostMapping("/lecciones/{id}/materiales")
     @Operation(summary = "Asociar un material sin archivo propio (YouTube o enlace externo)")
-    public ResponseEntity<MaterialRespuesta> crearMaterialEnlace(
-            @PathVariable Long id, @Valid @RequestBody CrearMaterialEnlacePeticion p) {
+    public ResponseEntity<MaterialResponse> crearMaterialEnlace(
+            @PathVariable Long id, @Valid @RequestBody CrearMaterialEnlaceRequest p) {
         return ResponseEntity.ok(service.crearMaterialEnlace(id, p));
     }
 
@@ -219,7 +219,7 @@ public class ContenidoController {
     @Operation(summary = "Subir un archivo como material (origen SUBIDO)",
             description = "Valida extensión y tamaño contra las reglas activas de HU-009 antes de guardarlo.")
     @ApiResponse(responseCode = "400", description = "Extensión no permitida o tamaño excedido")
-    public ResponseEntity<MaterialRespuesta> subirMaterialArchivo(
+    public ResponseEntity<MaterialResponse> subirMaterialArchivo(
             @PathVariable Long id,
             @RequestParam("archivo") MultipartFile archivo,
             @RequestParam String titulo,
@@ -230,22 +230,22 @@ public class ContenidoController {
 
     @PutMapping("/lecciones/{id}/materiales/orden")
     @Operation(summary = "Reordenar los materiales de una lección")
-    public ResponseEntity<List<MaterialRespuesta>> reordenarMateriales(
-            @PathVariable Long id, @Valid @RequestBody OrdenPeticion p) {
+    public ResponseEntity<List<MaterialResponse>> reordenarMateriales(
+            @PathVariable Long id, @Valid @RequestBody OrdenRequest p) {
         return ResponseEntity.ok(service.reordenarMateriales(id, p));
     }
 
     @PatchMapping("/materiales/{id}")
     @Operation(summary = "Editar título o permiso de descarga de un material")
-    public ResponseEntity<MaterialRespuesta> actualizarMaterial(
-            @PathVariable Long id, @Valid @RequestBody ActualizarMaterialPeticion p) {
+    public ResponseEntity<MaterialResponse> actualizarMaterial(
+            @PathVariable Long id, @Valid @RequestBody ActualizarMaterialRequest p) {
         return ResponseEntity.ok(service.actualizarMaterial(id, p));
     }
 
     @PatchMapping("/materiales/{id}/activo")
     @Operation(summary = "Quitar o restaurar un material (nunca borra el recurso)")
-    public ResponseEntity<MaterialRespuesta> cambiarActivoMaterial(
-            @PathVariable Long id, @Valid @RequestBody ActivoPeticion p) {
+    public ResponseEntity<MaterialResponse> cambiarActivoMaterial(
+            @PathVariable Long id, @Valid @RequestBody ActivoRequest p) {
         return ResponseEntity.ok(service.cambiarActivoMaterial(id, p.activo()));
     }
 

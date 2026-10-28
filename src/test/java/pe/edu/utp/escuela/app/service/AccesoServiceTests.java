@@ -17,7 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import pe.edu.utp.escuela.app.dto.AccesoPeticion;
+import pe.edu.utp.escuela.app.dto.AccesoRequest;
 import pe.edu.utp.escuela.app.dto.ResultadoAcceso;
 import pe.edu.utp.escuela.app.entity.Persona;
 import pe.edu.utp.escuela.app.entity.Usuario;
@@ -61,8 +61,8 @@ class AccesoServiceTests {
         return usuario;
     }
 
-    private AccesoPeticion peticion(String correo, String contrasena) {
-        return new AccesoPeticion(correo, contrasena);
+    private AccesoRequest peticion(String correo, String contrasena) {
+        return new AccesoRequest(correo, contrasena);
     }
 
     @Test

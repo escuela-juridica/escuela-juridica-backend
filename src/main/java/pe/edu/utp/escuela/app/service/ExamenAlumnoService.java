@@ -21,12 +21,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.ExamenFichaRespuesta;
-import pe.edu.utp.escuela.app.dto.GuardarRespuestaPeticion;
-import pe.edu.utp.escuela.app.dto.IntentoRespuesta;
-import pe.edu.utp.escuela.app.dto.IntentoResumenRespuesta;
-import pe.edu.utp.escuela.app.dto.OpcionIntentoRespuesta;
-import pe.edu.utp.escuela.app.dto.PreguntaIntentoRespuesta;
+import pe.edu.utp.escuela.app.dto.ExamenFichaResponse;
+import pe.edu.utp.escuela.app.dto.GuardarRespuestaRequest;
+import pe.edu.utp.escuela.app.dto.IntentoResponse;
+import pe.edu.utp.escuela.app.dto.IntentoResumenResponse;
+import pe.edu.utp.escuela.app.dto.OpcionIntentoResponse;
+import pe.edu.utp.escuela.app.dto.PreguntaIntentoResponse;
 import pe.edu.utp.escuela.app.entity.Examen;
 import pe.edu.utp.escuela.app.entity.IntentoExamen;
 import pe.edu.utp.escuela.app.entity.Matricula;
@@ -91,7 +91,7 @@ public class ExamenAlumnoService {
     // ------------------------------------------------------------------ ficha --
 
     @Transactional(noRollbackFor = BusinessValidationException.class)
-    public ExamenFichaRespuesta ficha(Long examenId) {
+    public ExamenFichaResponse ficha(Long examenId) {
         Contexto ctx = contexto(examenId);
         Examen examen = ctx.examen();
         EstadoExamen estado = ctx.estado();
@@ -117,12 +117,12 @@ public class ExamenAlumnoService {
         }
 
         ReglaCurso regla = reglaDe(ctx.matricula());
-        List<IntentoResumenRespuesta> historial = estado.intentos().stream()
-                .map(i -> new IntentoResumenRespuesta(i.getId(), i.getNumeroIntento(), i.getEstado(), i.getNota(),
+        List<IntentoResumenResponse> historial = estado.intentos().stream()
+                .map(i -> new IntentoResumenResponse(i.getId(), i.getNumeroIntento(), i.getEstado(), i.getNota(),
                         i.getAprobado(), i.getIniciadoEn(), i.getEnviadoEn(), limiteRevision(i, examen)))
                 .toList();
 
-        return new ExamenFichaRespuesta(examen.getId(), examen.getCurso().getId(), examen.getTitulo(),
+        return new ExamenFichaResponse(examen.getId(), examen.getCurso().getId(), examen.getTitulo(),
                 examen.getDescripcion(), examen.getTipo(), examen.getFinalidad(),
                 examen.getModulo() == null ? null : examen.getModulo().getTitulo(), activas.size(), total, abierta,
                 examen.getTiempoLimiteMinutos(), estado.permitidos(), estado.usados(), estado.restantes(),
@@ -137,7 +137,7 @@ public class ExamenAlumnoService {
 
     /** Inicia un intento nuevo o retoma el que ya está en curso (con su tiempo restante). */
     @Transactional(noRollbackFor = BusinessValidationException.class)
-    public IntentoRespuesta iniciar(Long examenId) {
+    public IntentoResponse iniciar(Long examenId) {
         Contexto ctx = contexto(examenId);
         if (ctx.soloLectura()) {
             throw new BusinessValidationException(
@@ -174,7 +174,7 @@ public class ExamenAlumnoService {
     // ------------------------------------------------------------------ intento --
 
     @Transactional(noRollbackFor = BusinessValidationException.class)
-    public IntentoRespuesta intento(Long intentoId) {
+    public IntentoResponse intento(Long intentoId) {
         IntentoExamen intento = intentoDelAlumno(intentoId);
         cerrarSiVencido(intento);
         return construir(intento, intento.getMatricula());
@@ -182,7 +182,7 @@ public class ExamenAlumnoService {
 
     /** Guarda (reemplazando) la respuesta a una pregunta. Idempotente. */
     @Transactional(noRollbackFor = BusinessValidationException.class)
-    public void guardarRespuesta(Long intentoId, Long preguntaId, GuardarRespuestaPeticion peticion) {
+    public void guardarRespuesta(Long intentoId, Long preguntaId, GuardarRespuestaRequest peticion) {
         IntentoExamen intento = intentoDelAlumno(intentoId);
         if (cerrarSiVencido(intento)) {
             throw new BusinessValidationException(
@@ -234,7 +234,7 @@ public class ExamenAlumnoService {
 
     /** Envía el intento: califica lo objetivo y, si hay respuestas abiertas, lo deja en revisión. */
     @Transactional(noRollbackFor = BusinessValidationException.class)
-    public IntentoRespuesta enviar(Long intentoId) {
+    public IntentoResponse enviar(Long intentoId) {
         IntentoExamen intento = intentoDelAlumno(intentoId);
         if (!cerrarSiVencido(intento) && intento.estaEnProgreso()) {
             exigirEscritura(intento.getMatricula());
@@ -337,7 +337,7 @@ public class ExamenAlumnoService {
 
     // ------------------------------------------------------------- construcción --
 
-    private IntentoRespuesta construir(IntentoExamen intento, Matricula matricula) {
+    private IntentoResponse construir(IntentoExamen intento, Matricula matricula) {
         Examen examen = intento.getExamen();
         Instant ahora = clock.instant();
         boolean enProgreso = intento.estaEnProgreso();
@@ -355,7 +355,7 @@ public class ExamenAlumnoService {
                 .collect(Collectors.toMap(r -> r.getPregunta().getId(), r -> r));
 
         boolean visibles = !enProgreso && respuestasVisibles(examen, matricula);
-        List<PreguntaIntentoRespuesta> filas = new ArrayList<>();
+        List<PreguntaIntentoResponse> filas = new ArrayList<>();
         int posicion = 1;
         for (Pregunta pregunta : activas) {
             List<OpcionPregunta> delaPregunta = new ArrayList<>(opcionesPorPregunta.getOrDefault(pregunta.getId(), List.of()));
@@ -384,10 +384,10 @@ public class ExamenAlumnoService {
                             ? BigDecimal.ZERO : respuesta.getPuntajeAutomatico()) == 0;
                 }
             }
-            List<OpcionIntentoRespuesta> opcionesDto = delaPregunta.stream()
-                    .map(o -> new OpcionIntentoRespuesta(o.getId(), o.getTexto(), visibles ? o.isEsCorrecta() : null))
+            List<OpcionIntentoResponse> opcionesDto = delaPregunta.stream()
+                    .map(o -> new OpcionIntentoResponse(o.getId(), o.getTexto(), visibles ? o.isEsCorrecta() : null))
                     .toList();
-            filas.add(new PreguntaIntentoRespuesta(pregunta.getId(), pregunta.getTipo(), pregunta.getEnunciado(),
+            filas.add(new PreguntaIntentoResponse(pregunta.getId(), pregunta.getTipo(), pregunta.getEnunciado(),
                     pregunta.getPuntaje(), posicion++, opcionesDto, seleccionadas, texto, respondida, puntaje,
                     correcta, estadoRevision));
         }
@@ -396,7 +396,7 @@ public class ExamenAlumnoService {
                 ? Math.max(0, Duration.between(ahora, intento.getExpiraEn()).getSeconds()) : null;
         boolean porTiempo = intento.getExpiraEn() != null && intento.getEnviadoEn() != null
                 && !intento.getEnviadoEn().isBefore(intento.getExpiraEn());
-        return new IntentoRespuesta(intento.getId(), examen.getId(), examen.getCurso().getId(), examen.getTitulo(),
+        return new IntentoResponse(intento.getId(), examen.getId(), examen.getCurso().getId(), examen.getTitulo(),
                 examen.getTipo(), intento.getNumeroIntento(), intento.getEstado(), intento.getIniciadoEn(),
                 intento.getExpiraEn(), restantes, ahora, intento.getPuntajeTotal(), intento.getPuntajeObtenido(),
                 intento.getNota(), intento.getAprobado(), reglaDe(matricula).getNotaMinima(), intento.getEnviadoEn(),

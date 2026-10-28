@@ -6,9 +6,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.AccesoPeticion;
+import pe.edu.utp.escuela.app.dto.AccesoRequest;
 import pe.edu.utp.escuela.app.dto.ResultadoAcceso;
-import pe.edu.utp.escuela.app.dto.SesionAccesoRespuesta;
+import pe.edu.utp.escuela.app.dto.SesionAccesoResponse;
 import pe.edu.utp.escuela.app.entity.Usuario;
 import pe.edu.utp.escuela.app.exception.InactiveAccountException;
 import pe.edu.utp.escuela.app.exception.InvalidCredentialsException;
@@ -27,7 +27,7 @@ public class AccesoService {
     private final JwtService jwtService;
 
     @Transactional(readOnly = true)
-    public ResultadoAcceso acceder(AccesoPeticion peticion) {
+    public ResultadoAcceso acceder(AccesoRequest peticion) {
         String correo = peticion.correo().strip().toLowerCase(Locale.ROOT);
         Usuario usuario = usuarioRepository.findByCorreoIgnoreCase(correo)
                 .orElseThrow(InvalidCredentialsException::new);
@@ -49,7 +49,7 @@ public class AccesoService {
     }
 
     @Transactional(readOnly = true)
-    public SesionAccesoRespuesta obtenerSesion(Long usuarioId) {
+    public SesionAccesoResponse obtenerSesion(Long usuarioId) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(InvalidCredentialsException::new);
         return construirSesion(usuario, rolPrincipal(usuario.getId()));
@@ -63,8 +63,8 @@ public class AccesoService {
         return codigos.get(0).replaceFirst("^ROLE_", "");
     }
 
-    private SesionAccesoRespuesta construirSesion(Usuario usuario, String rol) {
-        return new SesionAccesoRespuesta(
+    private SesionAccesoResponse construirSesion(Usuario usuario, String rol) {
+        return new SesionAccesoResponse(
                 usuario.getId(), usuario.getPersona().nombreCompleto(), usuario.getCorreo(), rol,
                 usuario.isRequiereCambioContrasena());
     }

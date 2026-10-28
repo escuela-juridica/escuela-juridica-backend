@@ -14,7 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import jakarta.servlet.http.Cookie;
-import pe.edu.utp.escuela.app.dto.RegistroPeticion;
+import pe.edu.utp.escuela.app.dto.RegistroRequest;
 import pe.edu.utp.escuela.app.entity.Rol;
 import pe.edu.utp.escuela.app.mail.MailService;
 import pe.edu.utp.escuela.app.repository.*;
@@ -55,7 +55,7 @@ class AntiRobotRegistroHttpTests {
         var verificacion = mvc.perform(post("/api/auth/registro/antirobot/verificar").cookie(cookie)
                 .contentType("application/json").content(solucion)).andExpect(status().isOk()).andReturn().getResponse();
         String prueba = json.readTree(verificacion.getContentAsString()).get("evidencia").asText();
-        String registro = json.writeValueAsString(new RegistroPeticion("Ana", "Pérez", null, "nativo@example.com",
+        String registro = json.writeValueAsString(new RegistroRequest("Ana", "Pérez", null, "nativo@example.com",
                 null, null, "Clave123", "Clave123", true, prueba));
         mvc.perform(post("/api/auth/registro").contentType("application/json").content(registro))
                 .andExpect(status().isBadRequest());

@@ -13,10 +13,10 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import pe.edu.utp.escuela.app.dto.ActualizarPerfilPeticion;
-import pe.edu.utp.escuela.app.dto.CambiarContrasenaPeticion;
-import pe.edu.utp.escuela.app.dto.NuevaContrasenaPeticion;
-import pe.edu.utp.escuela.app.dto.PerfilRespuesta;
+import pe.edu.utp.escuela.app.dto.ActualizarPerfilRequest;
+import pe.edu.utp.escuela.app.dto.CambiarContrasenaRequest;
+import pe.edu.utp.escuela.app.dto.NuevaContrasenaRequest;
+import pe.edu.utp.escuela.app.dto.PerfilResponse;
 import pe.edu.utp.escuela.app.service.PerfilService;
 
 @RestController
@@ -31,7 +31,7 @@ public class PerfilController {
     @Operation(summary = "Consultar mi perfil")
     @ApiResponse(responseCode = "200", description = "Datos del perfil de la cuenta autenticada")
     @ApiResponse(responseCode = "401", description = "No autenticado")
-    public ResponseEntity<PerfilRespuesta> obtener() {
+    public ResponseEntity<PerfilResponse> obtener() {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.obtener());
     }
 
@@ -40,7 +40,7 @@ public class PerfilController {
     @ApiResponse(responseCode = "200", description = "Perfil actualizado")
     @ApiResponse(responseCode = "400", description = "Datos inválidos")
     @ApiResponse(responseCode = "409", description = "El documento de identidad ya está en uso")
-    public ResponseEntity<PerfilRespuesta> actualizar(@Valid @RequestBody ActualizarPerfilPeticion p) {
+    public ResponseEntity<PerfilResponse> actualizar(@Valid @RequestBody ActualizarPerfilRequest p) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.actualizar(p));
     }
 
@@ -50,7 +50,7 @@ public class PerfilController {
     @ApiResponse(responseCode = "204", description = "Contraseña creada")
     @ApiResponse(responseCode = "400", description = "La contraseña no cumple la política o no coincide con la confirmación")
     @ApiResponse(responseCode = "409", description = "La cuenta no puede crear una contraseña por este medio")
-    public ResponseEntity<Void> crearContrasena(@Valid @RequestBody NuevaContrasenaPeticion p) {
+    public ResponseEntity<Void> crearContrasena(@Valid @RequestBody NuevaContrasenaRequest p) {
         service.crearContrasena(p);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
@@ -62,7 +62,7 @@ public class PerfilController {
     @ApiResponse(responseCode = "204", description = "Contraseña actualizada")
     @ApiResponse(responseCode = "400", description = "Contraseña actual incorrecta, nueva contraseña inválida o no coincide")
     @ApiResponse(responseCode = "409", description = "La cuenta todavía no tiene una contraseña propia")
-    public ResponseEntity<Void> cambiarContrasena(@Valid @RequestBody CambiarContrasenaPeticion p) {
+    public ResponseEntity<Void> cambiarContrasena(@Valid @RequestBody CambiarContrasenaRequest p) {
         service.cambiarContrasena(p);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }

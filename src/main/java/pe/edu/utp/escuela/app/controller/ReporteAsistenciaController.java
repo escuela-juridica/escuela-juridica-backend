@@ -17,9 +17,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import pe.edu.utp.escuela.app.dto.OpcionAsistenciaRespuesta;
+import pe.edu.utp.escuela.app.dto.OpcionAsistenciaResponse;
 import pe.edu.utp.escuela.app.dto.PageResponse;
-import pe.edu.utp.escuela.app.dto.ReporteAsistenciaRespuesta;
+import pe.edu.utp.escuela.app.dto.ReporteAsistenciaResponse;
 import pe.edu.utp.escuela.app.export.ReporteAsistenciaExport;
 import pe.edu.utp.escuela.app.service.ReporteAsistenciaService;
 import pe.edu.utp.escuela.app.service.ReporteAsistenciaService.Filtro;
@@ -41,7 +41,7 @@ public class ReporteAsistenciaController {
                     + "usan el mismo denominador que ve el alumno: sesiones no canceladas posteriores "
                     + "a su matrícula.")
     @ApiResponse(responseCode = "400", description = "Curso virtual o filtro no válido")
-    public ResponseEntity<PageResponse<ReporteAsistenciaRespuesta>> reporte(
+    public ResponseEntity<PageResponse<ReporteAsistenciaResponse>> reporte(
             @RequestParam(defaultValue = "") String texto,
             @RequestParam(required = false) Long cursoId,
             @RequestParam(required = false) Long sesionId,
@@ -54,7 +54,7 @@ public class ReporteAsistenciaController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         int tamano = Math.min(Math.max(size, 1), 50);
-        Page<ReporteAsistenciaRespuesta> pagina = service.paginado(
+        Page<ReporteAsistenciaResponse> pagina = service.paginado(
                 new Filtro(texto, cursoId, sesionId, modalidad, fechaDesde, fechaHasta, asistencia, origen,
                         cumplimiento),
                 PageRequest.of(Math.max(page, 0), tamano));
@@ -74,7 +74,7 @@ public class ReporteAsistenciaController {
             @RequestParam(defaultValue = "") String asistencia,
             @RequestParam(defaultValue = "") String origen,
             @RequestParam(defaultValue = "") String cumplimiento) {
-        List<ReporteAsistenciaRespuesta> filas = service.completo(
+        List<ReporteAsistenciaResponse> filas = service.completo(
                 new Filtro(texto, cursoId, sesionId, modalidad, fechaDesde, fechaHasta, asistencia, origen,
                         cumplimiento));
         return ResponseEntity.ok()
@@ -86,14 +86,14 @@ public class ReporteAsistenciaController {
 
     @GetMapping("/cursos")
     @Operation(summary = "Cursos que admite el reporte (solo en vivo o híbridos)")
-    public ResponseEntity<List<OpcionAsistenciaRespuesta>> cursos() {
+    public ResponseEntity<List<OpcionAsistenciaResponse>> cursos() {
         return ResponseEntity.ok(service.cursosDisponibles());
     }
 
     @GetMapping("/cursos/{cursoId}/sesiones")
     @Operation(summary = "Sesiones (no canceladas) de un curso en vivo o híbrido, para el filtro")
     @ApiResponse(responseCode = "400", description = "El curso es virtual")
-    public ResponseEntity<List<OpcionAsistenciaRespuesta>> sesiones(@PathVariable Long cursoId) {
+    public ResponseEntity<List<OpcionAsistenciaResponse>> sesiones(@PathVariable Long cursoId) {
         return ResponseEntity.ok(service.sesionesDeCurso(cursoId));
     }
 }

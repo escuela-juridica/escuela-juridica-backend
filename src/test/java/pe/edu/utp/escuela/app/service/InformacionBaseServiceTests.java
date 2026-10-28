@@ -16,21 +16,21 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
-import pe.edu.utp.escuela.app.dto.ActualizarConfiguracionPeticion;
-import pe.edu.utp.escuela.app.dto.CategoriaPeticion;
-import pe.edu.utp.escuela.app.dto.ConfiguracionPeticion;
-import pe.edu.utp.escuela.app.dto.ConfiguracionRespuesta;
-import pe.edu.utp.escuela.app.dto.DocentePeticion;
-import pe.edu.utp.escuela.app.dto.DocenteRespuesta;
-import pe.edu.utp.escuela.app.dto.EntidadPeticion;
-import pe.edu.utp.escuela.app.dto.EntidadRespuesta;
-import pe.edu.utp.escuela.app.dto.FirmantePeticion;
-import pe.edu.utp.escuela.app.dto.FirmanteRespuesta;
-import pe.edu.utp.escuela.app.dto.ReglaArchivoPeticion;
-import pe.edu.utp.escuela.app.dto.ReglaArchivoRespuesta;
-import pe.edu.utp.escuela.app.dto.TipoCursoPeticion;
-import pe.edu.utp.escuela.app.dto.TipoCursoRespuesta;
-import pe.edu.utp.escuela.app.dto.TipoMaterialPeticion;
+import pe.edu.utp.escuela.app.dto.ActualizarConfiguracionRequest;
+import pe.edu.utp.escuela.app.dto.CategoriaRequest;
+import pe.edu.utp.escuela.app.dto.ConfiguracionRequest;
+import pe.edu.utp.escuela.app.dto.ConfiguracionResponse;
+import pe.edu.utp.escuela.app.dto.DocenteRequest;
+import pe.edu.utp.escuela.app.dto.DocenteResponse;
+import pe.edu.utp.escuela.app.dto.EntidadRequest;
+import pe.edu.utp.escuela.app.dto.EntidadResponse;
+import pe.edu.utp.escuela.app.dto.FirmanteRequest;
+import pe.edu.utp.escuela.app.dto.FirmanteResponse;
+import pe.edu.utp.escuela.app.dto.ReglaArchivoRequest;
+import pe.edu.utp.escuela.app.dto.ReglaArchivoResponse;
+import pe.edu.utp.escuela.app.dto.TipoCursoRequest;
+import pe.edu.utp.escuela.app.dto.TipoCursoResponse;
+import pe.edu.utp.escuela.app.dto.TipoMaterialRequest;
 import pe.edu.utp.escuela.app.entity.CategoriaTematica;
 import pe.edu.utp.escuela.app.entity.ConfiguracionInstitucional;
 import pe.edu.utp.escuela.app.entity.EntidadCertificadora;
@@ -98,7 +98,7 @@ class InformacionBaseServiceTests {
         comoAdministrador();
         when(tiposCurso.existsByCodigo("DIPLOMADO")).thenReturn(true);
         assertThrows(DuplicateResourceException.class,
-                () -> service.crearTipoCurso(new TipoCursoPeticion("DIPLOMADO", "Diplomado", 10)));
+                () -> service.crearTipoCurso(new TipoCursoRequest("DIPLOMADO", "Diplomado", 10)));
     }
 
     @Test
@@ -112,7 +112,7 @@ class InformacionBaseServiceTests {
         tipo.setOrden(50);
         when(tiposCurso.findById(5L)).thenReturn(Optional.of(tipo));
 
-        TipoCursoRespuesta respuesta = service.cambiarActivoTipoCurso(5L, false);
+        TipoCursoResponse respuesta = service.cambiarActivoTipoCurso(5L, false);
 
         assertFalse(respuesta.activo());
         assertEquals("SEMINARIO", respuesta.codigo());
@@ -133,7 +133,7 @@ class InformacionBaseServiceTests {
         comoAdministrador();
         when(categorias.existsByCodigo("DERECHO_REGISTRAL")).thenReturn(true);
         assertThrows(DuplicateResourceException.class, () -> service.crearCategoria(
-                new CategoriaPeticion("DERECHO_REGISTRAL", "Derecho Registral", 10)));
+                new CategoriaRequest("DERECHO_REGISTRAL", "Derecho Registral", 10)));
     }
 
     // ---- Docentes ----
@@ -146,7 +146,7 @@ class InformacionBaseServiceTests {
             return p;
         });
 
-        DocenteRespuesta respuesta = service.crearDocente(new DocentePeticion(
+        DocenteResponse respuesta = service.crearDocente(new DocenteRequest(
                 "Milagros Fernanda", "Salvatierra", "Guevara", null,
                 "Docente especialista en Derecho Registral", "Biografía de ejemplo."));
 
@@ -166,7 +166,7 @@ class InformacionBaseServiceTests {
         persona.setActivo(true);
         when(personas.findById(7L)).thenReturn(Optional.of(persona));
 
-        DocenteRespuesta respuesta = service.cambiarActivoDocente(7L, false);
+        DocenteResponse respuesta = service.cambiarActivoDocente(7L, false);
 
         assertFalse(respuesta.activo());
         org.mockito.Mockito.verify(personas, org.mockito.Mockito.never()).delete(any());
@@ -178,7 +178,7 @@ class InformacionBaseServiceTests {
         comoAdministrador();
         when(entidades.existsByNombreIgnoreCase("Colegio de Abogados de Lima")).thenReturn(true);
         assertThrows(DuplicateResourceException.class,
-                () -> service.crearEntidad(new EntidadPeticion("Colegio de Abogados de Lima", null)));
+                () -> service.crearEntidad(new EntidadRequest("Colegio de Abogados de Lima", null)));
     }
 
     @Test
@@ -190,7 +190,7 @@ class InformacionBaseServiceTests {
         entidad.setActivo(true);
         when(entidades.findById(3L)).thenReturn(Optional.of(entidad));
 
-        EntidadRespuesta respuesta = service.cambiarActivoEntidad(3L, false);
+        EntidadResponse respuesta = service.cambiarActivoEntidad(3L, false);
 
         assertFalse(respuesta.activo());
         assertEquals("Colegio de Abogados de Lima Sur", respuesta.nombre());
@@ -212,7 +212,7 @@ class InformacionBaseServiceTests {
             return f;
         });
 
-        FirmanteRespuesta respuesta = service.crearFirmante(new FirmantePeticion(
+        FirmanteResponse respuesta = service.crearFirmante(new FirmanteRequest(
                 "Lilia Mercedes", "Guerra", "Macedo", "Directora Ejecutiva", null));
 
         assertEquals("Directora Ejecutiva", respuesta.cargoFirma());
@@ -229,7 +229,7 @@ class InformacionBaseServiceTests {
         when(tiposMaterial.findByCodigo("PDF")).thenReturn(Optional.of(existente));
 
         assertThrows(DuplicateResourceException.class, () -> service.crearTipoMaterial(
-                new TipoMaterialPeticion("PDF", "Documento PDF", null)));
+                new TipoMaterialRequest("PDF", "Documento PDF", null)));
     }
 
     // ---- Reglas de archivo ----
@@ -248,8 +248,8 @@ class InformacionBaseServiceTests {
             return r;
         });
 
-        ReglaArchivoRespuesta respuesta = service.crearReglaArchivo(
-                new ReglaArchivoPeticion(1L, ".PDF", 10_000_000L));
+        ReglaArchivoResponse respuesta = service.crearReglaArchivo(
+                new ReglaArchivoRequest(1L, ".PDF", 10_000_000L));
 
         assertEquals("pdf", respuesta.extension());
     }
@@ -264,7 +264,7 @@ class InformacionBaseServiceTests {
         when(reglasArchivo.existsByTipoMaterial_IdAndExtensionIgnoreCase(1L, "pdf")).thenReturn(true);
 
         assertThrows(DuplicateResourceException.class,
-                () -> service.crearReglaArchivo(new ReglaArchivoPeticion(1L, "pdf", 1_000L)));
+                () -> service.crearReglaArchivo(new ReglaArchivoRequest(1L, "pdf", 1_000L)));
     }
 
     // ---- Configuración institucional ----
@@ -278,8 +278,8 @@ class InformacionBaseServiceTests {
             return c;
         });
 
-        ConfiguracionRespuesta creada = service.crearConfiguracion(
-                new ConfiguracionPeticion("LUGAR_EMISION_CERTIFICADO", "Lima, Perú", "Lugar impreso en el certificado"));
+        ConfiguracionResponse creada = service.crearConfiguracion(
+                new ConfiguracionRequest("LUGAR_EMISION_CERTIFICADO", "Lima, Perú", "Lugar impreso en el certificado"));
         assertEquals("Lima, Perú", creada.valor());
 
         ConfiguracionInstitucional entidad = new ConfiguracionInstitucional();
@@ -288,8 +288,8 @@ class InformacionBaseServiceTests {
         entidad.setValor("Lima, Perú");
         when(configuraciones.findById(1L)).thenReturn(Optional.of(entidad));
 
-        ConfiguracionRespuesta actualizada = service.actualizarConfiguracion(
-                1L, new ActualizarConfiguracionPeticion("Lima, Perú, ESEJUR", null));
+        ConfiguracionResponse actualizada = service.actualizarConfiguracion(
+                1L, new ActualizarConfiguracionRequest("Lima, Perú, ESEJUR", null));
         assertEquals("Lima, Perú, ESEJUR", actualizada.valor());
     }
 }

@@ -14,10 +14,10 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.CondicionAvanceRespuesta;
-import pe.edu.utp.escuela.app.dto.OpcionAsistenciaRespuesta;
+import pe.edu.utp.escuela.app.dto.CondicionAvanceResponse;
+import pe.edu.utp.escuela.app.dto.OpcionAsistenciaResponse;
 import pe.edu.utp.escuela.app.dto.PendienteRevisionFila;
-import pe.edu.utp.escuela.app.dto.ReporteAcademicoRespuesta;
+import pe.edu.utp.escuela.app.dto.ReporteAcademicoResponse;
 import pe.edu.utp.escuela.app.entity.Certificado;
 import pe.edu.utp.escuela.app.entity.Matricula;
 import pe.edu.utp.escuela.app.exception.BusinessValidationException;
@@ -65,14 +65,14 @@ public class ReporteAcademicoService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ReporteAcademicoRespuesta> paginado(Filtro filtro, Pageable pageable) {
+    public Page<ReporteAcademicoResponse> paginado(Filtro filtro, Pageable pageable) {
         Consulta consulta = preparar(filtro);
         if (!consulta.filtraPorCalculo) {
             Page<Matricula> pagina = matriculas.buscarReporteAcademico(consulta.texto, filtro.cursoId(),
                     consulta.modalidad, consulta.desde, consulta.hasta, pageable);
             return new PageImpl<>(filas(pagina.getContent()), pageable, pagina.getTotalElements());
         }
-        List<ReporteAcademicoRespuesta> todas = filas(matriculas.exportarReporteAcademico(consulta.texto,
+        List<ReporteAcademicoResponse> todas = filas(matriculas.exportarReporteAcademico(consulta.texto,
                 filtro.cursoId(), consulta.modalidad, consulta.desde, consulta.hasta)).stream()
                 .filter(consulta.coincide).toList();
         int inicio = (int) Math.min(pageable.getOffset(), todas.size());
@@ -81,26 +81,26 @@ public class ReporteAcademicoService {
     }
 
     @Transactional(readOnly = true)
-    public List<ReporteAcademicoRespuesta> completo(Filtro filtro) {
+    public List<ReporteAcademicoResponse> completo(Filtro filtro) {
         Consulta consulta = preparar(filtro);
-        List<ReporteAcademicoRespuesta> todas = filas(matriculas.exportarReporteAcademico(consulta.texto,
+        List<ReporteAcademicoResponse> todas = filas(matriculas.exportarReporteAcademico(consulta.texto,
                 filtro.cursoId(), consulta.modalidad, consulta.desde, consulta.hasta));
         return consulta.filtraPorCalculo ? todas.stream().filter(consulta.coincide).toList() : todas;
     }
 
     @Transactional(readOnly = true)
-    public List<OpcionAsistenciaRespuesta> cursosDisponibles() {
+    public List<OpcionAsistenciaResponse> cursosDisponibles() {
         exigirAdministrador();
         return cursos.findAll().stream()
                 .sorted((a, b) -> a.getTitulo().compareToIgnoreCase(b.getTitulo()))
-                .map(c -> new OpcionAsistenciaRespuesta(c.getId(), c.getTitulo(), c.getModalidad(), null))
+                .map(c -> new OpcionAsistenciaResponse(c.getId(), c.getTitulo(), c.getModalidad(), null))
                 .toList();
     }
 
     // ------------------------------------------------------------------ internos --
 
     private record Consulta(String texto, String modalidad, Instant desde, Instant hasta,
-            boolean filtraPorCalculo, Predicate<ReporteAcademicoRespuesta> coincide) {
+            boolean filtraPorCalculo, Predicate<ReporteAcademicoResponse> coincide) {
     }
 
     private Consulta preparar(Filtro filtro) {
@@ -134,14 +134,14 @@ public class ReporteAcademicoService {
                 : filtro.hasta().plusDays(1).atStartOfDay(LIMA).toInstant();
 
         boolean porCalculo = !situacion.isEmpty() || !cumplimiento.isEmpty() || !certificado.isEmpty();
-        Predicate<ReporteAcademicoRespuesta> coincide = fila ->
+        Predicate<ReporteAcademicoResponse> coincide = fila ->
                 (situacion.isEmpty() || situacion.equals(fila.situacion()))
                         && (cumplimiento.isEmpty() || cumplimiento.equals(fila.cumplimiento()))
                         && (certificado.isEmpty() || certificado.equals(fila.certificado()));
         return new Consulta(texto, modalidad, desde, hasta, porCalculo, coincide);
     }
 
-    private List<ReporteAcademicoRespuesta> filas(List<Matricula> lista) {
+    private List<ReporteAcademicoResponse> filas(List<Matricula> lista) {
         if (lista.isEmpty()) {
             return List.of();
         }
@@ -154,7 +154,7 @@ public class ReporteAcademicoService {
                 certificadoPorMatricula.get(m.getId()))).toList();
     }
 
-    private ReporteAcademicoRespuesta fila(Matricula m, AvanceAcademico avance, PendienteRevisionFila pendiente,
+    private ReporteAcademicoResponse fila(Matricula m, AvanceAcademico avance, PendienteRevisionFila pendiente,
             Certificado certificado) {
         boolean exigeExamenes = avance.ruta().regla().isRequiereExamenes();
         List<String> condicionesPendientes = avance.condiciones().stream()
@@ -170,7 +170,7 @@ public class ReporteAcademicoService {
         String estadoCertificado = certificado == null ? "SIN_EMITIR"
                 : "ANULADO".equals(certificado.getEstado()) ? "ANULADO" : "EMITIDO";
 
-        return new ReporteAcademicoRespuesta(m.getId(), m.getCurso().getId(), m.getCurso().getTitulo(),
+        return new ReporteAcademicoResponse(m.getId(), m.getCurso().getId(), m.getCurso().getTitulo(),
                 m.getCurso().getModalidad(), m.getUsuario().getPersona().nombreCompleto(), m.getUsuario().getCorreo(),
                 m.getFechaMatricula(), m.getEstado(), avance.porcentaje(), exigeExamenes, avance.examenesRequeridos(),
                 avance.examenesAprobados(), avance.notaFinal(), avance.asistencia(), avance.asistenciaExigida(),
@@ -179,7 +179,7 @@ public class ReporteAcademicoService {
                 m.getFechaFinalizacion(), estadoCertificado, certificado == null ? null : certificado.getCodigo());
     }
 
-    private static String describir(CondicionAvanceRespuesta c) {
+    private static String describir(CondicionAvanceResponse c) {
         return c.titulo() + ": " + c.valorActual() + " (" + c.meta() + ")";
     }
 

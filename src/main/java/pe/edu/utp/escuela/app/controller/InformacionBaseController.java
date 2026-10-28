@@ -9,25 +9,25 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import pe.edu.utp.escuela.app.dto.ActivoPeticion;
-import pe.edu.utp.escuela.app.dto.ActualizarConfiguracionPeticion;
-import pe.edu.utp.escuela.app.dto.CategoriaPeticion;
-import pe.edu.utp.escuela.app.dto.CategoriaRespuesta;
-import pe.edu.utp.escuela.app.dto.ConfiguracionPeticion;
-import pe.edu.utp.escuela.app.dto.ConfiguracionRespuesta;
-import pe.edu.utp.escuela.app.dto.DocentePeticion;
-import pe.edu.utp.escuela.app.dto.DocenteRespuesta;
-import pe.edu.utp.escuela.app.dto.EntidadPeticion;
-import pe.edu.utp.escuela.app.dto.EntidadRespuesta;
-import pe.edu.utp.escuela.app.dto.FirmantePeticion;
-import pe.edu.utp.escuela.app.dto.FirmanteRespuesta;
+import pe.edu.utp.escuela.app.dto.ActivoRequest;
+import pe.edu.utp.escuela.app.dto.ActualizarConfiguracionRequest;
+import pe.edu.utp.escuela.app.dto.CategoriaRequest;
+import pe.edu.utp.escuela.app.dto.CategoriaResponse;
+import pe.edu.utp.escuela.app.dto.ConfiguracionRequest;
+import pe.edu.utp.escuela.app.dto.ConfiguracionResponse;
+import pe.edu.utp.escuela.app.dto.DocenteRequest;
+import pe.edu.utp.escuela.app.dto.DocenteResponse;
+import pe.edu.utp.escuela.app.dto.EntidadRequest;
+import pe.edu.utp.escuela.app.dto.EntidadResponse;
+import pe.edu.utp.escuela.app.dto.FirmanteRequest;
+import pe.edu.utp.escuela.app.dto.FirmanteResponse;
 import pe.edu.utp.escuela.app.dto.PageResponse;
-import pe.edu.utp.escuela.app.dto.ReglaArchivoPeticion;
-import pe.edu.utp.escuela.app.dto.ReglaArchivoRespuesta;
-import pe.edu.utp.escuela.app.dto.TipoCursoPeticion;
-import pe.edu.utp.escuela.app.dto.TipoCursoRespuesta;
-import pe.edu.utp.escuela.app.dto.TipoMaterialPeticion;
-import pe.edu.utp.escuela.app.dto.TipoMaterialRespuesta;
+import pe.edu.utp.escuela.app.dto.ReglaArchivoRequest;
+import pe.edu.utp.escuela.app.dto.ReglaArchivoResponse;
+import pe.edu.utp.escuela.app.dto.TipoCursoRequest;
+import pe.edu.utp.escuela.app.dto.TipoCursoResponse;
+import pe.edu.utp.escuela.app.dto.TipoMaterialRequest;
+import pe.edu.utp.escuela.app.dto.TipoMaterialResponse;
 import pe.edu.utp.escuela.app.service.InformacionBaseService;
 
 /** HU-009 — Administrar información base: datos maestros reutilizados por HU-010 en adelante. */
@@ -41,7 +41,7 @@ public class InformacionBaseController {
 
     // ---- Tipos de curso ----
     @GetMapping("/tipos-curso")
-    public ResponseEntity<PageResponse<TipoCursoRespuesta>> listarTiposCurso(
+    public ResponseEntity<PageResponse<TipoCursoResponse>> listarTiposCurso(
             @RequestParam(defaultValue = "false") boolean incluirInactivos,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -49,25 +49,25 @@ public class InformacionBaseController {
     }
 
     @PostMapping("/tipos-curso")
-    public ResponseEntity<TipoCursoRespuesta> crearTipoCurso(@Valid @RequestBody TipoCursoPeticion p) {
+    public ResponseEntity<TipoCursoResponse> crearTipoCurso(@Valid @RequestBody TipoCursoRequest p) {
         return ResponseEntity.ok(service.crearTipoCurso(p));
     }
 
     @PutMapping("/tipos-curso/{id}")
-    public ResponseEntity<TipoCursoRespuesta> actualizarTipoCurso(
-            @PathVariable Long id, @Valid @RequestBody TipoCursoPeticion p) {
+    public ResponseEntity<TipoCursoResponse> actualizarTipoCurso(
+            @PathVariable Long id, @Valid @RequestBody TipoCursoRequest p) {
         return ResponseEntity.ok(service.actualizarTipoCurso(id, p));
     }
 
     @PatchMapping("/tipos-curso/{id}/activo")
-    public ResponseEntity<TipoCursoRespuesta> cambiarActivoTipoCurso(
-            @PathVariable Long id, @Valid @RequestBody ActivoPeticion p) {
+    public ResponseEntity<TipoCursoResponse> cambiarActivoTipoCurso(
+            @PathVariable Long id, @Valid @RequestBody ActivoRequest p) {
         return ResponseEntity.ok(service.cambiarActivoTipoCurso(id, p.activo()));
     }
 
     // ---- Categorías temáticas ----
     @GetMapping("/categorias")
-    public ResponseEntity<PageResponse<CategoriaRespuesta>> listarCategorias(
+    public ResponseEntity<PageResponse<CategoriaResponse>> listarCategorias(
             @RequestParam(defaultValue = "false") boolean incluirInactivos,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -75,25 +75,25 @@ public class InformacionBaseController {
     }
 
     @PostMapping("/categorias")
-    public ResponseEntity<CategoriaRespuesta> crearCategoria(@Valid @RequestBody CategoriaPeticion p) {
+    public ResponseEntity<CategoriaResponse> crearCategoria(@Valid @RequestBody CategoriaRequest p) {
         return ResponseEntity.ok(service.crearCategoria(p));
     }
 
     @PutMapping("/categorias/{id}")
-    public ResponseEntity<CategoriaRespuesta> actualizarCategoria(
-            @PathVariable Long id, @Valid @RequestBody CategoriaPeticion p) {
+    public ResponseEntity<CategoriaResponse> actualizarCategoria(
+            @PathVariable Long id, @Valid @RequestBody CategoriaRequest p) {
         return ResponseEntity.ok(service.actualizarCategoria(id, p));
     }
 
     @PatchMapping("/categorias/{id}/activo")
-    public ResponseEntity<CategoriaRespuesta> cambiarActivoCategoria(
-            @PathVariable Long id, @Valid @RequestBody ActivoPeticion p) {
+    public ResponseEntity<CategoriaResponse> cambiarActivoCategoria(
+            @PathVariable Long id, @Valid @RequestBody ActivoRequest p) {
         return ResponseEntity.ok(service.cambiarActivoCategoria(id, p.activo()));
     }
 
     // ---- Docentes ----
     @GetMapping("/docentes")
-    public ResponseEntity<PageResponse<DocenteRespuesta>> listarDocentes(
+    public ResponseEntity<PageResponse<DocenteResponse>> listarDocentes(
             @RequestParam(defaultValue = "false") boolean incluirInactivos,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -101,25 +101,25 @@ public class InformacionBaseController {
     }
 
     @PostMapping("/docentes")
-    public ResponseEntity<DocenteRespuesta> crearDocente(@Valid @RequestBody DocentePeticion p) {
+    public ResponseEntity<DocenteResponse> crearDocente(@Valid @RequestBody DocenteRequest p) {
         return ResponseEntity.ok(service.crearDocente(p));
     }
 
     @PutMapping("/docentes/{id}")
-    public ResponseEntity<DocenteRespuesta> actualizarDocente(
-            @PathVariable Long id, @Valid @RequestBody DocentePeticion p) {
+    public ResponseEntity<DocenteResponse> actualizarDocente(
+            @PathVariable Long id, @Valid @RequestBody DocenteRequest p) {
         return ResponseEntity.ok(service.actualizarDocente(id, p));
     }
 
     @PatchMapping("/docentes/{id}/activo")
-    public ResponseEntity<DocenteRespuesta> cambiarActivoDocente(
-            @PathVariable Long id, @Valid @RequestBody ActivoPeticion p) {
+    public ResponseEntity<DocenteResponse> cambiarActivoDocente(
+            @PathVariable Long id, @Valid @RequestBody ActivoRequest p) {
         return ResponseEntity.ok(service.cambiarActivoDocente(id, p.activo()));
     }
 
     // ---- Entidades certificadoras ----
     @GetMapping("/entidades")
-    public ResponseEntity<PageResponse<EntidadRespuesta>> listarEntidades(
+    public ResponseEntity<PageResponse<EntidadResponse>> listarEntidades(
             @RequestParam(defaultValue = "false") boolean incluirInactivos,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -127,25 +127,25 @@ public class InformacionBaseController {
     }
 
     @PostMapping("/entidades")
-    public ResponseEntity<EntidadRespuesta> crearEntidad(@Valid @RequestBody EntidadPeticion p) {
+    public ResponseEntity<EntidadResponse> crearEntidad(@Valid @RequestBody EntidadRequest p) {
         return ResponseEntity.ok(service.crearEntidad(p));
     }
 
     @PutMapping("/entidades/{id}")
-    public ResponseEntity<EntidadRespuesta> actualizarEntidad(
-            @PathVariable Long id, @Valid @RequestBody EntidadPeticion p) {
+    public ResponseEntity<EntidadResponse> actualizarEntidad(
+            @PathVariable Long id, @Valid @RequestBody EntidadRequest p) {
         return ResponseEntity.ok(service.actualizarEntidad(id, p));
     }
 
     @PatchMapping("/entidades/{id}/activo")
-    public ResponseEntity<EntidadRespuesta> cambiarActivoEntidad(
-            @PathVariable Long id, @Valid @RequestBody ActivoPeticion p) {
+    public ResponseEntity<EntidadResponse> cambiarActivoEntidad(
+            @PathVariable Long id, @Valid @RequestBody ActivoRequest p) {
         return ResponseEntity.ok(service.cambiarActivoEntidad(id, p.activo()));
     }
 
     // ---- Firmantes ----
     @GetMapping("/firmantes")
-    public ResponseEntity<PageResponse<FirmanteRespuesta>> listarFirmantes(
+    public ResponseEntity<PageResponse<FirmanteResponse>> listarFirmantes(
             @RequestParam(defaultValue = "false") boolean incluirInactivos,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -153,25 +153,25 @@ public class InformacionBaseController {
     }
 
     @PostMapping("/firmantes")
-    public ResponseEntity<FirmanteRespuesta> crearFirmante(@Valid @RequestBody FirmantePeticion p) {
+    public ResponseEntity<FirmanteResponse> crearFirmante(@Valid @RequestBody FirmanteRequest p) {
         return ResponseEntity.ok(service.crearFirmante(p));
     }
 
     @PutMapping("/firmantes/{id}")
-    public ResponseEntity<FirmanteRespuesta> actualizarFirmante(
-            @PathVariable Long id, @Valid @RequestBody FirmantePeticion p) {
+    public ResponseEntity<FirmanteResponse> actualizarFirmante(
+            @PathVariable Long id, @Valid @RequestBody FirmanteRequest p) {
         return ResponseEntity.ok(service.actualizarFirmante(id, p));
     }
 
     @PatchMapping("/firmantes/{id}/activo")
-    public ResponseEntity<FirmanteRespuesta> cambiarActivoFirmante(
-            @PathVariable Long id, @Valid @RequestBody ActivoPeticion p) {
+    public ResponseEntity<FirmanteResponse> cambiarActivoFirmante(
+            @PathVariable Long id, @Valid @RequestBody ActivoRequest p) {
         return ResponseEntity.ok(service.cambiarActivoFirmante(id, p.activo()));
     }
 
     // ---- Tipos de material ----
     @GetMapping("/tipos-material")
-    public ResponseEntity<PageResponse<TipoMaterialRespuesta>> listarTiposMaterial(
+    public ResponseEntity<PageResponse<TipoMaterialResponse>> listarTiposMaterial(
             @RequestParam(defaultValue = "false") boolean incluirInactivos,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -179,60 +179,60 @@ public class InformacionBaseController {
     }
 
     @PostMapping("/tipos-material")
-    public ResponseEntity<TipoMaterialRespuesta> crearTipoMaterial(@Valid @RequestBody TipoMaterialPeticion p) {
+    public ResponseEntity<TipoMaterialResponse> crearTipoMaterial(@Valid @RequestBody TipoMaterialRequest p) {
         return ResponseEntity.ok(service.crearTipoMaterial(p));
     }
 
     @PutMapping("/tipos-material/{id}")
-    public ResponseEntity<TipoMaterialRespuesta> actualizarTipoMaterial(
-            @PathVariable Long id, @Valid @RequestBody TipoMaterialPeticion p) {
+    public ResponseEntity<TipoMaterialResponse> actualizarTipoMaterial(
+            @PathVariable Long id, @Valid @RequestBody TipoMaterialRequest p) {
         return ResponseEntity.ok(service.actualizarTipoMaterial(id, p));
     }
 
     @PatchMapping("/tipos-material/{id}/activo")
-    public ResponseEntity<TipoMaterialRespuesta> cambiarActivoTipoMaterial(
-            @PathVariable Long id, @Valid @RequestBody ActivoPeticion p) {
+    public ResponseEntity<TipoMaterialResponse> cambiarActivoTipoMaterial(
+            @PathVariable Long id, @Valid @RequestBody ActivoRequest p) {
         return ResponseEntity.ok(service.cambiarActivoTipoMaterial(id, p.activo()));
     }
 
     // ---- Reglas de archivo ----
     @GetMapping("/reglas-archivo")
-    public ResponseEntity<List<ReglaArchivoRespuesta>> listarReglasArchivo(
+    public ResponseEntity<List<ReglaArchivoResponse>> listarReglasArchivo(
             @RequestParam(defaultValue = "false") boolean incluirInactivos) {
         return sinCache(service.listarReglasArchivo(incluirInactivos));
     }
 
     @PostMapping("/reglas-archivo")
-    public ResponseEntity<ReglaArchivoRespuesta> crearReglaArchivo(@Valid @RequestBody ReglaArchivoPeticion p) {
+    public ResponseEntity<ReglaArchivoResponse> crearReglaArchivo(@Valid @RequestBody ReglaArchivoRequest p) {
         return ResponseEntity.ok(service.crearReglaArchivo(p));
     }
 
     @PutMapping("/reglas-archivo/{id}")
-    public ResponseEntity<ReglaArchivoRespuesta> actualizarReglaArchivo(
-            @PathVariable Long id, @Valid @RequestBody ReglaArchivoPeticion p) {
+    public ResponseEntity<ReglaArchivoResponse> actualizarReglaArchivo(
+            @PathVariable Long id, @Valid @RequestBody ReglaArchivoRequest p) {
         return ResponseEntity.ok(service.actualizarReglaArchivo(id, p));
     }
 
     @PatchMapping("/reglas-archivo/{id}/activo")
-    public ResponseEntity<ReglaArchivoRespuesta> cambiarActivoReglaArchivo(
-            @PathVariable Long id, @Valid @RequestBody ActivoPeticion p) {
+    public ResponseEntity<ReglaArchivoResponse> cambiarActivoReglaArchivo(
+            @PathVariable Long id, @Valid @RequestBody ActivoRequest p) {
         return ResponseEntity.ok(service.cambiarActivoReglaArchivo(id, p.activo()));
     }
 
     // ---- Configuración institucional ----
     @GetMapping("/configuracion")
-    public ResponseEntity<List<ConfiguracionRespuesta>> listarConfiguraciones() {
+    public ResponseEntity<List<ConfiguracionResponse>> listarConfiguraciones() {
         return sinCache(service.listarConfiguraciones());
     }
 
     @PostMapping("/configuracion")
-    public ResponseEntity<ConfiguracionRespuesta> crearConfiguracion(@Valid @RequestBody ConfiguracionPeticion p) {
+    public ResponseEntity<ConfiguracionResponse> crearConfiguracion(@Valid @RequestBody ConfiguracionRequest p) {
         return ResponseEntity.ok(service.crearConfiguracion(p));
     }
 
     @PutMapping("/configuracion/{id}")
-    public ResponseEntity<ConfiguracionRespuesta> actualizarConfiguracion(
-            @PathVariable Long id, @Valid @RequestBody ActualizarConfiguracionPeticion p) {
+    public ResponseEntity<ConfiguracionResponse> actualizarConfiguracion(
+            @PathVariable Long id, @Valid @RequestBody ActualizarConfiguracionRequest p) {
         return ResponseEntity.ok(service.actualizarConfiguracion(id, p));
     }
 

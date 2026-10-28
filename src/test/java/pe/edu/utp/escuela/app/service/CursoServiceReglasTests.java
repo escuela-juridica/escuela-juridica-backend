@@ -16,8 +16,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import pe.edu.utp.escuela.app.dto.ActualizarReglasCursoPeticion;
-import pe.edu.utp.escuela.app.dto.ReglasCursoRespuesta;
+import pe.edu.utp.escuela.app.dto.ActualizarReglasCursoRequest;
+import pe.edu.utp.escuela.app.dto.ReglasCursoResponse;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.EstadoCurso;
 import pe.edu.utp.escuela.app.entity.ReglaCurso;
@@ -90,8 +90,8 @@ class CursoServiceReglasTests {
         return regla;
     }
 
-    private ActualizarReglasCursoPeticion peticionValida() {
-        return new ActualizarReglasCursoPeticion(true, true, false,
+    private ActualizarReglasCursoRequest peticionValida() {
+        return new ActualizarReglasCursoRequest(true, true, false,
                 BigDecimal.valueOf(12), BigDecimal.valueOf(14),
                 BigDecimal.valueOf(80), BigDecimal.valueOf(50), BigDecimal.valueOf(80),
                 true, 3, null);
@@ -106,12 +106,12 @@ class CursoServiceReglasTests {
         when(examenes.existsByCurso_IdAndActivoTrueAndTipo(100L, "CALIFICADO")).thenReturn(false);
 
         // Solo exige progreso: ni examen ni asistencia.
-        ActualizarReglasCursoPeticion peticion = new ActualizarReglasCursoPeticion(false, true, false,
+        ActualizarReglasCursoRequest peticion = new ActualizarReglasCursoRequest(false, true, false,
                 BigDecimal.valueOf(12), BigDecimal.valueOf(14),
                 BigDecimal.valueOf(80), BigDecimal.valueOf(50), BigDecimal.valueOf(80),
                 true, 3, null);
 
-        ReglasCursoRespuesta respuesta = service.actualizarReglas(100L, peticion);
+        ReglasCursoResponse respuesta = service.actualizarReglas(100L, peticion);
 
         assertEquals(false, respuesta.requiereExamenes());
         assertEquals(true, respuesta.requiereProgreso());
@@ -125,7 +125,7 @@ class CursoServiceReglasTests {
         when(cursos.findWithDetalleById(100L)).thenReturn(Optional.of(curso));
         when(reglasCurso.findByCurso_Id(100L)).thenReturn(Optional.of(reglaDe(curso)));
 
-        ActualizarReglasCursoPeticion peticion = new ActualizarReglasCursoPeticion(true, true, false,
+        ActualizarReglasCursoRequest peticion = new ActualizarReglasCursoRequest(true, true, false,
                 BigDecimal.valueOf(14), BigDecimal.valueOf(14),
                 BigDecimal.valueOf(80), BigDecimal.valueOf(50), BigDecimal.valueOf(80),
                 true, 3, null);
@@ -139,7 +139,7 @@ class CursoServiceReglasTests {
         when(cursos.findWithDetalleById(100L)).thenReturn(Optional.of(curso));
         when(reglasCurso.findByCurso_Id(100L)).thenReturn(Optional.of(reglaDe(curso)));
 
-        ActualizarReglasCursoPeticion peticion = new ActualizarReglasCursoPeticion(true, true, true,
+        ActualizarReglasCursoRequest peticion = new ActualizarReglasCursoRequest(true, true, true,
                 BigDecimal.valueOf(12), BigDecimal.valueOf(14),
                 BigDecimal.valueOf(80), BigDecimal.valueOf(50), BigDecimal.valueOf(80),
                 true, 3, LocalDate.of(2026, 10, 1));
@@ -174,7 +174,7 @@ class CursoServiceReglasTests {
         when(reglasCurso.findByCurso_Id(100L)).thenReturn(Optional.of(reglaDe(curso)));
         when(examenes.existsByCurso_IdAndActivoTrueAndTipo(100L, "CALIFICADO")).thenReturn(true);
 
-        ActualizarReglasCursoPeticion peticion = new ActualizarReglasCursoPeticion(false, true, false,
+        ActualizarReglasCursoRequest peticion = new ActualizarReglasCursoRequest(false, true, false,
                 BigDecimal.valueOf(12), BigDecimal.valueOf(14),
                 BigDecimal.valueOf(80), BigDecimal.valueOf(50), BigDecimal.valueOf(80),
                 true, 3, null);
@@ -190,12 +190,12 @@ class CursoServiceReglasTests {
         when(reglasCurso.findByCurso_Id(100L)).thenReturn(Optional.of(reglaDe(curso)));
         when(examenes.existsByCurso_IdAndActivoTrueAndTipo(100L, "CALIFICADO")).thenReturn(false);
 
-        ActualizarReglasCursoPeticion peticion = new ActualizarReglasCursoPeticion(false, true, false,
+        ActualizarReglasCursoRequest peticion = new ActualizarReglasCursoRequest(false, true, false,
                 BigDecimal.valueOf(12), BigDecimal.valueOf(14),
                 BigDecimal.valueOf(80), BigDecimal.valueOf(50), BigDecimal.valueOf(80),
                 true, 5, null);
 
-        ReglasCursoRespuesta respuesta = service.actualizarReglas(100L, peticion);
+        ReglasCursoResponse respuesta = service.actualizarReglas(100L, peticion);
 
         assertEquals(true, respuesta.secuenciaObligatoria());
         assertEquals(5, respuesta.diasEsperaCertificado());

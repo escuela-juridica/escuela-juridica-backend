@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import pe.edu.utp.escuela.app.dto.IngresarSesionRespuesta;
-import pe.edu.utp.escuela.app.dto.SesionCalendarioRespuesta;
+import pe.edu.utp.escuela.app.dto.IngresarSesionResponse;
+import pe.edu.utp.escuela.app.dto.SesionCalendarioResponse;
 import pe.edu.utp.escuela.app.service.SesionAlumnoService;
 
 @RestController
@@ -33,7 +33,7 @@ public class SesionAlumnoController {
             description = "Lista las sesiones EN_VIVO de los cursos con matrícula activa dentro del rango. "
                     + "Sin parámetros, usa el mes actual. El enlace real solo viene informado cuando la sesión "
                     + "está EN_VENTANA.")
-    public ResponseEntity<List<SesionCalendarioRespuesta>> calendario(
+    public ResponseEntity<List<SesionCalendarioResponse>> calendario(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.calendario(desde, hasta));
@@ -44,7 +44,7 @@ public class SesionAlumnoController {
             description = "Dentro de la ventana de inicio a fin, registra la asistencia una sola vez (operación "
                     + "idempotente) y devuelve el enlace real de la reunión.")
     @ApiResponse(responseCode = "400", description = "Fuera de la ventana de la sesión, cancelada o sin acceso vigente")
-    public ResponseEntity<IngresarSesionRespuesta> ingresar(@PathVariable Long leccionId) {
+    public ResponseEntity<IngresarSesionResponse> ingresar(@PathVariable Long leccionId) {
         return ResponseEntity.ok(service.ingresar(leccionId));
     }
 }

@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.ExamenAulaRespuesta;
+import pe.edu.utp.escuela.app.dto.ExamenAulaResponse;
 import pe.edu.utp.escuela.app.entity.ExcepcionAcademica;
 import pe.edu.utp.escuela.app.entity.Examen;
 import pe.edu.utp.escuela.app.entity.IntentoExamen;
@@ -150,8 +150,8 @@ public class RutaAcademicaService {
             List<Leccion> globalOrden,
             Map<Long, Boolean> completadas,
             Map<Long, String> bloqueos,
-            Map<Long, List<ExamenAulaRespuesta>> examenesPorModulo,
-            List<ExamenAulaRespuesta> examenesFinales,
+            Map<Long, List<ExamenAulaResponse>> examenesPorModulo,
+            List<ExamenAulaResponse> examenesFinales,
             List<Examen> examenesCalificados,
             Set<Long> examenesAprobados,
             Map<Long, BigDecimal> mejoresNotas,
@@ -213,10 +213,10 @@ public class RutaAcademicaService {
                 .forEach(e -> notas.put(e.examen().getId(), e.mejorNota()));
 
         Set<Long> idsModulosActivos = new HashSet<>(idsModulos);
-        Map<Long, List<ExamenAulaRespuesta>> examenesPorModulo = new HashMap<>();
-        List<ExamenAulaRespuesta> examenesFinales = new ArrayList<>();
+        Map<Long, List<ExamenAulaResponse>> examenesPorModulo = new HashMap<>();
+        List<ExamenAulaResponse> examenesFinales = new ArrayList<>();
         for (Examen examen : activos) {
-            ExamenAulaRespuesta fila = filaAula(estados.get(examen.getId()));
+            ExamenAulaResponse fila = filaAula(estados.get(examen.getId()));
             if (examen.getModulo() == null) {
                 examenesFinales.add(fila);
             } else if (idsModulosActivos.contains(examen.getModulo().getId())) {
@@ -244,7 +244,7 @@ public class RutaAcademicaService {
                         previaObligatoria = leccion;
                     }
                 }
-                for (ExamenAulaRespuesta examen : examenesPorModulo.getOrDefault(modulo.getId(), List.of())) {
+                for (ExamenAulaResponse examen : examenesPorModulo.getOrDefault(modulo.getId(), List.of())) {
                     if (examen.bloqueaSiguienteModulo() && !examen.aprobado()) {
                         examenesPendientes.add(examen.titulo());
                     }
@@ -274,12 +274,12 @@ public class RutaAcademicaService {
                 mejor, certificadoEmitido, motivoNoHabilitado);
     }
 
-    private static ExamenAulaRespuesta filaAula(EstadoExamen e) {
+    private static ExamenAulaResponse filaAula(EstadoExamen e) {
         Examen examen = e.examen();
         // Fecha límite prometida para calificar: envío + días de revisión del examen (HU-029).
         Instant limite = e.pendienteRevision() == null || e.pendienteRevision().getEnviadoEn() == null ? null
                 : e.pendienteRevision().getEnviadoEn().plus(examen.getDiasRevision(), java.time.temporal.ChronoUnit.DAYS);
-        return new ExamenAulaRespuesta(examen.getId(), examen.getTitulo(), examen.getTipo(), examen.getFinalidad(),
+        return new ExamenAulaResponse(examen.getId(), examen.getTitulo(), examen.getTipo(), examen.getFinalidad(),
                 esBloqueante(examen), e.aprobado(), e.mejorNota(), e.codigo(), e.motivoNoHabilitado() == null,
                 e.motivoNoHabilitado(), e.usados(), e.permitidos(), limite);
     }

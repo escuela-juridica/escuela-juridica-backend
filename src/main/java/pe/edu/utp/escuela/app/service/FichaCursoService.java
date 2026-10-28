@@ -9,15 +9,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utp.escuela.app.dto.DocenteFichaFila;
-import pe.edu.utp.escuela.app.dto.DocenteFichaRespuesta;
+import pe.edu.utp.escuela.app.dto.DocenteFichaResponse;
 import pe.edu.utp.escuela.app.dto.DuracionLeccionFila;
-import pe.edu.utp.escuela.app.dto.EstadoComercialRespuesta;
-import pe.edu.utp.escuela.app.dto.FichaCursoRespuesta;
-import pe.edu.utp.escuela.app.dto.LeccionFichaRespuesta;
-import pe.edu.utp.escuela.app.dto.ModuloFichaRespuesta;
+import pe.edu.utp.escuela.app.dto.EstadoComercialResponse;
+import pe.edu.utp.escuela.app.dto.FichaCursoResponse;
+import pe.edu.utp.escuela.app.dto.LeccionFichaResponse;
+import pe.edu.utp.escuela.app.dto.ModuloFichaResponse;
 import pe.edu.utp.escuela.app.dto.RecursoVistaPreviaFila;
-import pe.edu.utp.escuela.app.dto.RecursoVistaPreviaRespuesta;
-import pe.edu.utp.escuela.app.dto.VistaPreviaRespuesta;
+import pe.edu.utp.escuela.app.dto.RecursoVistaPreviaResponse;
+import pe.edu.utp.escuela.app.dto.VistaPreviaResponse;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.EntidadCertificadora;
 import pe.edu.utp.escuela.app.entity.Leccion;
@@ -45,13 +45,13 @@ public class FichaCursoService {
     private final CourseCommercialStatusService courseCommercialStatusService;
 
     @Transactional(readOnly = true)
-    public FichaCursoRespuesta obtener(String urlAmigable) {
+    public FichaCursoResponse obtener(String urlAmigable) {
         Curso curso = buscarCursoPublicado(urlAmigable);
 
         long activas = matriculaRepository.contarActivas(List.of(curso.getId()))
                 .getOrDefault(curso.getId(), 0L);
 
-        List<DocenteFichaRespuesta> docentes = cursoDocenteRepository
+        List<DocenteFichaResponse> docentes = cursoDocenteRepository
                 .buscarDocentesDelCurso(curso.getId()).stream()
                 .sorted(Comparator.comparing(DocenteFichaFila::orden))
                 .map(this::mapearDocente)
@@ -80,7 +80,7 @@ public class FichaCursoService {
                         LinkedHashMap::new,
                         Collectors.toList()));
 
-        List<ModuloFichaRespuesta> modulosRespuesta = modulos.stream()
+        List<ModuloFichaResponse> modulosRespuesta = modulos.stream()
                 .map(modulo -> mapearModulo(
                         modulo, leccionesPorModulo.getOrDefault(modulo.getId(), List.of()), duraciones))
                 .toList();
@@ -88,7 +88,7 @@ public class FichaCursoService {
         CourseCommercialStatus estado = calcularEstado(curso, activas);
         boolean esVirtual = "VIRTUAL".equals(curso.getModalidad());
 
-        return new FichaCursoRespuesta(
+        return new FichaCursoResponse(
                 curso.getId(),
                 curso.getUrlAmigable(),
                 curso.getTitulo(),
@@ -112,20 +112,20 @@ public class FichaCursoService {
     }
 
     @Transactional(readOnly = true)
-    public VistaPreviaRespuesta obtenerVistaPrevia(String urlAmigable, Long leccionId) {
+    public VistaPreviaResponse obtenerVistaPrevia(String urlAmigable, Long leccionId) {
         List<RecursoVistaPreviaFila> filas = materialLeccionRepository
                 .buscarVistaPrevia(urlAmigable, leccionId);
         if (filas.isEmpty()) {
             throw new ResourceNotFoundException("No se encontró la vista previa solicitada");
         }
-        List<RecursoVistaPreviaRespuesta> materiales = filas.stream()
-                .map(fila -> new RecursoVistaPreviaRespuesta(
+        List<RecursoVistaPreviaResponse> materiales = filas.stream()
+                .map(fila -> new RecursoVistaPreviaResponse(
                         fila.materialLeccionId(), fila.titulo(), fila.orden(),
                         fila.tipoRecurso(), fila.origen(), fila.referencia(),
                         fila.nombreArchivo(), fila.tipoMime(), fila.duracionSegundos(),
                         fila.permiteDescarga()))
                 .toList();
-        return new VistaPreviaRespuesta(leccionId, materiales);
+        return new VistaPreviaResponse(leccionId, materiales);
     }
 
     private Curso buscarCursoPublicado(String urlAmigable) {
@@ -148,8 +148,8 @@ public class FichaCursoService {
         return courseCommercialStatusService.calculate(datos, activas);
     }
 
-    private EstadoComercialRespuesta mapearEstado(CourseCommercialStatus estado) {
-        return new EstadoComercialRespuesta(
+    private EstadoComercialResponse mapearEstado(CourseCommercialStatus estado) {
+        return new EstadoComercialResponse(
                 estado.code().name(),
                 estado.label(),
                 estado.startDate(),
@@ -160,8 +160,8 @@ public class FichaCursoService {
                 estado.action().name());
     }
 
-    private DocenteFichaRespuesta mapearDocente(DocenteFichaFila fila) {
-        return new DocenteFichaRespuesta(
+    private DocenteFichaResponse mapearDocente(DocenteFichaFila fila) {
+        return new DocenteFichaResponse(
                 fila.personaId(),
                 componerNombre(fila.nombres(), fila.apellidoPaterno(), fila.apellidoMaterno()),
                 fila.fotoUrl(),
@@ -177,18 +177,18 @@ public class FichaCursoService {
         return completo.toString();
     }
 
-    private ModuloFichaRespuesta mapearModulo(
+    private ModuloFichaResponse mapearModulo(
             Modulo modulo, List<Leccion> lecciones, Map<Long, Integer> duraciones) {
-        List<LeccionFichaRespuesta> leccionesRespuesta = lecciones.stream()
+        List<LeccionFichaResponse> leccionesRespuesta = lecciones.stream()
                 .map(leccion -> mapearLeccion(leccion, duraciones.get(leccion.getId())))
                 .toList();
-        return new ModuloFichaRespuesta(
+        return new ModuloFichaResponse(
                 modulo.getId(), modulo.getTitulo(), modulo.getDescripcion(),
                 modulo.getOrden(), leccionesRespuesta);
     }
 
-    private LeccionFichaRespuesta mapearLeccion(Leccion leccion, Integer duracionSegundos) {
-        return new LeccionFichaRespuesta(
+    private LeccionFichaResponse mapearLeccion(Leccion leccion, Integer duracionSegundos) {
+        return new LeccionFichaResponse(
                 leccion.getId(), leccion.getTitulo(), leccion.getOrden(),
                 leccion.getTipo(), leccion.getEstado(), leccion.isEsVistaPrevia(),
                 leccion.getFechaHoraInicio(), leccion.getFechaHoraFin(), duracionSegundos);

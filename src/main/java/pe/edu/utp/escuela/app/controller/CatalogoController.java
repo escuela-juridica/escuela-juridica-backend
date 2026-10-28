@@ -10,11 +10,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import pe.edu.utp.escuela.app.dto.CursoTarjetaRespuesta;
-import pe.edu.utp.escuela.app.dto.FichaCursoRespuesta;
-import pe.edu.utp.escuela.app.dto.FiltrosCursoRespuesta;
+import pe.edu.utp.escuela.app.dto.CursoTarjetaResponse;
+import pe.edu.utp.escuela.app.dto.FichaCursoResponse;
+import pe.edu.utp.escuela.app.dto.FiltrosCursoResponse;
 import pe.edu.utp.escuela.app.dto.PageResponse;
-import pe.edu.utp.escuela.app.dto.VistaPreviaRespuesta;
+import pe.edu.utp.escuela.app.dto.VistaPreviaResponse;
 import pe.edu.utp.escuela.app.service.CatalogoService;
 import pe.edu.utp.escuela.app.service.FichaCursoService;
 
@@ -39,7 +39,7 @@ public class CatalogoController {
                     + "y los precios vienen calculados en América/Lima.")
     @ApiResponse(responseCode = "200", description = "Página de cursos; lista vacía si nada coincide")
     @GetMapping
-    public PageResponse<CursoTarjetaRespuesta> listar(
+    public PageResponse<CursoTarjetaResponse> listar(
             @Parameter(description = "Texto libre buscado en el título y la descripción del curso",
                     example = "registral")
             @RequestParam(required = false) String texto,
@@ -63,7 +63,7 @@ public class CatalogoController {
                     + "para presentarlos en los selectores. La modalidad no es un filtro.")
     @ApiResponse(responseCode = "200", description = "Tipos y categorías activos y ordenados")
     @GetMapping("/filtros")
-    public FiltrosCursoRespuesta filtros() {
+    public FiltrosCursoResponse filtros() {
         return catalogoService.filtros();
     }
 
@@ -76,7 +76,7 @@ public class CatalogoController {
     @ApiResponse(responseCode = "404",
             description = "No existe un curso publicado con esa URL amigable")
     @GetMapping("/{urlAmigable}")
-    public FichaCursoRespuesta obtener(
+    public FichaCursoResponse obtener(
             @Parameter(description = "URL amigable única del curso", example = "registral")
             @PathVariable String urlAmigable) {
         return fichaCursoService.obtener(urlAmigable);
@@ -90,7 +90,7 @@ public class CatalogoController {
     @ApiResponse(responseCode = "200", description = "Materiales autorizados de la lección")
     @ApiResponse(responseCode = "404", description = "Lección no encontrada o no es vista previa")
     @GetMapping("/{urlAmigable}/lecciones/{leccionId}/vista-previa")
-    public VistaPreviaRespuesta vistaPrevia(
+    public VistaPreviaResponse vistaPrevia(
             @Parameter(description = "URL amigable única del curso", example = "registral")
             @PathVariable String urlAmigable,
             @Parameter(description = "Identificador de la lección", example = "1")

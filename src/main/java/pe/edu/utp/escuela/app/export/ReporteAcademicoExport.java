@@ -16,8 +16,8 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
-import pe.edu.utp.escuela.app.dto.CondicionAvanceRespuesta;
-import pe.edu.utp.escuela.app.dto.ReporteAcademicoRespuesta;
+import pe.edu.utp.escuela.app.dto.CondicionAvanceResponse;
+import pe.edu.utp.escuela.app.dto.ReporteAcademicoResponse;
 
 /** HU-043 — Exportación a Excel del reporte académico. Escribe exactamente las filas que recibe
  * (las mismas de la pantalla con los mismos filtros) y deja visibles el valor real y la meta de
@@ -34,7 +34,7 @@ public class ReporteAcademicoExport {
             "Condiciones pendientes", "Situación", "Cumplimiento", "Fecha de finalización", "Certificado", "Código"
     };
 
-    public byte[] excel(List<ReporteAcademicoRespuesta> filas) {
+    public byte[] excel(List<ReporteAcademicoResponse> filas) {
         try (Workbook libro = new XSSFWorkbook(); ByteArrayOutputStream salida = new ByteArrayOutputStream()) {
             Sheet hoja = libro.createSheet("Reporte académico");
 
@@ -54,7 +54,7 @@ public class ReporteAcademicoExport {
             }
 
             int numeroFila = 1;
-            for (ReporteAcademicoRespuesta f : filas) {
+            for (ReporteAcademicoResponse f : filas) {
                 Row fila = hoja.createRow(numeroFila++);
                 String[] valores = {
                         f.curso(),
@@ -94,28 +94,28 @@ public class ReporteAcademicoExport {
         }
     }
 
-    private static CondicionAvanceRespuesta condicion(ReporteAcademicoRespuesta f, String codigo) {
+    private static CondicionAvanceResponse condicion(ReporteAcademicoResponse f, String codigo) {
         return f.condiciones().stream().filter(c -> codigo.equals(c.codigo())).findFirst().orElse(null);
     }
 
     /** El progreso se muestra siempre; si no es requisito del curso se rotula así. */
-    private static String progreso(ReporteAcademicoRespuesta f) {
-        CondicionAvanceRespuesta c = condicion(f, "PROGRESO");
+    private static String progreso(ReporteAcademicoResponse f) {
+        CondicionAvanceResponse c = condicion(f, "PROGRESO");
         return c != null ? c.valorActual() + " (" + c.meta() + ")" : f.progreso() + " % (no es requisito)";
     }
 
-    private static String examenes(ReporteAcademicoRespuesta f) {
-        CondicionAvanceRespuesta c = condicion(f, "EXAMENES");
+    private static String examenes(ReporteAcademicoResponse f) {
+        CondicionAvanceResponse c = condicion(f, "EXAMENES");
         return c != null ? c.valorActual() + " (" + c.meta() + ")" : "No exigidos";
     }
 
-    private static String nota(ReporteAcademicoRespuesta f) {
-        CondicionAvanceRespuesta c = condicion(f, "NOTA");
+    private static String nota(ReporteAcademicoResponse f) {
+        CondicionAvanceResponse c = condicion(f, "NOTA");
         return c != null ? c.valorActual() + " (" + c.meta() + ")" : "No aplica";
     }
 
-    private static String asistencia(ReporteAcademicoRespuesta f) {
-        CondicionAvanceRespuesta c = condicion(f, "ASISTENCIA");
+    private static String asistencia(ReporteAcademicoResponse f) {
+        CondicionAvanceResponse c = condicion(f, "ASISTENCIA");
         return c != null ? c.valorActual() + " (" + c.meta() + ")" : "No aplica";
     }
 

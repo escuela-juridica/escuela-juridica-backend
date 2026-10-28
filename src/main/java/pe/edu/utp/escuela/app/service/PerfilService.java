@@ -4,10 +4,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.ActualizarPerfilPeticion;
-import pe.edu.utp.escuela.app.dto.CambiarContrasenaPeticion;
-import pe.edu.utp.escuela.app.dto.NuevaContrasenaPeticion;
-import pe.edu.utp.escuela.app.dto.PerfilRespuesta;
+import pe.edu.utp.escuela.app.dto.ActualizarPerfilRequest;
+import pe.edu.utp.escuela.app.dto.CambiarContrasenaRequest;
+import pe.edu.utp.escuela.app.dto.NuevaContrasenaRequest;
+import pe.edu.utp.escuela.app.dto.PerfilResponse;
 import pe.edu.utp.escuela.app.entity.Persona;
 import pe.edu.utp.escuela.app.entity.Usuario;
 import pe.edu.utp.escuela.app.exception.BusinessValidationException;
@@ -32,13 +32,13 @@ public class PerfilService {
     private final PasswordPolicyService passwordPolicyService;
 
     @Transactional(readOnly = true)
-    public PerfilRespuesta obtener() {
+    public PerfilResponse obtener() {
         Usuario usuario = usuarioActual();
         return mapear(usuario, usuario.getPersona());
     }
 
     @Transactional
-    public PerfilRespuesta actualizar(ActualizarPerfilPeticion entrada) {
+    public PerfilResponse actualizar(ActualizarPerfilRequest entrada) {
         Usuario usuario = usuarioActual();
         Persona persona = usuario.getPersona();
 
@@ -58,7 +58,7 @@ public class PerfilService {
     }
 
     @Transactional
-    public void crearContrasena(NuevaContrasenaPeticion entrada) {
+    public void crearContrasena(NuevaContrasenaRequest entrada) {
         Usuario usuario = usuarioActual();
         if (usuario.getGoogleSubject() == null || usuario.getContrasenaHash() != null) {
             throw new OperationNotAllowedException(
@@ -75,7 +75,7 @@ public class PerfilService {
      * para confirmar identidad antes de reemplazarla. No es el mismo recorrido que HU-004
      * (recuperación por correo, para cuando no la recuerdas). */
     @Transactional
-    public void cambiarContrasena(CambiarContrasenaPeticion entrada) {
+    public void cambiarContrasena(CambiarContrasenaRequest entrada) {
         Usuario usuario = usuarioActual();
         if (usuario.getContrasenaHash() == null) {
             throw new OperationNotAllowedException(
@@ -97,9 +97,9 @@ public class PerfilService {
                 .orElseThrow(UnauthorizedException::new);
     }
 
-    private PerfilRespuesta mapear(Usuario usuario, Persona persona) {
+    private PerfilResponse mapear(Usuario usuario, Persona persona) {
         boolean accesoGoogle = usuario.getGoogleSubject() != null;
-        return new PerfilRespuesta(
+        return new PerfilResponse(
                 persona.getNombres(),
                 persona.getApellidoPaterno(),
                 persona.getApellidoMaterno(),

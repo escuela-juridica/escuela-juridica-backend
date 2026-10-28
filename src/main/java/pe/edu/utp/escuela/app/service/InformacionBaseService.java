@@ -6,24 +6,24 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.ActualizarConfiguracionPeticion;
-import pe.edu.utp.escuela.app.dto.CategoriaPeticion;
-import pe.edu.utp.escuela.app.dto.CategoriaRespuesta;
-import pe.edu.utp.escuela.app.dto.ConfiguracionPeticion;
-import pe.edu.utp.escuela.app.dto.ConfiguracionRespuesta;
-import pe.edu.utp.escuela.app.dto.DocentePeticion;
-import pe.edu.utp.escuela.app.dto.DocenteRespuesta;
-import pe.edu.utp.escuela.app.dto.EntidadPeticion;
-import pe.edu.utp.escuela.app.dto.EntidadRespuesta;
-import pe.edu.utp.escuela.app.dto.FirmantePeticion;
-import pe.edu.utp.escuela.app.dto.FirmanteRespuesta;
+import pe.edu.utp.escuela.app.dto.ActualizarConfiguracionRequest;
+import pe.edu.utp.escuela.app.dto.CategoriaRequest;
+import pe.edu.utp.escuela.app.dto.CategoriaResponse;
+import pe.edu.utp.escuela.app.dto.ConfiguracionRequest;
+import pe.edu.utp.escuela.app.dto.ConfiguracionResponse;
+import pe.edu.utp.escuela.app.dto.DocenteRequest;
+import pe.edu.utp.escuela.app.dto.DocenteResponse;
+import pe.edu.utp.escuela.app.dto.EntidadRequest;
+import pe.edu.utp.escuela.app.dto.EntidadResponse;
+import pe.edu.utp.escuela.app.dto.FirmanteRequest;
+import pe.edu.utp.escuela.app.dto.FirmanteResponse;
 import pe.edu.utp.escuela.app.dto.PageResponse;
-import pe.edu.utp.escuela.app.dto.ReglaArchivoPeticion;
-import pe.edu.utp.escuela.app.dto.ReglaArchivoRespuesta;
-import pe.edu.utp.escuela.app.dto.TipoCursoPeticion;
-import pe.edu.utp.escuela.app.dto.TipoCursoRespuesta;
-import pe.edu.utp.escuela.app.dto.TipoMaterialPeticion;
-import pe.edu.utp.escuela.app.dto.TipoMaterialRespuesta;
+import pe.edu.utp.escuela.app.dto.ReglaArchivoRequest;
+import pe.edu.utp.escuela.app.dto.ReglaArchivoResponse;
+import pe.edu.utp.escuela.app.dto.TipoCursoRequest;
+import pe.edu.utp.escuela.app.dto.TipoCursoResponse;
+import pe.edu.utp.escuela.app.dto.TipoMaterialRequest;
+import pe.edu.utp.escuela.app.dto.TipoMaterialResponse;
 import pe.edu.utp.escuela.app.entity.CategoriaTematica;
 import pe.edu.utp.escuela.app.entity.ConfiguracionInstitucional;
 import pe.edu.utp.escuela.app.entity.EntidadCertificadora;
@@ -66,7 +66,7 @@ public class InformacionBaseService {
 
     // ---------------------------------------------------------------- Tipos de curso --
     @Transactional(readOnly = true)
-    public PageResponse<TipoCursoRespuesta> listarTiposCurso(boolean incluirInactivos, Pageable pageable) {
+    public PageResponse<TipoCursoResponse> listarTiposCurso(boolean incluirInactivos, Pageable pageable) {
         exigirAdministrador();
         Page<TipoCurso> pagina = incluirInactivos ? tiposCurso.findAllByOrderByOrdenAscNombreAsc(pageable)
                 : tiposCurso.findByActivoTrueOrderByOrdenAscNombreAsc(pageable);
@@ -74,7 +74,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public TipoCursoRespuesta crearTipoCurso(TipoCursoPeticion p) {
+    public TipoCursoResponse crearTipoCurso(TipoCursoRequest p) {
         exigirAdministrador();
         if (tiposCurso.existsByCodigo(p.codigo())) {
             throw new DuplicateResourceException("Ese código ya está en uso.");
@@ -89,7 +89,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public TipoCursoRespuesta actualizarTipoCurso(Long id, TipoCursoPeticion p) {
+    public TipoCursoResponse actualizarTipoCurso(Long id, TipoCursoRequest p) {
         exigirAdministrador();
         TipoCurso tipo = tiposCurso.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("El tipo de curso ya no existe."));
@@ -103,7 +103,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public TipoCursoRespuesta cambiarActivoTipoCurso(Long id, boolean activo) {
+    public TipoCursoResponse cambiarActivoTipoCurso(Long id, boolean activo) {
         exigirAdministrador();
         TipoCurso tipo = tiposCurso.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("El tipo de curso ya no existe."));
@@ -111,13 +111,13 @@ public class InformacionBaseService {
         return mapear(tipo);
     }
 
-    private TipoCursoRespuesta mapear(TipoCurso t) {
-        return new TipoCursoRespuesta(t.getId(), t.getCodigo(), t.getNombre(), t.isActivo(), t.getOrden());
+    private TipoCursoResponse mapear(TipoCurso t) {
+        return new TipoCursoResponse(t.getId(), t.getCodigo(), t.getNombre(), t.isActivo(), t.getOrden());
     }
 
     // ---------------------------------------------------------------- Categorías --
     @Transactional(readOnly = true)
-    public PageResponse<CategoriaRespuesta> listarCategorias(boolean incluirInactivos, Pageable pageable) {
+    public PageResponse<CategoriaResponse> listarCategorias(boolean incluirInactivos, Pageable pageable) {
         exigirAdministrador();
         Page<CategoriaTematica> pagina = incluirInactivos ? categorias.findAllByOrderByOrdenAscNombreAsc(pageable)
                 : categorias.findByActivoTrueOrderByOrdenAscNombreAsc(pageable);
@@ -125,7 +125,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public CategoriaRespuesta crearCategoria(CategoriaPeticion p) {
+    public CategoriaResponse crearCategoria(CategoriaRequest p) {
         exigirAdministrador();
         if (categorias.existsByCodigo(p.codigo())) {
             throw new DuplicateResourceException("Ese código ya está en uso.");
@@ -140,7 +140,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public CategoriaRespuesta actualizarCategoria(Long id, CategoriaPeticion p) {
+    public CategoriaResponse actualizarCategoria(Long id, CategoriaRequest p) {
         exigirAdministrador();
         CategoriaTematica categoria = categorias.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("La categoría ya no existe."));
@@ -154,7 +154,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public CategoriaRespuesta cambiarActivoCategoria(Long id, boolean activo) {
+    public CategoriaResponse cambiarActivoCategoria(Long id, boolean activo) {
         exigirAdministrador();
         CategoriaTematica categoria = categorias.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("La categoría ya no existe."));
@@ -162,15 +162,15 @@ public class InformacionBaseService {
         return mapear(categoria);
     }
 
-    private CategoriaRespuesta mapear(CategoriaTematica c) {
-        return new CategoriaRespuesta(c.getId(), c.getCodigo(), c.getNombre(), c.isActivo(), c.getOrden());
+    private CategoriaResponse mapear(CategoriaTematica c) {
+        return new CategoriaResponse(c.getId(), c.getCodigo(), c.getNombre(), c.isActivo(), c.getOrden());
     }
 
     // ---------------------------------------------------------------- Docentes --
     /** Un docente es solo un perfil público (persona con cargo profesional): nunca crea cuenta,
      * acceso ni panel. */
     @Transactional(readOnly = true)
-    public PageResponse<DocenteRespuesta> listarDocentes(boolean incluirInactivos, Pageable pageable) {
+    public PageResponse<DocenteResponse> listarDocentes(boolean incluirInactivos, Pageable pageable) {
         exigirAdministrador();
         Page<Persona> pagina = incluirInactivos
                 ? personas.findByCargoProfesionalIsNotNullOrderByNombresAsc(pageable)
@@ -179,7 +179,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public DocenteRespuesta crearDocente(DocentePeticion p) {
+    public DocenteResponse crearDocente(DocenteRequest p) {
         exigirAdministrador();
         Persona persona = new Persona();
         persona.setNombres(textos.requireText(p.nombres(), "Nombres"));
@@ -194,7 +194,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public DocenteRespuesta actualizarDocente(Long personaId, DocentePeticion p) {
+    public DocenteResponse actualizarDocente(Long personaId, DocenteRequest p) {
         exigirAdministrador();
         Persona persona = docentePorId(personaId);
         persona.setNombres(textos.requireText(p.nombres(), "Nombres"));
@@ -207,7 +207,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public DocenteRespuesta cambiarActivoDocente(Long personaId, boolean activo) {
+    public DocenteResponse cambiarActivoDocente(Long personaId, boolean activo) {
         exigirAdministrador();
         Persona persona = docentePorId(personaId);
         persona.setActivo(activo);
@@ -223,15 +223,15 @@ public class InformacionBaseService {
         return persona;
     }
 
-    private DocenteRespuesta mapear(Persona p) {
-        return new DocenteRespuesta(p.getId(), p.getNombres(), p.getApellidoPaterno(),
+    private DocenteResponse mapear(Persona p) {
+        return new DocenteResponse(p.getId(), p.getNombres(), p.getApellidoPaterno(),
                 p.getApellidoMaterno(), p.nombreCompleto(), p.getFotoUrl(), p.getCargoProfesional(),
                 p.getBiografiaProfesional(), p.isActivo());
     }
 
     // ---------------------------------------------------------------- Entidades certificadoras --
     @Transactional(readOnly = true)
-    public PageResponse<EntidadRespuesta> listarEntidades(boolean incluirInactivos, Pageable pageable) {
+    public PageResponse<EntidadResponse> listarEntidades(boolean incluirInactivos, Pageable pageable) {
         exigirAdministrador();
         Page<EntidadCertificadora> pagina = incluirInactivos ? entidades.findAllByOrderByNombreAsc(pageable)
                 : entidades.findByActivoTrueOrderByNombreAsc(pageable);
@@ -239,7 +239,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public EntidadRespuesta crearEntidad(EntidadPeticion p) {
+    public EntidadResponse crearEntidad(EntidadRequest p) {
         exigirAdministrador();
         if (entidades.existsByNombreIgnoreCase(p.nombre())) {
             throw new DuplicateResourceException("Ya existe una entidad con ese nombre.");
@@ -253,7 +253,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public EntidadRespuesta actualizarEntidad(Long id, EntidadPeticion p) {
+    public EntidadResponse actualizarEntidad(Long id, EntidadRequest p) {
         exigirAdministrador();
         EntidadCertificadora entidad = entidades.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("La entidad ya no existe."));
@@ -266,7 +266,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public EntidadRespuesta cambiarActivoEntidad(Long id, boolean activo) {
+    public EntidadResponse cambiarActivoEntidad(Long id, boolean activo) {
         exigirAdministrador();
         EntidadCertificadora entidad = entidades.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("La entidad ya no existe."));
@@ -274,13 +274,13 @@ public class InformacionBaseService {
         return mapear(entidad);
     }
 
-    private EntidadRespuesta mapear(EntidadCertificadora e) {
-        return new EntidadRespuesta(e.getId(), e.getNombre(), e.getLogoUrl(), e.isActivo());
+    private EntidadResponse mapear(EntidadCertificadora e) {
+        return new EntidadResponse(e.getId(), e.getNombre(), e.getLogoUrl(), e.isActivo());
     }
 
     // ---------------------------------------------------------------- Firmantes --
     @Transactional(readOnly = true)
-    public PageResponse<FirmanteRespuesta> listarFirmantes(boolean incluirInactivos, Pageable pageable) {
+    public PageResponse<FirmanteResponse> listarFirmantes(boolean incluirInactivos, Pageable pageable) {
         exigirAdministrador();
         Page<Firmante> pagina = incluirInactivos ? firmantes.findAllByOrderByIdAsc(pageable)
                 : firmantes.findByActivoTrueOrderByIdAsc(pageable);
@@ -288,7 +288,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public FirmanteRespuesta crearFirmante(FirmantePeticion p) {
+    public FirmanteResponse crearFirmante(FirmanteRequest p) {
         exigirAdministrador();
         Persona persona = new Persona();
         persona.setNombres(textos.requireText(p.nombres(), "Nombres"));
@@ -307,7 +307,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public FirmanteRespuesta actualizarFirmante(Long id, FirmantePeticion p) {
+    public FirmanteResponse actualizarFirmante(Long id, FirmanteRequest p) {
         exigirAdministrador();
         Firmante firmante = firmantes.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("El firmante ya no existe."));
@@ -321,7 +321,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public FirmanteRespuesta cambiarActivoFirmante(Long id, boolean activo) {
+    public FirmanteResponse cambiarActivoFirmante(Long id, boolean activo) {
         exigirAdministrador();
         Firmante firmante = firmantes.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("El firmante ya no existe."));
@@ -329,15 +329,15 @@ public class InformacionBaseService {
         return mapear(firmante);
     }
 
-    private FirmanteRespuesta mapear(Firmante f) {
+    private FirmanteResponse mapear(Firmante f) {
         Persona p = f.getPersona();
-        return new FirmanteRespuesta(f.getId(), p.getId(), p.getNombres(), p.getApellidoPaterno(),
+        return new FirmanteResponse(f.getId(), p.getId(), p.getNombres(), p.getApellidoPaterno(),
                 p.getApellidoMaterno(), p.nombreCompleto(), f.getCargoFirma(), f.getImagenFirmaUrl(), f.isActivo());
     }
 
     // ---------------------------------------------------------------- Tipos de material --
     @Transactional(readOnly = true)
-    public PageResponse<TipoMaterialRespuesta> listarTiposMaterial(boolean incluirInactivos, Pageable pageable) {
+    public PageResponse<TipoMaterialResponse> listarTiposMaterial(boolean incluirInactivos, Pageable pageable) {
         exigirAdministrador();
         Page<TipoMaterial> pagina = incluirInactivos ? tiposMaterial.findAllByOrderByNombreAsc(pageable)
                 : tiposMaterial.findByActivoTrueOrderByNombreAsc(pageable);
@@ -345,7 +345,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public TipoMaterialRespuesta crearTipoMaterial(TipoMaterialPeticion p) {
+    public TipoMaterialResponse crearTipoMaterial(TipoMaterialRequest p) {
         exigirAdministrador();
         if (tiposMaterial.findByCodigo(p.codigo()).isPresent()) {
             throw new DuplicateResourceException("Ese código ya está en uso.");
@@ -360,7 +360,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public TipoMaterialRespuesta actualizarTipoMaterial(Long id, TipoMaterialPeticion p) {
+    public TipoMaterialResponse actualizarTipoMaterial(Long id, TipoMaterialRequest p) {
         exigirAdministrador();
         TipoMaterial tipo = tiposMaterial.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("El tipo de material ya no existe."));
@@ -376,7 +376,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public TipoMaterialRespuesta cambiarActivoTipoMaterial(Long id, boolean activo) {
+    public TipoMaterialResponse cambiarActivoTipoMaterial(Long id, boolean activo) {
         exigirAdministrador();
         TipoMaterial tipo = tiposMaterial.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("El tipo de material ya no existe."));
@@ -384,13 +384,13 @@ public class InformacionBaseService {
         return mapear(tipo);
     }
 
-    private TipoMaterialRespuesta mapear(TipoMaterial t) {
-        return new TipoMaterialRespuesta(t.getId(), t.getCodigo(), t.getNombre(), t.getDescripcion(), t.isActivo());
+    private TipoMaterialResponse mapear(TipoMaterial t) {
+        return new TipoMaterialResponse(t.getId(), t.getCodigo(), t.getNombre(), t.getDescripcion(), t.isActivo());
     }
 
     // ---------------------------------------------------------------- Reglas de archivo --
     @Transactional(readOnly = true)
-    public List<ReglaArchivoRespuesta> listarReglasArchivo(boolean incluirInactivos) {
+    public List<ReglaArchivoResponse> listarReglasArchivo(boolean incluirInactivos) {
         exigirAdministrador();
         var fuente = incluirInactivos ? reglasArchivo.findAllByOrderByIdAsc()
                 : reglasArchivo.findByActivoTrueOrderByIdAsc();
@@ -398,7 +398,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public ReglaArchivoRespuesta crearReglaArchivo(ReglaArchivoPeticion p) {
+    public ReglaArchivoResponse crearReglaArchivo(ReglaArchivoRequest p) {
         exigirAdministrador();
         TipoMaterial tipo = tiposMaterial.findById(p.tipoMaterialId())
                 .orElseThrow(() -> new ResourceNotFoundException("El tipo de material ya no existe."));
@@ -416,7 +416,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public ReglaArchivoRespuesta actualizarReglaArchivo(Long id, ReglaArchivoPeticion p) {
+    public ReglaArchivoResponse actualizarReglaArchivo(Long id, ReglaArchivoRequest p) {
         exigirAdministrador();
         ReglaArchivo regla = reglasArchivo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("La regla ya no existe."));
@@ -433,7 +433,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public ReglaArchivoRespuesta cambiarActivoReglaArchivo(Long id, boolean activo) {
+    public ReglaArchivoResponse cambiarActivoReglaArchivo(Long id, boolean activo) {
         exigirAdministrador();
         ReglaArchivo regla = reglasArchivo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("La regla ya no existe."));
@@ -441,20 +441,20 @@ public class InformacionBaseService {
         return mapear(regla);
     }
 
-    private ReglaArchivoRespuesta mapear(ReglaArchivo r) {
-        return new ReglaArchivoRespuesta(r.getId(), r.getTipoMaterial().getId(),
+    private ReglaArchivoResponse mapear(ReglaArchivo r) {
+        return new ReglaArchivoResponse(r.getId(), r.getTipoMaterial().getId(),
                 r.getTipoMaterial().getNombre(), r.getExtension(), r.getTamanoMaximoBytes(), r.isActivo());
     }
 
     // ---------------------------------------------------------------- Configuración institucional --
     @Transactional(readOnly = true)
-    public List<ConfiguracionRespuesta> listarConfiguraciones() {
+    public List<ConfiguracionResponse> listarConfiguraciones() {
         exigirAdministrador();
         return configuraciones.findAllByOrderByCodigoAsc().stream().map(this::mapear).toList();
     }
 
     @Transactional
-    public ConfiguracionRespuesta crearConfiguracion(ConfiguracionPeticion p) {
+    public ConfiguracionResponse crearConfiguracion(ConfiguracionRequest p) {
         exigirAdministrador();
         if (configuraciones.existsByCodigo(p.codigo())) {
             throw new DuplicateResourceException("Ese código ya está en uso.");
@@ -469,7 +469,7 @@ public class InformacionBaseService {
     }
 
     @Transactional
-    public ConfiguracionRespuesta actualizarConfiguracion(Long id, ActualizarConfiguracionPeticion p) {
+    public ConfiguracionResponse actualizarConfiguracion(Long id, ActualizarConfiguracionRequest p) {
         exigirAdministrador();
         ConfiguracionInstitucional configuracion = configuraciones.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("La configuración ya no existe."));
@@ -479,8 +479,8 @@ public class InformacionBaseService {
         return mapear(configuracion);
     }
 
-    private ConfiguracionRespuesta mapear(ConfiguracionInstitucional c) {
-        return new ConfiguracionRespuesta(c.getId(), c.getCodigo(), c.getValor(), c.getDescripcion());
+    private ConfiguracionResponse mapear(ConfiguracionInstitucional c) {
+        return new ConfiguracionResponse(c.getId(), c.getCodigo(), c.getValor(), c.getDescripcion());
     }
 
     private void exigirAdministrador() {

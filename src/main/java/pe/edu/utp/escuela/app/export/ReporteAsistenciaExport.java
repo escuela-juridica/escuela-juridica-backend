@@ -15,7 +15,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
-import pe.edu.utp.escuela.app.dto.ReporteAsistenciaRespuesta;
+import pe.edu.utp.escuela.app.dto.ReporteAsistenciaResponse;
 
 /** HU-045 — Exportación a Excel del reporte de asistencia. Escribe exactamente las filas que
  * recibe: el servicio le pasa las mismas que ve la pantalla con los mismos filtros. */
@@ -31,7 +31,7 @@ public class ReporteAsistenciaExport {
             "Asistencia", "Origen", "Motivo de la corrección", "Porcentaje acumulado", "Cumplimiento del mínimo"
     };
 
-    public byte[] excel(List<ReporteAsistenciaRespuesta> filas) {
+    public byte[] excel(List<ReporteAsistenciaResponse> filas) {
         try (Workbook libro = new XSSFWorkbook(); ByteArrayOutputStream salida = new ByteArrayOutputStream()) {
             Sheet hoja = libro.createSheet("Reporte de asistencia");
 
@@ -51,7 +51,7 @@ public class ReporteAsistenciaExport {
             }
 
             int numeroFila = 1;
-            for (ReporteAsistenciaRespuesta f : filas) {
+            for (ReporteAsistenciaResponse f : filas) {
                 Row fila = hoja.createRow(numeroFila++);
                 String[] valores = {
                         f.curso(),

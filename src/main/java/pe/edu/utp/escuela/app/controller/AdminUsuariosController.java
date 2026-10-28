@@ -10,15 +10,15 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import pe.edu.utp.escuela.app.dto.ActualizarPerfilPeticion;
-import pe.edu.utp.escuela.app.dto.CambiarActivoPeticion;
-import pe.edu.utp.escuela.app.dto.ConcederRolPeticion;
-import pe.edu.utp.escuela.app.dto.CrearUsuarioAdminPeticion;
-import pe.edu.utp.escuela.app.dto.CrearUsuarioAdminRespuesta;
+import pe.edu.utp.escuela.app.dto.ActualizarPerfilRequest;
+import pe.edu.utp.escuela.app.dto.CambiarActivoRequest;
+import pe.edu.utp.escuela.app.dto.ConcederRolRequest;
+import pe.edu.utp.escuela.app.dto.CrearUsuarioAdminRequest;
+import pe.edu.utp.escuela.app.dto.CrearUsuarioAdminResponse;
 import pe.edu.utp.escuela.app.dto.PageResponse;
-import pe.edu.utp.escuela.app.dto.ResetearContrasenaRespuesta;
+import pe.edu.utp.escuela.app.dto.ResetearContrasenaResponse;
 import pe.edu.utp.escuela.app.dto.RolUsuarioAdmin;
-import pe.edu.utp.escuela.app.dto.UsuarioAdminRespuesta;
+import pe.edu.utp.escuela.app.dto.UsuarioAdminResponse;
 import pe.edu.utp.escuela.app.service.AdminUsuariosService;
 
 @RestController
@@ -33,7 +33,7 @@ public class AdminUsuariosController {
     @Operation(summary = "Listar usuarios (búsqueda y filtros opcionales, paginado)")
     @ApiResponse(responseCode = "200", description = "Página de usuarios")
     @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
-    public ResponseEntity<PageResponse<UsuarioAdminRespuesta>> listar(
+    public ResponseEntity<PageResponse<UsuarioAdminResponse>> listar(
             @RequestParam(defaultValue = "") String texto,
             @RequestParam(required = false) Boolean activo,
             @RequestParam(required = false) RolUsuarioAdmin rol,
@@ -49,7 +49,7 @@ public class AdminUsuariosController {
     @ApiResponse(responseCode = "200", description = "Detalle del usuario")
     @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
     @ApiResponse(responseCode = "404", description = "La cuenta ya no existe")
-    public ResponseEntity<UsuarioAdminRespuesta> obtener(@PathVariable Long usuarioId) {
+    public ResponseEntity<UsuarioAdminResponse> obtener(@PathVariable Long usuarioId) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.obtener(usuarioId));
     }
 
@@ -60,8 +60,8 @@ public class AdminUsuariosController {
     @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
     @ApiResponse(responseCode = "404", description = "La cuenta ya no existe")
     @ApiResponse(responseCode = "409", description = "El documento de identidad ya está en uso")
-    public ResponseEntity<UsuarioAdminRespuesta> actualizarDatosPersonales(
-            @PathVariable Long usuarioId, @Valid @RequestBody ActualizarPerfilPeticion p) {
+    public ResponseEntity<UsuarioAdminResponse> actualizarDatosPersonales(
+            @PathVariable Long usuarioId, @Valid @RequestBody ActualizarPerfilRequest p) {
         return ResponseEntity.ok(service.actualizarDatosPersonales(usuarioId, p));
     }
 
@@ -73,7 +73,7 @@ public class AdminUsuariosController {
     @ApiResponse(responseCode = "400", description = "Datos inválidos")
     @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
     @ApiResponse(responseCode = "409", description = "El documento de identidad ya está en uso")
-    public ResponseEntity<CrearUsuarioAdminRespuesta> crear(@Valid @RequestBody CrearUsuarioAdminPeticion p) {
+    public ResponseEntity<CrearUsuarioAdminResponse> crear(@Valid @RequestBody CrearUsuarioAdminRequest p) {
         return ResponseEntity.ok(service.crear(p));
     }
 
@@ -83,8 +83,8 @@ public class AdminUsuariosController {
     @ApiResponse(responseCode = "200", description = "Rol concedido (o ya existente, sin cambios)")
     @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
     @ApiResponse(responseCode = "404", description = "La cuenta ya no existe")
-    public ResponseEntity<UsuarioAdminRespuesta> concederRol(
-            @PathVariable Long usuarioId, @Valid @RequestBody ConcederRolPeticion p) {
+    public ResponseEntity<UsuarioAdminResponse> concederRol(
+            @PathVariable Long usuarioId, @Valid @RequestBody ConcederRolRequest p) {
         return ResponseEntity.ok(service.concederRol(usuarioId, p));
     }
 
@@ -96,7 +96,7 @@ public class AdminUsuariosController {
     @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
     @ApiResponse(responseCode = "404", description = "La cuenta ya no existe")
     @ApiResponse(responseCode = "409", description = "No puedes dejar la cuenta sin roles, ni retirarte tu propio rol de administrador, ni al último administrador")
-    public ResponseEntity<UsuarioAdminRespuesta> revocarRol(
+    public ResponseEntity<UsuarioAdminResponse> revocarRol(
             @PathVariable Long usuarioId, @PathVariable RolUsuarioAdmin rol) {
         return ResponseEntity.ok(service.revocarRol(usuarioId, rol));
     }
@@ -107,8 +107,8 @@ public class AdminUsuariosController {
     @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
     @ApiResponse(responseCode = "404", description = "La cuenta ya no existe")
     @ApiResponse(responseCode = "409", description = "No puedes desactivar tu propia cuenta ni al último administrador")
-    public ResponseEntity<UsuarioAdminRespuesta> cambiarActivo(
-            @PathVariable Long usuarioId, @Valid @RequestBody CambiarActivoPeticion p) {
+    public ResponseEntity<UsuarioAdminResponse> cambiarActivo(
+            @PathVariable Long usuarioId, @Valid @RequestBody CambiarActivoRequest p) {
         return ResponseEntity.ok(service.cambiarActivo(usuarioId, p));
     }
 
@@ -119,7 +119,7 @@ public class AdminUsuariosController {
     @ApiResponse(responseCode = "200", description = "Contraseña restablecida")
     @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
     @ApiResponse(responseCode = "404", description = "La cuenta ya no existe")
-    public ResponseEntity<ResetearContrasenaRespuesta> resetearContrasena(@PathVariable Long usuarioId) {
+    public ResponseEntity<ResetearContrasenaResponse> resetearContrasena(@PathVariable Long usuarioId) {
         return ResponseEntity.ok(service.resetearContrasena(usuarioId));
     }
 

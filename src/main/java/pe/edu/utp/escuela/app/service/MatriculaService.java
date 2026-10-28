@@ -15,16 +15,16 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.AdvertenciaMatriculaRespuesta;
-import pe.edu.utp.escuela.app.dto.CancelarMatriculaPeticion;
-import pe.edu.utp.escuela.app.dto.CrearMatriculaAdministrativaPeticion;
-import pe.edu.utp.escuela.app.dto.HistorialEstadoMatriculaRespuesta;
-import pe.edu.utp.escuela.app.dto.MatriculaAdministrativaRespuesta;
-import pe.edu.utp.escuela.app.dto.MatriculaDetalleAdministrativaRespuesta;
-import pe.edu.utp.escuela.app.dto.MatriculaRespuesta;
-import pe.edu.utp.escuela.app.dto.PagoMatriculaDetalleRespuesta;
-import pe.edu.utp.escuela.app.dto.ReenvioMatriculaRespuesta;
-import pe.edu.utp.escuela.app.dto.ReporteMatriculaRespuesta;
+import pe.edu.utp.escuela.app.dto.AdvertenciaMatriculaResponse;
+import pe.edu.utp.escuela.app.dto.CancelarMatriculaRequest;
+import pe.edu.utp.escuela.app.dto.CrearMatriculaAdministrativaRequest;
+import pe.edu.utp.escuela.app.dto.HistorialEstadoMatriculaResponse;
+import pe.edu.utp.escuela.app.dto.MatriculaAdministrativaResponse;
+import pe.edu.utp.escuela.app.dto.MatriculaDetalleAdministrativaResponse;
+import pe.edu.utp.escuela.app.dto.MatriculaResponse;
+import pe.edu.utp.escuela.app.dto.PagoMatriculaDetalleResponse;
+import pe.edu.utp.escuela.app.dto.ReenvioMatriculaResponse;
+import pe.edu.utp.escuela.app.dto.ReporteMatriculaResponse;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.HistorialEstadoMatricula;
 import pe.edu.utp.escuela.app.entity.Leccion;
@@ -76,7 +76,7 @@ public class MatriculaService {
     private final Clock clock;
 
     @Transactional
-    public MatriculaRespuesta matricularGratis(Long cursoId) {
+    public MatriculaResponse matricularGratis(Long cursoId) {
         procesarVencimientos();
         Usuario usuario = usuarioActualAlumno();
         Curso curso = curso(cursoId);
@@ -89,7 +89,7 @@ public class MatriculaService {
     }
 
     @Transactional
-    public MatriculaRespuesta matricularAdministrativamente(CrearMatriculaAdministrativaPeticion p) {
+    public MatriculaResponse matricularAdministrativamente(CrearMatriculaAdministrativaRequest p) {
         procesarVencimientos();
         exigirAdministrador();
         Usuario alumno = usuarios.findWithPersonaById(p.usuarioId())
@@ -101,7 +101,7 @@ public class MatriculaService {
         if (!"REGISTRADO_MANUAL".equals(p.condicionEconomica()) && !"EXONERADO".equals(p.condicionEconomica())) {
             throw new BusinessValidationException("La condición económica no es válida.");
         }
-        AdvertenciaMatriculaRespuesta advertencia = advertenciaAdministrativa(curso.getId());
+        AdvertenciaMatriculaResponse advertencia = advertenciaAdministrativa(curso.getId());
         if (advertencia.requiereConfirmacion() && !p.confirmoAdvertenciaAcademica()) {
             throw new BusinessValidationException(advertencia.mensaje());
         }
@@ -136,13 +136,13 @@ public class MatriculaService {
     }
 
     @Transactional(readOnly = true)
-    public AdvertenciaMatriculaRespuesta consultarAdvertenciaAdministrativa(Long cursoId) {
+    public AdvertenciaMatriculaResponse consultarAdvertenciaAdministrativa(Long cursoId) {
         exigirAdministrador();
         return advertenciaAdministrativa(curso(cursoId).getId());
     }
 
     @Transactional
-    public List<MatriculaRespuesta> misCursos() {
+    public List<MatriculaResponse> misCursos() {
         procesarVencimientos();
         Usuario usuario = usuarioActualAlumno();
         return matriculas.findByUsuario_IdOrderByFechaMatriculaDesc(usuario.getId()).stream()
@@ -152,7 +152,7 @@ public class MatriculaService {
     // ---------------------------------------------------------------- HU-020 --
 
     @Transactional
-    public Page<MatriculaAdministrativaRespuesta> listarAdministrativas(
+    public Page<MatriculaAdministrativaResponse> listarAdministrativas(
             String texto, String estado, Pageable pageable) {
         procesarVencimientos();
         exigirAdministrador();
@@ -160,31 +160,31 @@ public class MatriculaService {
     }
 
     @Transactional
-    public MatriculaDetalleAdministrativaRespuesta detalleAdministrativo(Long matriculaId) {
+    public MatriculaDetalleAdministrativaResponse detalleAdministrativo(Long matriculaId) {
         procesarVencimientos();
         exigirAdministrador();
         Matricula matricula = matriculas.findWithDetalleById(matriculaId)
                 .orElseThrow(() -> new ResourceNotFoundException("La matrícula no existe."));
 
-        List<PagoMatriculaDetalleRespuesta> pagosRespuesta = pagos
+        List<PagoMatriculaDetalleResponse> pagosRespuesta = pagos
                 .findByMatricula_IdOrderByResultadoEnDesc(matriculaId)
                 .stream()
-                .map(pago -> new PagoMatriculaDetalleRespuesta(
+                .map(pago -> new PagoMatriculaDetalleResponse(
                         pago.getId(), pago.getOrigen(), pago.getEstado(), pago.getImporte(), pago.getMoneda(),
                         pago.getMedio(), pago.getReferenciaExterna(), pago.getMotivo(),
                         pago.getRegistradoPorUsuarioId(), nombreUsuario(pago.getRegistradoPorUsuarioId()),
                         pago.getResultadoEn()))
                 .toList();
-        List<HistorialEstadoMatriculaRespuesta> estadosRespuesta = historial
+        List<HistorialEstadoMatriculaResponse> estadosRespuesta = historial
                 .findByMatricula_IdOrderByRealizadoEnDesc(matriculaId)
                 .stream()
-                .map(cambio -> new HistorialEstadoMatriculaRespuesta(
+                .map(cambio -> new HistorialEstadoMatriculaResponse(
                         cambio.getEstadoAnterior(), cambio.getEstadoNuevo(), cambio.getMotivo(),
                         cambio.getRealizadoPorUsuarioId(), nombreUsuario(cambio.getRealizadoPorUsuarioId()),
                         cambio.getRealizadoEn()))
                 .toList();
 
-        return new MatriculaDetalleAdministrativaRespuesta(
+        return new MatriculaDetalleAdministrativaResponse(
                 matricula.getId(), matricula.getUsuario().getId(), matricula.getUsuario().getPersona().nombreCompleto(),
                 matricula.getUsuario().getCorreo(), matricula.getCurso().getId(), matricula.getCurso().getTitulo(),
                 matricula.getCurso().getModalidad(), matricula.getEstado(), matricula.getFormaIngreso(),
@@ -194,7 +194,7 @@ public class MatriculaService {
     }
 
     @Transactional
-    public MatriculaRespuesta cancelar(Long matriculaId, CancelarMatriculaPeticion peticion) {
+    public MatriculaResponse cancelar(Long matriculaId, CancelarMatriculaRequest peticion) {
         procesarVencimientos();
         exigirAdministrador();
         Matricula matricula = matriculas.findWithDetalleById(matriculaId)
@@ -225,13 +225,13 @@ public class MatriculaService {
     // --- HU-041 ---
 
     @Transactional
-    public Page<ReporteMatriculaRespuesta> reportePaginado(
+    public Page<ReporteMatriculaResponse> reportePaginado(
             String texto, String estado, Long cursoId, String modalidad,
             LocalDate desde, LocalDate hasta, Pageable pageable) {
         procesarVencimientos();
         exigirAdministrador();
         validarRango(desde, hasta);
-        Page<ReporteMatriculaRespuesta> pagina = matriculas.buscarReporte(
+        Page<ReporteMatriculaResponse> pagina = matriculas.buscarReporte(
                 normalizar(texto), normalizarEstado(estado), cursoId,
                 normalizarEstado(modalidad), inicio(desde), finExclusivo(hasta), pageable);
         Map<Long, String> origenes = origenesReporte(pagina.getContent());
@@ -239,13 +239,13 @@ public class MatriculaService {
     }
 
     @Transactional
-    public List<ReporteMatriculaRespuesta> reporte(
+    public List<ReporteMatriculaResponse> reporte(
             String texto, String estado, Long cursoId, String modalidad,
             LocalDate desde, LocalDate hasta) {
         procesarVencimientos();
         exigirAdministrador();
         validarRango(desde, hasta);
-        List<ReporteMatriculaRespuesta> filas = matriculas.exportarReporte(
+        List<ReporteMatriculaResponse> filas = matriculas.exportarReporte(
                 normalizar(texto), normalizarEstado(estado), cursoId,
                 normalizarEstado(modalidad), inicio(desde), finExclusivo(hasta));
         Map<Long, String> origenes = origenesReporte(filas);
@@ -255,10 +255,10 @@ public class MatriculaService {
     }
 
     // Metodos auxiliares HU-041
-    private Map<Long, String> origenesReporte(List<ReporteMatriculaRespuesta> filas) {
+    private Map<Long, String> origenesReporte(List<ReporteMatriculaResponse> filas) {
         if (filas.isEmpty())
             return Map.of();
-        List<Long> ids = filas.stream().map(ReporteMatriculaRespuesta::matriculaId).toList();
+        List<Long> ids = filas.stream().map(ReporteMatriculaResponse::matriculaId).toList();
         Map<Long, List<Pago>> pagosPorMatricula = pagos.findByMatricula_IdIn(ids).stream()
                 .collect(Collectors.groupingBy(p -> p.getMatricula().getId()));
         return pagosPorMatricula.entrySet().stream().collect(Collectors.toMap(
@@ -275,8 +275,8 @@ public class MatriculaService {
         return pagosDeMatricula.getFirst().getOrigen();
     }
 
-    private ReporteMatriculaRespuesta conOrigen(ReporteMatriculaRespuesta f, String origen) {
-        return new ReporteMatriculaRespuesta(f.matriculaId(), f.alumno(), f.correo(), f.curso(), f.modalidad(),
+    private ReporteMatriculaResponse conOrigen(ReporteMatriculaResponse f, String origen) {
+        return new ReporteMatriculaResponse(f.matriculaId(), f.alumno(), f.correo(), f.curso(), f.modalidad(),
                 f.fechaMatricula(), f.fechaActivacion(), f.estadoMatricula(), origen,
                 f.situacionAcademica(), f.estadoCertificado());
     }
@@ -300,7 +300,7 @@ public class MatriculaService {
     }
 
     @Transactional
-    public ReenvioMatriculaRespuesta reenviarConfirmacion(Long matriculaId) {
+    public ReenvioMatriculaResponse reenviarConfirmacion(Long matriculaId) {
         procesarVencimientos();
         Matricula m = matriculas.findWithDetalleById(matriculaId)
                 .orElseThrow(() -> new ResourceNotFoundException("La matrícula no existe."));
@@ -310,7 +310,7 @@ public class MatriculaService {
         String estado = enviarConfirmacion(m, m.getFormaIngreso().equals("GRATUITA")
                 ? "El curso es gratuito; no se realizó ningún cobro."
                 : "Confirmación de matrícula administrativa.");
-        return new ReenvioMatriculaRespuesta("ENVIADO".equals(estado),
+        return new ReenvioMatriculaResponse("ENVIADO".equals(estado),
                 "ENVIADO".equals(estado) ? "Correo enviado correctamente."
                         : "No se pudo enviar el correo. Puedes volver a intentarlo.");
     }
@@ -354,7 +354,7 @@ public class MatriculaService {
         return m;
     }
 
-    private AdvertenciaMatriculaRespuesta advertenciaAdministrativa(Long cursoId) {
+    private AdvertenciaMatriculaResponse advertenciaAdministrativa(Long cursoId) {
         Curso curso = curso(cursoId);
         ReglaCurso regla = reglas.findByCurso_Id(cursoId).orElse(null);
         boolean requiere = regla != null && regla.isRequiereAsistencia()
@@ -362,13 +362,13 @@ public class MatriculaService {
         boolean sinSesionesFuturas = requiere
                 && lecciones.contarSesionesFuturasActivas(cursoId, clock.instant()) == 0;
         return sinSesionesFuturas
-                ? new AdvertenciaMatriculaRespuesta(true,
+                ? new AdvertenciaMatriculaResponse(true,
                         "El curso exige asistencia y no tiene sesiones futuras. El alumno podría no cumplir la condición de certificación automática.")
-                : new AdvertenciaMatriculaRespuesta(false, "");
+                : new AdvertenciaMatriculaResponse(false, "");
     }
 
     private void validarSesionesFuturas(Curso curso, boolean autoservicio) {
-        AdvertenciaMatriculaRespuesta advertencia = advertenciaAdministrativa(curso.getId());
+        AdvertenciaMatriculaResponse advertencia = advertenciaAdministrativa(curso.getId());
         if (autoservicio && advertencia.requiereConfirmacion()) {
             throw new BusinessValidationException(
                     "No es posible matricularse automáticamente: " + advertencia.mensaje());
@@ -415,7 +415,7 @@ public class MatriculaService {
         return u;
     }
 
-    private MatriculaRespuesta respuesta(Matricula m, String estadoCorreo) {
+    private MatriculaResponse respuesta(Matricula m, String estadoCorreo) {
         Instant ahora = clock.instant();
         boolean vigente = m.getFechaVencimiento() == null || !ahora.isAfter(m.getFechaVencimiento());
         boolean inicio = m.getCurso().getFechaInicio() == null
@@ -441,7 +441,7 @@ public class MatriculaService {
         String estadoCorreoActual = estadoCorreo != null ? estadoCorreo
                 : notificaciones.findTopByTipoOrderByCreadoEnDesc("MAT_" + m.getId() + "_CONF")
                         .map(Notificacion::getEstadoEnvio).orElse(null);
-        return new MatriculaRespuesta(m.getId(), m.getCurso().getId(), m.getCurso().getTitulo(),
+        return new MatriculaResponse(m.getId(), m.getCurso().getId(), m.getCurso().getTitulo(),
                 m.getCurso().getUrlAmigable(), m.getCurso().getImagenPortadaUrl(), m.getCurso().getModalidad(),
                 m.getEstado(), m.getFormaIngreso(),
                 m.getFechaMatricula(), m.getFechaActivacion(), m.getFechaVencimiento(), m.getFechaFinalizacion(),

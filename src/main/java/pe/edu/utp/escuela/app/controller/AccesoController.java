@@ -13,9 +13,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import pe.edu.utp.escuela.app.dto.AccesoPeticion;
+import pe.edu.utp.escuela.app.dto.AccesoRequest;
 import pe.edu.utp.escuela.app.dto.ResultadoAcceso;
-import pe.edu.utp.escuela.app.dto.SesionAccesoRespuesta;
+import pe.edu.utp.escuela.app.dto.SesionAccesoResponse;
 import pe.edu.utp.escuela.app.security.SessionCookieService;
 import pe.edu.utp.escuela.app.service.AccesoService;
 
@@ -38,7 +38,7 @@ public class AccesoController {
     @ApiResponse(responseCode = "401", description = "Correo o contraseña incorrectos")
     @ApiResponse(responseCode = "403",
             description = "Cuenta deshabilitada o correo pendiente de verificar")
-    public ResponseEntity<SesionAccesoRespuesta> acceder(@Valid @RequestBody AccesoPeticion peticion) {
+    public ResponseEntity<SesionAccesoResponse> acceder(@Valid @RequestBody AccesoRequest peticion) {
         ResultadoAcceso resultado = accesoService.acceder(peticion);
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, sessionCookieService.create(resultado.jwt()).toString())
@@ -50,7 +50,7 @@ public class AccesoController {
             description = "Requiere la cookie de sesión vigente. Permite restaurar el estado de Angular al "
                     + "recargar la página.")
     @ApiResponse(responseCode = "200", description = "Datos mínimos del usuario autenticado")
-    public SesionAccesoRespuesta sesionActual(Authentication autenticacion) {
+    public SesionAccesoResponse sesionActual(Authentication autenticacion) {
         return accesoService.obtenerSesion(Long.valueOf(autenticacion.getName()));
     }
 

@@ -8,9 +8,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.CerrarCursoPeticion;
-import pe.edu.utp.escuela.app.dto.CursoEditorRespuesta;
-import pe.edu.utp.escuela.app.dto.RetrasarInicioPeticion;
+import pe.edu.utp.escuela.app.dto.CerrarCursoRequest;
+import pe.edu.utp.escuela.app.dto.CursoEditorResponse;
+import pe.edu.utp.escuela.app.dto.RetrasarInicioRequest;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.CursoDocente;
 import pe.edu.utp.escuela.app.entity.EstadoCurso;
@@ -59,7 +59,7 @@ public class CicloVidaCursoService {
     private final ExamenService examenService;
 
     @Transactional
-    public CursoEditorRespuesta adelantarInicio(Long cursoId) {
+    public CursoEditorResponse adelantarInicio(Long cursoId) {
         exigirAdministrador();
         Curso curso = buscarOLanzar(cursoId);
         requerirEstado(curso, "PUBLICADO", "Solo un curso publicado puede adelantar su inicio.");
@@ -73,7 +73,7 @@ public class CicloVidaCursoService {
     }
 
     @Transactional
-    public CursoEditorRespuesta retrasarInicio(Long cursoId, RetrasarInicioPeticion p) {
+    public CursoEditorResponse retrasarInicio(Long cursoId, RetrasarInicioRequest p) {
         exigirAdministrador();
         Curso curso = buscarOLanzar(cursoId);
         requerirEstado(curso, "PUBLICADO", "Solo antes de iniciar puedes retrasar la fecha de inicio.");
@@ -91,7 +91,7 @@ public class CicloVidaCursoService {
     }
 
     @Transactional
-    public CursoEditorRespuesta cerrar(Long cursoId, CerrarCursoPeticion p) {
+    public CursoEditorResponse cerrar(Long cursoId, CerrarCursoRequest p) {
         exigirAdministrador();
         Curso curso = buscarOLanzar(cursoId);
         String estadoActual = curso.getEstadoCurso().getCodigo();
@@ -105,7 +105,7 @@ public class CicloVidaCursoService {
     }
 
     @Transactional
-    public CursoEditorRespuesta cambiarDestacado(Long cursoId, boolean destacado) {
+    public CursoEditorResponse cambiarDestacado(Long cursoId, boolean destacado) {
         exigirAdministrador();
         Curso curso = buscarOLanzar(cursoId);
         curso.setDestacado(destacado);
@@ -151,7 +151,7 @@ public class CicloVidaCursoService {
      * la copia nace sin ellas). Tampoco copia firmantes: no están en la lista de la historia y
      * conviene revisarlos para cada convocatoria. */
     @Transactional
-    public CursoEditorRespuesta duplicar(Long cursoId) {
+    public CursoEditorResponse duplicar(Long cursoId) {
         exigirAdministrador();
         Curso origen = buscarOLanzar(cursoId);
         EstadoCurso borrador = estadosCurso.findByCodigo("BORRADOR")

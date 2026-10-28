@@ -16,9 +16,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import pe.edu.utp.escuela.app.dto.OpcionAsistenciaRespuesta;
+import pe.edu.utp.escuela.app.dto.OpcionAsistenciaResponse;
 import pe.edu.utp.escuela.app.dto.PageResponse;
-import pe.edu.utp.escuela.app.dto.ReporteAcademicoRespuesta;
+import pe.edu.utp.escuela.app.dto.ReporteAcademicoResponse;
 import pe.edu.utp.escuela.app.export.ReporteAcademicoExport;
 import pe.edu.utp.escuela.app.service.ReporteAcademicoService;
 import pe.edu.utp.escuela.app.service.ReporteAcademicoService.Filtro;
@@ -41,7 +41,7 @@ public class ReporteAcademicoController {
                     + "de matrícula.")
     @ApiResponse(responseCode = "400", description = "Algún filtro no es válido")
     @ApiResponse(responseCode = "403", description = "La cuenta autenticada no es administradora")
-    public ResponseEntity<PageResponse<ReporteAcademicoRespuesta>> reporte(
+    public ResponseEntity<PageResponse<ReporteAcademicoResponse>> reporte(
             @RequestParam(defaultValue = "") String texto,
             @RequestParam(required = false) Long cursoId,
             @RequestParam(defaultValue = "") String modalidad,
@@ -53,7 +53,7 @@ public class ReporteAcademicoController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         int tamano = Math.min(Math.max(size, 1), 50);
-        Page<ReporteAcademicoRespuesta> pagina = service.paginado(
+        Page<ReporteAcademicoResponse> pagina = service.paginado(
                 new Filtro(texto, cursoId, modalidad, fechaDesde, fechaHasta, situacion, cumplimiento, certificado),
                 PageRequest.of(Math.max(page, 0), tamano));
         return ResponseEntity.ok(PageResponse.from(pagina));
@@ -71,7 +71,7 @@ public class ReporteAcademicoController {
             @RequestParam(defaultValue = "") String situacion,
             @RequestParam(defaultValue = "") String cumplimiento,
             @RequestParam(defaultValue = "") String certificado) {
-        List<ReporteAcademicoRespuesta> filas = service.completo(
+        List<ReporteAcademicoResponse> filas = service.completo(
                 new Filtro(texto, cursoId, modalidad, fechaDesde, fechaHasta, situacion, cumplimiento, certificado));
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"reporte-academico.xlsx\"")
@@ -82,7 +82,7 @@ public class ReporteAcademicoController {
 
     @GetMapping("/cursos")
     @Operation(summary = "Cursos disponibles para el filtro")
-    public ResponseEntity<List<OpcionAsistenciaRespuesta>> cursos() {
+    public ResponseEntity<List<OpcionAsistenciaResponse>> cursos() {
         return ResponseEntity.ok(service.cursosDisponibles());
     }
 }

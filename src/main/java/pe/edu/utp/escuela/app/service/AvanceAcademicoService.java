@@ -9,8 +9,8 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.AvanceCertificadoRespuesta;
-import pe.edu.utp.escuela.app.dto.CondicionAvanceRespuesta;
+import pe.edu.utp.escuela.app.dto.AvanceCertificadoResponse;
+import pe.edu.utp.escuela.app.dto.CondicionAvanceResponse;
 import pe.edu.utp.escuela.app.entity.Examen;
 import pe.edu.utp.escuela.app.entity.Leccion;
 import pe.edu.utp.escuela.app.entity.Matricula;
@@ -42,7 +42,7 @@ public class AvanceAcademicoService {
     public record AvanceAcademico(
             RutaAcademica ruta,
             int porcentaje,
-            List<CondicionAvanceRespuesta> condiciones,
+            List<CondicionAvanceResponse> condiciones,
             boolean cumpleTodo,
             String frase,
             /** Exámenes calificados que el curso exige aprobar (0 si no los exige). */
@@ -57,8 +57,8 @@ public class AvanceAcademicoService {
             /** Hay un examen CALIFICADO esperando revisión: bloquea finalización y certificado. */
             boolean bloqueadoPorRevision) {
 
-        public AvanceCertificadoRespuesta comoRespuesta() {
-            return new AvanceCertificadoRespuesta(condiciones, cumpleTodo, frase);
+        public AvanceCertificadoResponse comoRespuesta() {
+            return new AvanceCertificadoResponse(condiciones, cumpleTodo, frase);
         }
     }
 
@@ -73,12 +73,12 @@ public class AvanceAcademicoService {
         int porcentaje = porcentaje(ruta);
         boolean esVirtual = "VIRTUAL".equals(matricula.getCurso().getModalidad());
 
-        List<CondicionAvanceRespuesta> condiciones = new ArrayList<>();
+        List<CondicionAvanceResponse> condiciones = new ArrayList<>();
         List<String> faltantes = new ArrayList<>();
 
         if (regla.isRequiereProgreso()) {
             boolean cumplida = BigDecimal.valueOf(porcentaje).compareTo(regla.getProgresoMinimo()) >= 0;
-            condiciones.add(new CondicionAvanceRespuesta("PROGRESO", "Progreso del curso",
+            condiciones.add(new CondicionAvanceResponse("PROGRESO", "Progreso del curso",
                     porcentaje + " %", "mínimo " + numero(regla.getProgresoMinimo()) + " %", cumplida));
             if (!cumplida) {
                 faltantes.add("completar al menos " + numero(regla.getProgresoMinimo())
@@ -106,7 +106,7 @@ public class AvanceAcademicoService {
             long pendientes = requeridos - aprobados;
             long enEspera = enRevision.stream().filter(e -> "CALIFICADO".equals(e.tipo())).count();
             boolean examenesCumplidos = pendientes == 0 && !bloqueadoPorRevision;
-            condiciones.add(new CondicionAvanceRespuesta("EXAMENES", "Exámenes calificados",
+            condiciones.add(new CondicionAvanceResponse("EXAMENES", "Exámenes calificados",
                     aprobados + " de " + requeridos + " aprobados"
                             + (enEspera > 0 ? " · " + enEspera + " en revisión" : ""),
                     "todos aprobados", examenesCumplidos));
@@ -125,7 +125,7 @@ public class AvanceAcademicoService {
                     : mejores.stream().reduce(BigDecimal.ZERO, BigDecimal::add)
                             .divide(BigDecimal.valueOf(mejores.size()), 2, RoundingMode.HALF_UP);
             boolean notaCumplida = notaFinal != null && notaFinal.compareTo(regla.getNotaMinima()) >= 0;
-            condiciones.add(new CondicionAvanceRespuesta("NOTA", "Nota promedio",
+            condiciones.add(new CondicionAvanceResponse("NOTA", "Nota promedio",
                     notaFinal == null ? "Sin notas aún" : numero(notaFinal),
                     "mínimo " + numero(regla.getNotaMinima()), notaCumplida));
             if (!notaCumplida && notaFinal != null) {
@@ -140,7 +140,7 @@ public class AvanceAcademicoService {
             asistencia = sesionAlumno.porcentajeAsistencia(matricula.getId());
             // "No aplica" (cero sesiones elegibles) nunca equivale a cumplido (HU-026).
             boolean cumplida = asistencia != null && BigDecimal.valueOf(asistencia).compareTo(regla.getAsistenciaMinima()) >= 0;
-            condiciones.add(new CondicionAvanceRespuesta("ASISTENCIA", "Asistencia a sesiones en vivo",
+            condiciones.add(new CondicionAvanceResponse("ASISTENCIA", "Asistencia a sesiones en vivo",
                     asistencia == null ? "No aplica" : asistencia + " %",
                     "mínimo " + numero(regla.getAsistenciaMinima()) + " %", cumplida));
             if (!cumplida) {

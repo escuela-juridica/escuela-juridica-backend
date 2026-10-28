@@ -28,7 +28,7 @@ public class RegistroController {
     @ApiResponse(responseCode = "409", description = "Correo o documento duplicado")
     @ApiResponse(responseCode = "429", description = "Límite de comprobaciones alcanzado")
     @ApiResponse(responseCode = "503", description = "Comprobación anti-robot temporalmente no disponible")
-    public ResponseEntity<RegistroRespuesta> registrar(@Valid @RequestBody RegistroPeticion p) {
+    public ResponseEntity<RegistroResponse> registrar(@Valid @RequestBody RegistroRequest p) {
         return ResponseEntity.status(HttpStatus.CREATED).cacheControl(CacheControl.noStore())
                 .body(registro.registrar(p));
     }
@@ -51,7 +51,7 @@ public class RegistroController {
     @ApiResponse(responseCode = "400", description = "Datos, aceptación o referencia inválidos")
     @ApiResponse(responseCode = "409", description = "Cuenta o documento existente")
     @ApiResponse(responseCode = "503", description = "Integración HU-001 pendiente")
-    public ResponseEntity<SesionRespuesta> google(@Valid @RequestBody RegistroGooglePeticion p) {
+    public ResponseEntity<SesionResponse> google(@Valid @RequestBody RegistroGoogleRequest p) {
         var sesion = registro.completarGoogle(p);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .header(HttpHeaders.SET_COOKIE, cookies.create(sesion.token()).toString())

@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.MaterialAlumnoRespuesta;
+import pe.edu.utp.escuela.app.dto.MaterialAlumnoResponse;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.Leccion;
 import pe.edu.utp.escuela.app.entity.MaterialLeccion;
@@ -52,7 +52,7 @@ public class MaterialAlumnoService {
     private final Clock clock;
 
     @Transactional(readOnly = true)
-    public List<MaterialAlumnoRespuesta> listar(Long leccionId) {
+    public List<MaterialAlumnoResponse> listar(Long leccionId) {
         requiereAlumno();
         Leccion leccion = lecciones.findById(leccionId)
                 .orElseThrow(() -> new ResourceNotFoundException("La lección no existe."));
@@ -66,7 +66,7 @@ public class MaterialAlumnoService {
                 : progresoMateriales.findByMatricula_IdAndMaterialLeccion_IdIn(
                         matricula.getId(), activos.stream().map(MaterialLeccion::getId).toList()).stream()
                         .collect(Collectors.toMap(p -> p.getMaterialLeccion().getId(), p -> p, (a, b) -> a));
-        return activos.stream().map(m -> MaterialAlumnoRespuesta.de(m, progreso.get(m.getId()))).toList();
+        return activos.stream().map(m -> MaterialAlumnoResponse.de(m, progreso.get(m.getId()))).toList();
     }
 
     @Transactional(readOnly = true)

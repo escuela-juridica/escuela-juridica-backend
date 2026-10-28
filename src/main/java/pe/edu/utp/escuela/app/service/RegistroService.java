@@ -23,7 +23,7 @@ public class RegistroService {
     private final TextNormalizer textos;
     private final Validator validator;
 
-    public RegistroRespuesta registrar(RegistroPeticion p) {
+    public RegistroResponse registrar(RegistroRequest p) {
         validar(p);
         if (!p.contrasena().equals(p.confirmarContrasena())) {
             throw new CampoRegistroException(HttpStatus.BAD_REQUEST, "CONTRASENAS_DIFERENTES",
@@ -39,7 +39,7 @@ public class RegistroService {
         return new ContextoRegistroGoogle(identidad.correo(), identidad.nombres(),
                 identidad.apellidos(), identidad.fotoUrl(), identidad.venceEn());
     }
-    public SesionRegistroService.SesionCreada completarGoogle(RegistroGooglePeticion p) {
+    public SesionRegistroService.SesionCreada completarGoogle(RegistroGoogleRequest p) {
         validar(p);
         var identidad = integraciones.identidadGoogle(p.referencia());
         return conConflictos(identidad.correo(), p.documentoIdentidad(),

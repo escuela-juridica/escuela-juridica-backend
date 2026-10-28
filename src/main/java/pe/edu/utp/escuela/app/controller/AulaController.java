@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import pe.edu.utp.escuela.app.dto.AulaRespuesta;
+import pe.edu.utp.escuela.app.dto.AulaResponse;
 import pe.edu.utp.escuela.app.service.AulaService;
 
 @Tag(
@@ -36,7 +36,7 @@ public class AulaController {
     @ApiResponse(responseCode = "403", description = "La cuenta autenticada no tiene rol Alumno")
     @ApiResponse(responseCode = "404", description = "No existe matrícula del alumno en ese curso")
     @GetMapping("/cursos/{cursoId}")
-    public AulaRespuesta temario(
+    public AulaResponse temario(
             @Parameter(description = "Identificador del curso", example = "1")
             @PathVariable Long cursoId) {
         return service.temario(cursoId);

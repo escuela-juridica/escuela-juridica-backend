@@ -28,7 +28,7 @@ public class RegistroPersistencia {
     private final Clock clock;
 
     @Transactional
-    public RegistroRespuesta formulario(RegistroPeticion p) {
+    public RegistroResponse formulario(RegistroRequest p) {
         String correo = textos.normalizeEmail(p.correo());
         comprobarCorreo(correo);
         Rol rol = rolAlumno();
@@ -47,12 +47,12 @@ public class RegistroPersistencia {
         usuarios.saveAndFlush(usuario);
         asignarRol(usuario, rol);
         boolean enviado = codigos.emitirPara(usuario);
-        return new RegistroRespuesta(usuario.getId(), correo, enviado,
+        return new RegistroResponse(usuario.getId(), correo, enviado,
                 referencias.emitir(usuario.getId()));
     }
 
     @Transactional
-    public SesionRegistroService.SesionCreada google(RegistroGooglePeticion p, ContextoGoogleRegistroIntegration.Identidad identidad) {
+    public SesionRegistroService.SesionCreada google(RegistroGoogleRequest p, ContextoGoogleRegistroIntegration.Identidad identidad) {
         String correo = textos.normalizeEmail(identidad.correo());
         comprobarCorreo(correo);
         if (usuarios.findByGoogleSubject(identidad.subject()).isPresent()) {

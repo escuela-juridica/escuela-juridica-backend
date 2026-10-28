@@ -19,8 +19,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import pe.edu.utp.escuela.app.dto.CerrarCursoPeticion;
-import pe.edu.utp.escuela.app.dto.RetrasarInicioPeticion;
+import pe.edu.utp.escuela.app.dto.CerrarCursoRequest;
+import pe.edu.utp.escuela.app.dto.RetrasarInicioRequest;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.EstadoCurso;
 import pe.edu.utp.escuela.app.exception.BusinessValidationException;
@@ -116,7 +116,7 @@ class CicloVidaCursoServiceTests {
         curso.setFechaFin(LocalDate.of(2026, 12, 1));
         when(cursos.findWithDetalleById(100L)).thenReturn(Optional.of(curso));
 
-        service.retrasarInicio(100L, new RetrasarInicioPeticion(LocalDate.of(2026, 10, 15)));
+        service.retrasarInicio(100L, new RetrasarInicioRequest(LocalDate.of(2026, 10, 15)));
 
         assertEquals(LocalDate.of(2026, 10, 15), curso.getFechaInicio());
         verify(historial, never()).saveAndFlush(any());
@@ -129,7 +129,7 @@ class CicloVidaCursoServiceTests {
         when(cursos.findWithDetalleById(100L)).thenReturn(Optional.of(curso));
 
         assertThrows(BusinessValidationException.class, () -> service.retrasarInicio(100L,
-                new RetrasarInicioPeticion(LocalDate.of(2026, 9, 20))));
+                new RetrasarInicioRequest(LocalDate.of(2026, 9, 20))));
     }
 
     @Test
@@ -140,7 +140,7 @@ class CicloVidaCursoServiceTests {
         when(cursos.findWithDetalleById(100L)).thenReturn(Optional.of(curso));
 
         assertThrows(BusinessValidationException.class, () -> service.retrasarInicio(100L,
-                new RetrasarInicioPeticion(LocalDate.of(2026, 11, 1))));
+                new RetrasarInicioRequest(LocalDate.of(2026, 11, 1))));
     }
 
     @Test
@@ -149,7 +149,7 @@ class CicloVidaCursoServiceTests {
         when(cursos.findWithDetalleById(100L)).thenReturn(Optional.of(curso));
 
         assertThrows(BusinessValidationException.class, () -> service.retrasarInicio(100L,
-                new RetrasarInicioPeticion(LocalDate.of(2026, 11, 1))));
+                new RetrasarInicioRequest(LocalDate.of(2026, 11, 1))));
     }
 
     // ---------------------------------------------------------------- Cerrar --
@@ -162,7 +162,7 @@ class CicloVidaCursoServiceTests {
         cerrado.setCodigo("CERRADO");
         when(estadosCurso.findByCodigo("CERRADO")).thenReturn(Optional.of(cerrado));
 
-        service.cerrar(100L, new CerrarCursoPeticion("Cierre por baja demanda"));
+        service.cerrar(100L, new CerrarCursoRequest("Cierre por baja demanda"));
 
         assertEquals("CERRADO", curso.getEstadoCurso().getCodigo());
     }
@@ -173,7 +173,7 @@ class CicloVidaCursoServiceTests {
         when(cursos.findWithDetalleById(100L)).thenReturn(Optional.of(curso));
 
         assertThrows(BusinessValidationException.class,
-                () -> service.cerrar(100L, new CerrarCursoPeticion(null)));
+                () -> service.cerrar(100L, new CerrarCursoRequest(null)));
     }
 
     // ---------------------------------------------------------------- Eliminar --

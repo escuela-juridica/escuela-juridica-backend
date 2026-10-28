@@ -14,19 +14,19 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.ActualizarInformacionCursoPeticion;
-import pe.edu.utp.escuela.app.dto.ActualizarReglasCursoPeticion;
-import pe.edu.utp.escuela.app.dto.AsignarDocentesPeticion;
-import pe.edu.utp.escuela.app.dto.AsignarFirmantesPeticion;
-import pe.edu.utp.escuela.app.dto.CrearCursoPeticion;
-import pe.edu.utp.escuela.app.dto.CursoEditorRespuesta;
-import pe.edu.utp.escuela.app.dto.CursoResumenRespuesta;
-import pe.edu.utp.escuela.app.dto.DocenteCursoRespuesta;
-import pe.edu.utp.escuela.app.dto.FirmanteCursoRespuesta;
+import pe.edu.utp.escuela.app.dto.ActualizarInformacionCursoRequest;
+import pe.edu.utp.escuela.app.dto.ActualizarReglasCursoRequest;
+import pe.edu.utp.escuela.app.dto.AsignarDocentesRequest;
+import pe.edu.utp.escuela.app.dto.AsignarFirmantesRequest;
+import pe.edu.utp.escuela.app.dto.CrearCursoRequest;
+import pe.edu.utp.escuela.app.dto.CursoEditorResponse;
+import pe.edu.utp.escuela.app.dto.CursoResumenResponse;
+import pe.edu.utp.escuela.app.dto.DocenteCursoResponse;
+import pe.edu.utp.escuela.app.dto.FirmanteCursoResponse;
 import pe.edu.utp.escuela.app.dto.ModalidadCurso;
 import pe.edu.utp.escuela.app.dto.PageResponse;
 import pe.edu.utp.escuela.app.dto.TipoVentaCurso;
-import pe.edu.utp.escuela.app.dto.ReglasCursoRespuesta;
+import pe.edu.utp.escuela.app.dto.ReglasCursoResponse;
 import pe.edu.utp.escuela.app.entity.CategoriaTematica;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.CursoDocente;
@@ -85,11 +85,11 @@ public class CursoService {
     private final Clock clock;
 
     @Transactional(readOnly = true)
-    public PageResponse<CursoResumenRespuesta> listar(String texto, Pageable pageable) {
+    public PageResponse<CursoResumenResponse> listar(String texto, Pageable pageable) {
         exigirAdministrador();
         String termino = texto == null ? "" : texto.strip().toLowerCase(Locale.ROOT);
         Page<Curso> pagina = cursos.buscarAdministrativos(termino, pageable);
-        List<CursoResumenRespuesta> items = pagina.getContent().stream().map(this::resumenDe).toList();
+        List<CursoResumenResponse> items = pagina.getContent().stream().map(this::resumenDe).toList();
         return PageResponse.from(items, pagina);
     }
 
@@ -101,7 +101,7 @@ public class CursoService {
     }
 
     @Transactional
-    public CursoEditorRespuesta crear(CrearCursoPeticion p) {
+    public CursoEditorResponse crear(CrearCursoRequest p) {
         exigirAdministrador();
         String titulo = textos.requireText(p.titulo(), "Título");
         EstadoCurso borrador = estadosCurso.findByCodigo(ESTADO_BORRADOR)
@@ -125,13 +125,13 @@ public class CursoService {
     }
 
     @Transactional(readOnly = true)
-    public CursoEditorRespuesta obtener(Long cursoId) {
+    public CursoEditorResponse obtener(Long cursoId) {
         exigirAdministrador();
         return detalleDe(buscarOLanzar(cursoId));
     }
 
     @Transactional
-    public CursoEditorRespuesta actualizarInformacion(Long cursoId, ActualizarInformacionCursoPeticion p) {
+    public CursoEditorResponse actualizarInformacion(Long cursoId, ActualizarInformacionCursoRequest p) {
         exigirAdministrador();
         Curso curso = buscarOLanzar(cursoId);
         boolean modalidadSinDefinir = curso.getModalidad() == null;
@@ -206,7 +206,7 @@ public class CursoService {
     }
 
     @Transactional
-    public CursoEditorRespuesta actualizarDocentes(Long cursoId, AsignarDocentesPeticion p) {
+    public CursoEditorResponse actualizarDocentes(Long cursoId, AsignarDocentesRequest p) {
         exigirAdministrador();
         Curso curso = buscarOLanzar(cursoId);
         List<Long> ids = p.personaIds();
@@ -240,7 +240,7 @@ public class CursoService {
     }
 
     @Transactional
-    public CursoEditorRespuesta actualizarFirmantes(Long cursoId, AsignarFirmantesPeticion p) {
+    public CursoEditorResponse actualizarFirmantes(Long cursoId, AsignarFirmantesRequest p) {
         exigirAdministrador();
         Curso curso = buscarOLanzar(cursoId);
         List<Long> ids = p.firmanteIds() == null ? List.of() : p.firmanteIds();
@@ -275,14 +275,14 @@ public class CursoService {
     // -------------------------------------------------------- HU-014 Requisitos --
 
     @Transactional(readOnly = true)
-    public ReglasCursoRespuesta obtenerReglas(Long cursoId) {
+    public ReglasCursoResponse obtenerReglas(Long cursoId) {
         exigirAdministrador();
         Curso curso = buscarOLanzar(cursoId);
         return reglasDe(reglaDe(cursoId), curso);
     }
 
     @Transactional
-    public ReglasCursoRespuesta actualizarReglas(Long cursoId, ActualizarReglasCursoPeticion p) {
+    public ReglasCursoResponse actualizarReglas(Long cursoId, ActualizarReglasCursoRequest p) {
         exigirAdministrador();
         Curso curso = buscarOLanzar(cursoId);
         ReglaCurso regla = reglaDe(cursoId);
@@ -343,8 +343,8 @@ public class CursoService {
         }
     }
 
-    private ReglasCursoRespuesta reglasDe(ReglaCurso r, Curso c) {
-        return new ReglasCursoRespuesta(r.isRequiereExamenes(), r.isRequiereProgreso(), r.isRequiereAsistencia(),
+    private ReglasCursoResponse reglasDe(ReglaCurso r, Curso c) {
+        return new ReglasCursoResponse(r.isRequiereExamenes(), r.isRequiereProgreso(), r.isRequiereAsistencia(),
                 r.getNotaMinima(), r.getNotaRefrendado(), r.getProgresoMinimo(), r.getUmbralVideo(),
                 r.getAsistenciaMinima(), r.isSecuenciaObligatoria(), r.getDiasEsperaCertificado(),
                 c.getFechaCierreMatricula(), r.getBloqueadoEn() != null || cursoIniciado(c));
@@ -474,8 +474,8 @@ public class CursoService {
         return candidato;
     }
 
-    private CursoResumenRespuesta resumenDe(Curso c) {
-        return new CursoResumenRespuesta(
+    private CursoResumenResponse resumenDe(Curso c) {
+        return new CursoResumenResponse(
                 c.getId(),
                 c.getUrlAmigable(),
                 c.getTitulo(),
@@ -490,9 +490,9 @@ public class CursoService {
                 c.getCreadoEn());
     }
 
-    private CursoEditorRespuesta detalleDe(Curso c) {
-        List<DocenteCursoRespuesta> docentes = cursoDocentes.findByCurso_IdOrderByOrdenAsc(c.getId()).stream()
-                .map(cd -> new DocenteCursoRespuesta(
+    private CursoEditorResponse detalleDe(Curso c) {
+        List<DocenteCursoResponse> docentes = cursoDocentes.findByCurso_IdOrderByOrdenAsc(c.getId()).stream()
+                .map(cd -> new DocenteCursoResponse(
                         cd.getPersona().getId(),
                         cd.getPersona().nombreCompleto(),
                         cd.getPersona().getFotoUrl(),
@@ -500,8 +500,8 @@ public class CursoService {
                         cd.getOrden(),
                         cd.getPersona().isActivo()))
                 .toList();
-        List<FirmanteCursoRespuesta> firmantesCurso = cursoFirmantes.findByCurso_IdOrderByOrdenAsc(c.getId()).stream()
-                .map(cf -> new FirmanteCursoRespuesta(
+        List<FirmanteCursoResponse> firmantesCurso = cursoFirmantes.findByCurso_IdOrderByOrdenAsc(c.getId()).stream()
+                .map(cf -> new FirmanteCursoResponse(
                         cf.getFirmante().getId(),
                         cf.getFirmante().getPersona().nombreCompleto(),
                         cf.getFirmante().getCargoFirma(),
@@ -513,7 +513,7 @@ public class CursoService {
         CategoriaTematica categoria = c.getCategoriaTematica();
         EntidadCertificadora entidad = c.getEntidadCertificadora();
 
-        return new CursoEditorRespuesta(
+        return new CursoEditorResponse(
                 c.getId(),
                 c.getUrlAmigable(),
                 c.getTitulo(),

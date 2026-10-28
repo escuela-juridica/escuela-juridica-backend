@@ -22,7 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import pe.edu.utp.escuela.app.dto.VerificarCorreoRespuesta;
+import pe.edu.utp.escuela.app.dto.VerificarCorreoResponse;
 import pe.edu.utp.escuela.app.entity.CodigoVerificacionCorreo;
 import pe.edu.utp.escuela.app.entity.Persona;
 import pe.edu.utp.escuela.app.entity.Usuario;
@@ -80,7 +80,7 @@ class CodigoVerificacionServiceTests {
         when(encoder.matches("123456", "hash-valido")).thenReturn(true);
         when(codigos.findByIdParaActualizar(10L)).thenReturn(Optional.of(candidato));
 
-        VerificarCorreoRespuesta respuesta = service.verificar("ana@example.com", "123456");
+        VerificarCorreoResponse respuesta = service.verificar("ana@example.com", "123456");
 
         assertTrue(respuesta.requiereCambioContrasena());
         assertEquals(Instant.parse("2026-09-09T12:00:00Z"), candidato.getUtilizadoEn());
@@ -93,7 +93,7 @@ class CodigoVerificacionServiceTests {
         usuario.setCorreoVerificadoEn(Instant.parse("2026-09-01T00:00:00Z"));
         when(usuarios.findByCorreoIgnoreCase("ana@example.com")).thenReturn(Optional.of(usuario));
 
-        VerificarCorreoRespuesta respuesta = service.verificar("ana@example.com", "000000");
+        VerificarCorreoResponse respuesta = service.verificar("ana@example.com", "000000");
 
         assertFalse(respuesta.requiereCambioContrasena());
         assertEquals(Instant.parse("2026-09-01T00:00:00Z"), usuario.getCorreoVerificadoEn());

@@ -9,12 +9,12 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.AsistenciaSesionRespuesta;
-import pe.edu.utp.escuela.app.dto.CancelarSesionPeticion;
-import pe.edu.utp.escuela.app.dto.CorregirAsistenciaPeticion;
-import pe.edu.utp.escuela.app.dto.CorregirEnlaceSesionPeticion;
-import pe.edu.utp.escuela.app.dto.HistorialSesionRespuesta;
-import pe.edu.utp.escuela.app.dto.ReprogramarSesionPeticion;
+import pe.edu.utp.escuela.app.dto.AsistenciaSesionResponse;
+import pe.edu.utp.escuela.app.dto.CancelarSesionRequest;
+import pe.edu.utp.escuela.app.dto.CorregirAsistenciaRequest;
+import pe.edu.utp.escuela.app.dto.CorregirEnlaceSesionRequest;
+import pe.edu.utp.escuela.app.dto.HistorialSesionResponse;
+import pe.edu.utp.escuela.app.dto.ReprogramarSesionRequest;
 import pe.edu.utp.escuela.app.dto.ReprogramarSesionResultado;
 import pe.edu.utp.escuela.app.entity.Asistencia;
 import pe.edu.utp.escuela.app.entity.Curso;
@@ -62,7 +62,7 @@ public class AdministrarSesionesService {
     private final Clock clock;
 
     @Transactional
-    public ReprogramarSesionResultado reprogramar(Long leccionId, ReprogramarSesionPeticion p) {
+    public ReprogramarSesionResultado reprogramar(Long leccionId, ReprogramarSesionRequest p) {
         exigirAdministrador();
         Leccion l = leccionSesionEditable(leccionId);
 
@@ -113,7 +113,7 @@ public class AdministrarSesionesService {
     }
 
     @Transactional
-    public void cancelar(Long leccionId, CancelarSesionPeticion p) {
+    public void cancelar(Long leccionId, CancelarSesionRequest p) {
         exigirAdministrador();
         Leccion l = leccionSesionEditable(leccionId);
         if (p.motivo() == null || p.motivo().isBlank()) {
@@ -135,7 +135,7 @@ public class AdministrarSesionesService {
     }
 
     @Transactional
-    public void corregirEnlace(Long leccionId, CorregirEnlaceSesionPeticion p) {
+    public void corregirEnlace(Long leccionId, CorregirEnlaceSesionRequest p) {
         exigirAdministrador();
         Leccion l = lecciones.findById(leccionId)
                 .orElseThrow(() -> new BusinessValidationException("La sesión no existe."));
@@ -147,7 +147,7 @@ public class AdministrarSesionesService {
     }
 
     @Transactional
-    public void corregirAsistencia(Long asistenciaId, CorregirAsistenciaPeticion p) {
+    public void corregirAsistencia(Long asistenciaId, CorregirAsistenciaRequest p) {
         exigirAdministrador();
         Asistencia a = asistencias.findById(asistenciaId)
                 .orElseThrow(() -> new BusinessValidationException("La asistencia no existe."));
@@ -182,18 +182,18 @@ public class AdministrarSesionesService {
 
     /** HU-027 — Lista la asistencia de una sesión ya realizada, para el modal "Corregir". */
     @Transactional(readOnly = true)
-    public List<AsistenciaSesionRespuesta> listarAsistencias(Long leccionId) {
+    public List<AsistenciaSesionResponse> listarAsistencias(Long leccionId) {
         exigirAdministrador();
         return asistencias.buscarDeLeccionConAlumno(leccionId).stream()
-                .map(a -> new AsistenciaSesionRespuesta(a.getId(), a.getMatricula().getId(),
+                .map(a -> new AsistenciaSesionResponse(a.getId(), a.getMatricula().getId(),
                         a.getMatricula().getUsuario().getPersona().nombreCompleto(), a.getEstado()))
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<HistorialSesionRespuesta> historial(Long leccionId) {
+    public List<HistorialSesionResponse> historial(Long leccionId) {
         return historial.findByLeccion_IdOrderByRealizadoEnDesc(leccionId).stream()
-                .map(h -> new HistorialSesionRespuesta(h.getAccion(), h.getInicioAnterior(),
+                .map(h -> new HistorialSesionResponse(h.getAccion(), h.getInicioAnterior(),
                         h.getFinAnterior(), h.getInicioNuevo(), h.getFinNuevo(), h.getMotivo(),
                         h.getRealizadoPorUsuarioId(), h.getRealizadoEn()))
                 .toList();

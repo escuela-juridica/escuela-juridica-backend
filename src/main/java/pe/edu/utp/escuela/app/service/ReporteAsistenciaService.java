@@ -16,9 +16,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utp.escuela.app.dto.MatriculaAlcanceFila;
-import pe.edu.utp.escuela.app.dto.OpcionAsistenciaRespuesta;
+import pe.edu.utp.escuela.app.dto.OpcionAsistenciaResponse;
 import pe.edu.utp.escuela.app.dto.ReporteAsistenciaFila;
-import pe.edu.utp.escuela.app.dto.ReporteAsistenciaRespuesta;
+import pe.edu.utp.escuela.app.dto.ReporteAsistenciaResponse;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.ReglaCurso;
 import pe.edu.utp.escuela.app.exception.BusinessValidationException;
@@ -60,7 +60,7 @@ public class ReporteAsistenciaService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ReporteAsistenciaRespuesta> paginado(Filtro filtro, Pageable pageable) {
+    public Page<ReporteAsistenciaResponse> paginado(Filtro filtro, Pageable pageable) {
         Consulta consulta = preparar(filtro);
         if (consulta.sinResultados) {
             return new PageImpl<>(List.of(), pageable, 0);
@@ -73,7 +73,7 @@ public class ReporteAsistenciaService {
     }
 
     @Transactional(readOnly = true)
-    public List<ReporteAsistenciaRespuesta> completo(Filtro filtro) {
+    public List<ReporteAsistenciaResponse> completo(Filtro filtro) {
         Consulta consulta = preparar(filtro);
         if (consulta.sinResultados) {
             return List.of();
@@ -87,23 +87,23 @@ public class ReporteAsistenciaService {
 
     /** Cursos que ofrece el filtro: nunca un curso VIRTUAL. */
     @Transactional(readOnly = true)
-    public List<OpcionAsistenciaRespuesta> cursosDisponibles() {
+    public List<OpcionAsistenciaResponse> cursosDisponibles() {
         exigirAdministrador();
         return cursos.findAll().stream()
                 .filter(c -> "EN_VIVO".equals(c.getModalidad()) || "HIBRIDO".equals(c.getModalidad()))
                 .sorted((a, b) -> a.getTitulo().compareToIgnoreCase(b.getTitulo()))
-                .map(c -> new OpcionAsistenciaRespuesta(c.getId(), c.getTitulo(), c.getModalidad(), null))
+                .map(c -> new OpcionAsistenciaResponse(c.getId(), c.getTitulo(), c.getModalidad(), null))
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<OpcionAsistenciaRespuesta> sesionesDeCurso(Long cursoId) {
+    public List<OpcionAsistenciaResponse> sesionesDeCurso(Long cursoId) {
         exigirAdministrador();
         exigirCursoEnVivo(cursoId);
         return lecciones.buscarSesionesEnVivoDeCurso(cursoId).stream()
                 .filter(l -> !"CANCELADA".equals(l.getEstado()) && l.getFechaHoraInicio() != null)
                 .sorted((a, b) -> a.getFechaHoraInicio().compareTo(b.getFechaHoraInicio()))
-                .map(l -> new OpcionAsistenciaRespuesta(l.getId(), l.getTitulo(),
+                .map(l -> new OpcionAsistenciaResponse(l.getId(), l.getTitulo(),
                         l.getModulo().getTitulo(), l.getFechaHoraInicio()))
                 .toList();
     }
@@ -170,7 +170,7 @@ public class ReporteAsistenciaService {
         return new Consulta(false, texto, modalidad, asistencia, origen, desde, hasta, true, elegidas);
     }
 
-    private java.util.function.Function<ReporteAsistenciaFila, ReporteAsistenciaRespuesta> enriquecedor(
+    private java.util.function.Function<ReporteAsistenciaFila, ReporteAsistenciaResponse> enriquecedor(
             List<ReporteAsistenciaFila> filas) {
         Map<Long, Integer> porcentajes = new HashMap<>();
         Map<Long, Boolean> calculados = new HashMap<>();
@@ -186,7 +186,7 @@ public class ReporteAsistenciaService {
         return fila -> {
             Integer porcentaje = porcentajes.get(fila.matriculaId());
             ReglaCurso regla = reglas.get(cursoPorMatricula.get(fila.matriculaId()));
-            return new ReporteAsistenciaRespuesta(
+            return new ReporteAsistenciaResponse(
                     fila.matriculaId(), fila.cursoId(), fila.curso(), fila.modalidad(),
                     fila.leccionId(), fila.sesion(), fila.modulo(), fila.fechaSesion(), fila.alumno(), fila.correo(),
                     fila.asistencia(), fila.origen(), fila.motivoCorreccion(), porcentaje,

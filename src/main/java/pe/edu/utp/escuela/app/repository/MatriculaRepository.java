@@ -13,8 +13,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import pe.edu.utp.escuela.app.dto.ConteoMatriculaFila;
-import pe.edu.utp.escuela.app.dto.MatriculaAdministrativaRespuesta;
-import pe.edu.utp.escuela.app.dto.ReporteMatriculaRespuesta;
+import pe.edu.utp.escuela.app.dto.MatriculaAdministrativaResponse;
+import pe.edu.utp.escuela.app.dto.ReporteMatriculaResponse;
 import pe.edu.utp.escuela.app.entity.Matricula;
 
 public interface MatriculaRepository extends JpaRepository<Matricula, Long> {
@@ -43,7 +43,7 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Long> {
     Optional<Matricula> findWithDetalleById(Long id);
 
     @Query(value = """
-            select new pe.edu.utp.escuela.app.dto.MatriculaAdministrativaRespuesta(
+            select new pe.edu.utp.escuela.app.dto.MatriculaAdministrativaResponse(
                 m.id, u.id, concat(p.nombres, ' ', p.apellidoPaterno), u.correo,
                 c.id, c.titulo, m.estado, m.formaIngreso, m.fechaMatricula, m.fechaVencimiento)
             from Matricula m
@@ -63,11 +63,11 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Long> {
                    or lower(u.correo) like concat('%', :texto, '%')
                    or lower(concat(p.nombres, ' ', p.apellidoPaterno)) like concat('%', :texto, '%'))
             """)
-    Page<MatriculaAdministrativaRespuesta> buscarAdministrativas(
+    Page<MatriculaAdministrativaResponse> buscarAdministrativas(
             @Param("texto") String texto, @Param("estado") String estado, Pageable pageable);
 
     @Query(value = """
-            select new pe.edu.utp.escuela.app.dto.ReporteMatriculaRespuesta(
+            select new pe.edu.utp.escuela.app.dto.ReporteMatriculaResponse(
                 m.id, concat(p.nombres, ' ', p.apellidoPaterno), u.correo, c.titulo, c.modalidad,
                 m.fechaMatricula, m.fechaActivacion, m.estado, m.formaIngreso,
                 case when m.fechaFinalizacion is null then 'EN_CURSO' else 'FINALIZADO' end,
@@ -98,13 +98,13 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Long> {
               and m.fechaMatricula >= :desde
               and m.fechaMatricula < :hasta
             """)
-    Page<ReporteMatriculaRespuesta> buscarReporte(
+    Page<ReporteMatriculaResponse> buscarReporte(
             @Param("texto") String texto, @Param("estado") String estado,
             @Param("cursoId") Long cursoId, @Param("modalidad") String modalidad,
             @Param("desde") Instant desde, @Param("hasta") Instant hasta, Pageable pageable);
 
     @Query("""
-            select new pe.edu.utp.escuela.app.dto.ReporteMatriculaRespuesta(
+            select new pe.edu.utp.escuela.app.dto.ReporteMatriculaResponse(
                 m.id, concat(p.nombres, ' ', p.apellidoPaterno), u.correo, c.titulo, c.modalidad,
                 m.fechaMatricula, m.fechaActivacion, m.estado, m.formaIngreso,
                 case when m.fechaFinalizacion is null then 'EN_CURSO' else 'FINALIZADO' end,
@@ -122,7 +122,7 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Long> {
               and m.fechaMatricula < :hasta
             order by m.fechaMatricula desc
             """)
-    List<ReporteMatriculaRespuesta> exportarReporte(
+    List<ReporteMatriculaResponse> exportarReporte(
             @Param("texto") String texto, @Param("estado") String estado,
             @Param("cursoId") Long cursoId, @Param("modalidad") String modalidad,
             @Param("desde") Instant desde, @Param("hasta") Instant hasta);

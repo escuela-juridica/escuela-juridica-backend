@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import pe.edu.utp.escuela.app.dto.ProgresoVideoPeticion;
+import pe.edu.utp.escuela.app.dto.ProgresoVideoRequest;
 import pe.edu.utp.escuela.app.service.ProgresoService;
 
 @RestController
@@ -33,7 +33,7 @@ public class ProgresoAlumnoController {
     @ApiResponse(responseCode = "403", description = "La cuenta autenticada no tiene rol Alumno")
     @ApiResponse(responseCode = "404", description = "El material no existe o está inactivo")
     public ResponseEntity<Void> registrarProgresoVideo(
-            @PathVariable Long id, @Valid @RequestBody ProgresoVideoPeticion p) {
+            @PathVariable Long id, @Valid @RequestBody ProgresoVideoRequest p) {
         service.registrarProgresoVideo(
                 id, p.segundosReproducidos(), p.ultimaPosicionSegundos(), p.duracionSegundosTotal());
         return ResponseEntity.noContent().build();

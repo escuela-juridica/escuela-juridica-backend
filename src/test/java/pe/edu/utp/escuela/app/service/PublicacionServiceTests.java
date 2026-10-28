@@ -18,7 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pe.edu.utp.escuela.app.dto.ErrorValidacionCurso;
-import pe.edu.utp.escuela.app.dto.ValidacionPublicacionRespuesta;
+import pe.edu.utp.escuela.app.dto.ValidacionPublicacionResponse;
 import pe.edu.utp.escuela.app.entity.CategoriaTematica;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.CursoDocente;
@@ -223,7 +223,7 @@ class PublicacionServiceTests {
         Leccion leccion = leccionCursableDe(modulo);
         stub(curso, modulo, leccion, reglaValidaDe(curso), firmanteValidoDe(curso), docenteValidoDe(curso));
 
-        ValidacionPublicacionRespuesta respuesta = service.validar(100L);
+        ValidacionPublicacionResponse respuesta = service.validar(100L);
 
         assertTrue(respuesta.puedePublicarse());
         assertTrue(respuesta.hallazgos().isEmpty());
@@ -241,7 +241,7 @@ class PublicacionServiceTests {
         enCurso.setCodigo("EN_CURSO");
         when(estadosCurso.findByCodigo("EN_CURSO")).thenReturn(Optional.of(enCurso));
 
-        ValidacionPublicacionRespuesta respuesta = service.publicar(100L);
+        ValidacionPublicacionResponse respuesta = service.publicar(100L);
 
         assertTrue(respuesta.puedePublicarse());
         assertTrue(respuesta.publicacionRealizada());
@@ -259,7 +259,7 @@ class PublicacionServiceTests {
         Leccion leccion = leccionCursableDe(modulo);
         stub(curso, modulo, leccion, reglaValidaDe(curso), firmanteValidoDe(curso), docenteValidoDe(curso));
 
-        ValidacionPublicacionRespuesta respuesta = service.publicar(100L);
+        ValidacionPublicacionResponse respuesta = service.publicar(100L);
 
         assertFalse(respuesta.puedePublicarse());
         assertFalse(respuesta.publicacionRealizada());
@@ -274,7 +274,7 @@ class PublicacionServiceTests {
         Leccion leccion = leccionCursableDe(modulo);
         stub(curso, modulo, leccion, reglaValidaDe(curso), firmanteValidoDe(curso), null);
 
-        ValidacionPublicacionRespuesta respuesta = service.publicar(100L);
+        ValidacionPublicacionResponse respuesta = service.publicar(100L);
 
         assertFalse(respuesta.puedePublicarse());
         assertTrue(respuesta.hallazgos().stream().anyMatch(h -> "DOCENTES".equals(h.seccion())));
@@ -287,7 +287,7 @@ class PublicacionServiceTests {
         Leccion leccion = leccionCursableDe(modulo);
         stub(curso, modulo, leccion, reglaValidaDe(curso), null, docenteValidoDe(curso));
 
-        ValidacionPublicacionRespuesta respuesta = service.publicar(100L);
+        ValidacionPublicacionResponse respuesta = service.publicar(100L);
 
         assertFalse(respuesta.puedePublicarse());
         assertTrue(respuesta.hallazgos().stream().anyMatch(h -> "CERTIFICADO".equals(h.seccion())));
@@ -299,7 +299,7 @@ class PublicacionServiceTests {
         Modulo modulo = moduloActivoDe(curso);
         stub(curso, modulo, null, reglaValidaDe(curso), firmanteValidoDe(curso), docenteValidoDe(curso));
 
-        ValidacionPublicacionRespuesta respuesta = service.publicar(100L);
+        ValidacionPublicacionResponse respuesta = service.publicar(100L);
 
         assertFalse(respuesta.puedePublicarse());
         assertTrue(respuesta.hallazgos().stream()
@@ -315,7 +315,7 @@ class PublicacionServiceTests {
         regla.setRequiereExamenes(true);
         stub(curso, modulo, leccion, regla, firmanteValidoDe(curso), docenteValidoDe(curso));
 
-        ValidacionPublicacionRespuesta respuesta = service.publicar(100L);
+        ValidacionPublicacionResponse respuesta = service.publicar(100L);
 
         assertFalse(respuesta.puedePublicarse());
         assertTrue(respuesta.hallazgos().stream()
@@ -328,7 +328,7 @@ class PublicacionServiceTests {
         curso.getEstadoCurso().setCodigo("PUBLICADO");
         when(cursos.findWithDetalleById(100L)).thenReturn(Optional.of(curso));
 
-        ValidacionPublicacionRespuesta respuesta = service.validar(100L);
+        ValidacionPublicacionResponse respuesta = service.validar(100L);
 
         assertFalse(respuesta.puedePublicarse());
         assertTrue(respuesta.hallazgos().isEmpty());

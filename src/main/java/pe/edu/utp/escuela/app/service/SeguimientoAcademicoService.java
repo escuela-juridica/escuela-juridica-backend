@@ -13,16 +13,16 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.CorregirAsistenciaPeticion;
-import pe.edu.utp.escuela.app.dto.IntentoResumenRespuesta;
-import pe.edu.utp.escuela.app.dto.OtorgarIntentoPeticion;
-import pe.edu.utp.escuela.app.dto.SeguimientoAcademicoRespuesta;
-import pe.edu.utp.escuela.app.dto.SeguimientoAcademicoRespuesta.CertificadoSeguimiento;
-import pe.edu.utp.escuela.app.dto.SeguimientoAcademicoRespuesta.ExamenSeguimiento;
-import pe.edu.utp.escuela.app.dto.SeguimientoAcademicoRespuesta.ExcepcionRespuesta;
-import pe.edu.utp.escuela.app.dto.SeguimientoAcademicoRespuesta.LeccionSeguimiento;
-import pe.edu.utp.escuela.app.dto.SeguimientoAcademicoRespuesta.ModuloSeguimiento;
-import pe.edu.utp.escuela.app.dto.SeguimientoAcademicoRespuesta.SesionSeguimiento;
+import pe.edu.utp.escuela.app.dto.CorregirAsistenciaRequest;
+import pe.edu.utp.escuela.app.dto.IntentoResumenResponse;
+import pe.edu.utp.escuela.app.dto.OtorgarIntentoRequest;
+import pe.edu.utp.escuela.app.dto.SeguimientoAcademicoResponse;
+import pe.edu.utp.escuela.app.dto.SeguimientoAcademicoResponse.CertificadoSeguimiento;
+import pe.edu.utp.escuela.app.dto.SeguimientoAcademicoResponse.ExamenSeguimiento;
+import pe.edu.utp.escuela.app.dto.SeguimientoAcademicoResponse.ExcepcionResponse;
+import pe.edu.utp.escuela.app.dto.SeguimientoAcademicoResponse.LeccionSeguimiento;
+import pe.edu.utp.escuela.app.dto.SeguimientoAcademicoResponse.ModuloSeguimiento;
+import pe.edu.utp.escuela.app.dto.SeguimientoAcademicoResponse.SesionSeguimiento;
 import pe.edu.utp.escuela.app.entity.Asistencia;
 import pe.edu.utp.escuela.app.entity.ExcepcionAcademica;
 import pe.edu.utp.escuela.app.entity.Examen;
@@ -72,7 +72,7 @@ public class SeguimientoAcademicoService {
     private final Clock clock;
 
     @Transactional(readOnly = true)
-    public SeguimientoAcademicoRespuesta consultar(Long matriculaId) {
+    public SeguimientoAcademicoResponse consultar(Long matriculaId) {
         exigirAdministrador();
         Matricula matricula = matriculaDe(matriculaId);
         AvanceAcademico avance = avanceAcademico.calcular(matricula);
@@ -110,11 +110,11 @@ public class SeguimientoAcademicoService {
         Map<Long, String> responsables = usuarios
                 .findAllById(historial.stream().map(ExcepcionAcademica::getRealizadoPorUsuarioId).collect(Collectors.toSet()))
                 .stream().collect(Collectors.toMap(u -> u.getId(), u -> u.getPersona().nombreCompleto()));
-        List<ExcepcionRespuesta> excepcionesDto = historial.stream().map(e -> new ExcepcionRespuesta(e.getId(),
+        List<ExcepcionResponse> excepcionesDto = historial.stream().map(e -> new ExcepcionResponse(e.getId(),
                 e.getTipo(), e.getReferenciaTipo(), e.getValorAnterior(), e.getValorNuevo(), e.getMotivo(),
                 responsables.getOrDefault(e.getRealizadoPorUsuarioId(), "—"), e.getRealizadoEn())).toList();
 
-        return new SeguimientoAcademicoRespuesta(matricula.getId(), matricula.getCurso().getId(),
+        return new SeguimientoAcademicoResponse(matricula.getId(), matricula.getCurso().getId(),
                 matricula.getCurso().getTitulo(), matricula.getCurso().getModalidad(), matricula.getEstado(),
                 matricula.getUsuario().getPersona().nombreCompleto(), matricula.getUsuario().getCorreo(),
                 matricula.getFechaMatricula(), avance.porcentaje(), avance.condiciones(), avance.cumpleTodo(),
@@ -124,7 +124,7 @@ public class SeguimientoAcademicoService {
 
     /** Concede exactamente un intento adicional: no toca los intentos existentes ni la nota. */
     @Transactional
-    public void otorgarIntento(Long matriculaId, OtorgarIntentoPeticion peticion) {
+    public void otorgarIntento(Long matriculaId, OtorgarIntentoRequest peticion) {
         exigirAdministrador();
         Matricula matricula = matriculaDe(matriculaId);
         if ("CANCELADA".equals(matricula.getEstado())) {
@@ -155,7 +155,7 @@ public class SeguimientoAcademicoService {
 
     /** Corrige la asistencia de UNA sesión del alumno indicado; delega en HU-027, que conserva el valor anterior. */
     @Transactional
-    public void corregirAsistencia(Long matriculaId, Long asistenciaId, CorregirAsistenciaPeticion peticion) {
+    public void corregirAsistencia(Long matriculaId, Long asistenciaId, CorregirAsistenciaRequest peticion) {
         exigirAdministrador();
         Matricula matricula = matriculaDe(matriculaId);
         Asistencia asistencia = asistencias.findById(asistenciaId)
@@ -172,8 +172,8 @@ public class SeguimientoAcademicoService {
 
     private ExamenSeguimiento examenDe(EstadoExamen estado) {
         Examen examen = estado.examen();
-        List<IntentoResumenRespuesta> intentos = estado.intentos().stream()
-                .map(i -> new IntentoResumenRespuesta(i.getId(), i.getNumeroIntento(), i.getEstado(), i.getNota(),
+        List<IntentoResumenResponse> intentos = estado.intentos().stream()
+                .map(i -> new IntentoResumenResponse(i.getId(), i.getNumeroIntento(), i.getEstado(), i.getNota(),
                         i.getAprobado(), i.getIniciadoEn(), i.getEnviadoEn(),
                         i.estaPendienteRevision() && i.getEnviadoEn() != null
                                 ? i.getEnviadoEn().plus(examen.getDiasRevision(), ChronoUnit.DAYS) : null))

@@ -14,10 +14,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import pe.edu.utp.escuela.app.dto.NuevaContrasenaPeticion;
-import pe.edu.utp.escuela.app.dto.RecuperacionSolicitadaRespuesta;
-import pe.edu.utp.escuela.app.dto.SolicitarRecuperacionPeticion;
-import pe.edu.utp.escuela.app.dto.TokenRecuperacionRespuesta;
+import pe.edu.utp.escuela.app.dto.NuevaContrasenaRequest;
+import pe.edu.utp.escuela.app.dto.RecuperacionSolicitadaResponse;
+import pe.edu.utp.escuela.app.dto.SolicitarRecuperacionRequest;
+import pe.edu.utp.escuela.app.dto.TokenRecuperacionResponse;
 import pe.edu.utp.escuela.app.service.RecuperacionAccesoService;
 
 @RestController
@@ -35,11 +35,11 @@ public class RecuperacionAccesoController {
             description = "Siempre responde 202 con el mismo mensaje neutral, exista o no una "
                     + "cuenta con ese correo, y aunque falle el envío del correo.")
     @ApiResponse(responseCode = "202", description = "Solicitud procesada")
-    public ResponseEntity<RecuperacionSolicitadaRespuesta> solicitar(
-            @Valid @RequestBody SolicitarRecuperacionPeticion peticion) {
+    public ResponseEntity<RecuperacionSolicitadaResponse> solicitar(
+            @Valid @RequestBody SolicitarRecuperacionRequest peticion) {
         service.solicitar(peticion.correo());
         return ResponseEntity.status(HttpStatus.ACCEPTED).cacheControl(CacheControl.noStore())
-                .body(RecuperacionSolicitadaRespuesta.neutral());
+                .body(RecuperacionSolicitadaResponse.neutral());
     }
 
     @GetMapping("/{token}")
@@ -47,9 +47,9 @@ public class RecuperacionAccesoController {
             description = "Solo indica si el token todavía permite definir una contraseña nueva; "
                     + "no consume ni modifica nada.")
     @ApiResponse(responseCode = "200", description = "Indica si el token es válido")
-    public ResponseEntity<TokenRecuperacionRespuesta> consultar(@PathVariable String token) {
+    public ResponseEntity<TokenRecuperacionResponse> consultar(@PathVariable String token) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .body(new TokenRecuperacionRespuesta(service.esValido(token)));
+                .body(new TokenRecuperacionResponse(service.esValido(token)));
     }
 
     @PostMapping("/{token}")
@@ -58,7 +58,7 @@ public class RecuperacionAccesoController {
     @ApiResponse(responseCode = "204", description = "Contraseña actualizada")
     @ApiResponse(responseCode = "400", description = "Token inválido, vencido, usado o contraseña inválida")
     public ResponseEntity<Void> cambiar(
-            @PathVariable String token, @Valid @RequestBody NuevaContrasenaPeticion peticion) {
+            @PathVariable String token, @Valid @RequestBody NuevaContrasenaRequest peticion) {
         service.cambiar(token, peticion);
         return ResponseEntity.noContent().build();
     }
