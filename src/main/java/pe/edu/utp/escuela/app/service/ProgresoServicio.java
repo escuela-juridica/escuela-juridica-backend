@@ -55,6 +55,7 @@ public class ProgresoServicio {
     private final ReglaCursoRepositorio reglasCurso;
     private final RecursoRepositorio recursos;
     private final AsistenciaRepositorio asistencias;
+    private final AulaServicio aulaServicio;
     private final CurrentUserService actual;
     private final Clock clock;
 
@@ -74,6 +75,7 @@ public class ProgresoServicio {
         Matricula matricula = matriculas.findByUsuario_IdAndCurso_Id(actual.get().userId(), curso.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("No tienes una matrícula en este curso."));
         verificarAcceso(matricula);
+        exigirSecuenciaLibre(matricula, leccion);
 
         Recurso recurso = material.getRecurso();
         if (!esVideoDetectable(material)) {
@@ -158,6 +160,7 @@ public class ProgresoServicio {
         Matricula matricula = matriculas.findByUsuario_IdAndCurso_Id(actual.get().userId(), curso.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("No tienes una matrícula en este curso."));
         verificarAcceso(matricula);
+        exigirSecuenciaLibre(matricula, leccion);
 
         List<MaterialLeccion> materialesActivos = materiales.findByLeccion_IdOrderByOrdenAsc(leccionId).stream()
                 .filter(MaterialLeccion::isActivo)
@@ -245,10 +248,27 @@ public class ProgresoServicio {
         progresoLecciones.save(progreso);
     }
 
+    /** La secuencia obligatoria no es solo visual: sin esto, llamar directo a la API permitiría
+     * completar una lección bloqueada y saltarse sus requisitos previos. */
+    private void exigirSecuenciaLibre(Matricula matricula, Leccion leccion) {
+        String motivo = aulaServicio.motivoBloqueoPorSecuencia(matricula, leccion);
+        if (motivo != null) {
+            throw new BusinessValidationException(motivo);
+        }
+    }
+
     /** Replica MatriculaServicio#respuesta(...) / AulaServicio#verificarAcceso(...): es la
      * definición oficial de acceso efectivo en todo el proyecto y no debe divergir. Duplicado a
      * propósito en cada servicio, no se extrae a un helper compartido. */
     private void verificarAcceso(Matricula m) {
+        // HU-022: en un curso CANCELADO quien ya tenía acceso solo conserva la consulta, "sin
+        // nuevos checks, progreso, intentos, asistencia ni finalización". Este servicio solo
+        // escribe progreso, así que a diferencia de AulaServicio/MaterialAlumnoServicio no admite
+        // ese modo de solo lectura (aunque la matrícula siga ACTIVA y vigente).
+        if ("CANCELADO".equals(m.getCurso().getEstadoCurso().getCodigo())) {
+            throw new BusinessValidationException(
+                    "El curso fue cancelado: puedes consultar su contenido, pero ya no se registra progreso.");
+        }
         Instant ahora = clock.instant();
         boolean vigente = m.getFechaVencimiento() == null || !ahora.isAfter(m.getFechaVencimiento());
         boolean inicio = m.getCurso().getFechaInicio() == null
@@ -258,12 +278,6 @@ public class ProgresoServicio {
         boolean cancelada = "CANCELADA".equals(m.getEstado());
         boolean efectivo = !cancelada && "ACTIVA".equals(m.getEstado()) && vigente && inicio && cuentaHabilitada;
         if (efectivo) {
-            return;
-        }
-
-        boolean cursoCancelado = "CANCELADO".equals(m.getCurso().getEstadoCurso().getCodigo());
-        boolean accesoLecturaPorCancelacion = cursoCancelado && !cancelada && cuentaHabilitada;
-        if (accesoLecturaPorCancelacion) {
             return;
         }
 

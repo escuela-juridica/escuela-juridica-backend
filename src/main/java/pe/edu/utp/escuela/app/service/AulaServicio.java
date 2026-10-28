@@ -144,6 +144,41 @@ public class AulaServicio {
                 matricula.getCurso().getModalidad(), porcentaje, modulosRespuesta, ultimaLeccionIdValida);
     }
 
+    /** HU-024 — Aplica del lado servidor la secuencia obligatoria que {@link #temario} solo refleja
+     * en pantalla: devuelve el motivo si la lección todavía no puede trabajarse (hay una lección
+     * obligatoria previa, no cancelada, sin completar), o {@code null} si está libre o ya
+     * completada. Usa el mismo orden global y la misma regla de "previa obligatoria" que
+     * {@code temario}, para que ambos nunca discrepen. */
+    @Transactional(readOnly = true)
+    public String motivoBloqueoPorSecuencia(Matricula matricula, Leccion leccion) {
+        Long cursoId = leccion.getModulo().getCurso().getId();
+        boolean secuenciaObligatoria = reglasCurso.findByCurso_Id(cursoId)
+                .map(ReglaCurso::isSecuenciaObligatoria).orElse(true);
+        if (!secuenciaObligatoria) {
+            return null;
+        }
+        Map<Long, Boolean> completadas = progresoLecciones.findByMatricula_Id(matricula.getId()).stream()
+                .collect(Collectors.toMap(p -> p.getLeccion().getId(), ProgresoLeccion::isCompletada, (a, b) -> a));
+        if (Boolean.TRUE.equals(completadas.get(leccion.getId()))) {
+            return null;
+        }
+
+        List<Modulo> modulosCurso = modulos.findByCursoIdAndActivoTrueOrderByOrdenAsc(cursoId);
+        List<Long> idsModulos = modulosCurso.stream().map(Modulo::getId).toList();
+        Leccion previaObligatoria = null;
+        for (Leccion candidata : ordenGlobalDeLecciones(idsModulos, modulosCurso)) {
+            if (candidata.getId().equals(leccion.getId())) {
+                boolean bloqueada = previaObligatoria != null
+                        && !Boolean.TRUE.equals(completadas.get(previaObligatoria.getId()));
+                return bloqueada ? "Completa la lección anterior: " + previaObligatoria.getTitulo() : null;
+            }
+            if (candidata.isEsObligatoria() && !"CANCELADA".equals(candidata.getEstado())) {
+                previaObligatoria = candidata;
+            }
+        }
+        return null;
+    }
+
     /** Construye el orden global módulo→lección (por el orden de presentación de cada módulo y,
      * dentro de él, el de la lección), ya que los repositorios existentes solo ordenan por el id
      * interno del módulo, no por su campo "orden" visible. */
