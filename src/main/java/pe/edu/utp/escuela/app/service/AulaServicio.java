@@ -119,7 +119,7 @@ public class AulaServicio {
             leccionesPorModulo.computeIfAbsent(leccion.getModulo().getId(), k -> new ArrayList<>()).add(respuesta);
             respuestaPorLeccion.put(leccion.getId(), respuesta);
 
-            if (leccion.isEsObligatoria()) {
+            if (leccion.isEsObligatoria() && !"CANCELADA".equals(leccion.getEstado())) {
                 previaObligatoria = leccion;
             }
         }
@@ -130,7 +130,8 @@ public class AulaServicio {
                     leccionesPorModulo.getOrDefault(modulo.getId(), List.of())));
         }
 
-        List<Leccion> obligatorias = globalOrden.stream().filter(Leccion::isEsObligatoria).toList();
+        List<Leccion> obligatorias = globalOrden.stream()
+                .filter(l -> l.isEsObligatoria() && !"CANCELADA".equals(l.getEstado())).toList();
         List<Leccion> baseParaPorcentaje = obligatorias.isEmpty() ? globalOrden : obligatorias;
         long total = baseParaPorcentaje.size();
         long hechas = baseParaPorcentaje.stream()

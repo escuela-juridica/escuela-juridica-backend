@@ -1,11 +1,14 @@
 package pe.edu.utp.escuela.app.service;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,6 +16,7 @@ import pe.edu.utp.escuela.app.dto.ArchivoGuardado;
 import pe.edu.utp.escuela.app.entity.ReglaArchivo;
 import pe.edu.utp.escuela.app.entity.TipoMaterial;
 import pe.edu.utp.escuela.app.exception.BusinessValidationException;
+import pe.edu.utp.escuela.app.exception.ResourceNotFoundException;
 import pe.edu.utp.escuela.app.repository.ReglaArchivoRepositorio;
 
 /** Guarda materiales subidos (origen SUBIDO) en disco local, validados contra las reglas de
@@ -60,6 +64,34 @@ public class ArchivoAlmacenamientoServicio {
             return new ArchivoGuardado(referencia, nombreOriginal, archivo.getContentType(), archivo.getSize());
         } catch (IOException excepcion) {
             throw new BusinessValidationException("No pudimos guardar el archivo. Inténtalo nuevamente.");
+        }
+    }
+
+    /** HU-023 — Resuelve una {@code referencia} ya guardada (forma
+     * {@code "/uploads/cursos/{cursoId}/{archivo}"}) de vuelta a un recurso legible, para que un
+     * servicio autenticado pueda transmitir sus bytes sin exponer la ruta real de almacenamiento.
+     * Se defiende contra path traversal validando que el Path resuelto y normalizado siga
+     * quedando dentro de {@code raiz} antes de devolver nada. */
+    public Resource cargar(String referencia) {
+        String prefijo = "/uploads/";
+        if (referencia == null || !referencia.startsWith(prefijo)) {
+            throw new BusinessValidationException("No pudimos ubicar el archivo solicitado.");
+        }
+        Path destino = raiz.resolve(referencia.substring(prefijo.length())).normalize();
+        if (!destino.startsWith(raiz)) {
+            throw new BusinessValidationException("No pudimos ubicar el archivo solicitado.");
+        }
+        if (!Files.isRegularFile(destino)) {
+            throw new ResourceNotFoundException("El archivo solicitado no existe.");
+        }
+        try {
+            Resource recurso = new UrlResource(destino.toUri());
+            if (!recurso.isReadable()) {
+                throw new ResourceNotFoundException("El archivo solicitado no existe.");
+            }
+            return recurso;
+        } catch (MalformedURLException excepcion) {
+            throw new ResourceNotFoundException("El archivo solicitado no existe.");
         }
     }
 

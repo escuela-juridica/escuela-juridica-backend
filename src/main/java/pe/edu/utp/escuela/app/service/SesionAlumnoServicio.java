@@ -54,6 +54,7 @@ public class SesionAlumnoServicio {
     private final NotificacionRepositorio notificaciones;
     private final UsuarioRepositorio usuarios;
     private final MailService mailService;
+    private final ProgresoServicio progresoServicio;
     private final CurrentUserService actual;
     private final Clock clock;
 
@@ -184,16 +185,22 @@ public class SesionAlumnoServicio {
                 if (!esElegible(leccion, matricula)) {
                     continue;
                 }
-                if (asistencias.existsByMatricula_IdAndLeccion_Id(matricula.getId(), leccion.getId())) {
-                    continue;
+                Optional<Asistencia> existente =
+                        asistencias.findByMatricula_IdAndLeccion_Id(matricula.getId(), leccion.getId());
+                String estadoFinal;
+                if (existente.isPresent()) {
+                    estadoFinal = existente.get().getEstado();
+                } else {
+                    Asistencia ausente = new Asistencia();
+                    ausente.setMatricula(matricula);
+                    ausente.setLeccion(leccion);
+                    ausente.setEstado("AUSENTE");
+                    ausente.setRegistradaEn(ahora);
+                    ausente.setModificadaEn(ahora);
+                    asistencias.save(ausente);
+                    estadoFinal = "AUSENTE";
                 }
-                Asistencia ausente = new Asistencia();
-                ausente.setMatricula(matricula);
-                ausente.setLeccion(leccion);
-                ausente.setEstado("AUSENTE");
-                ausente.setRegistradaEn(ahora);
-                ausente.setModificadaEn(ahora);
-                asistencias.save(ausente);
+                progresoServicio.completarPorAsistencia(matricula, leccion, estadoFinal);
             }
         }
     }

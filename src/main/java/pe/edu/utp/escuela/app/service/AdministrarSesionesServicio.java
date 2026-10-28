@@ -54,6 +54,7 @@ public class AdministrarSesionesServicio {
     private final HistorialSesionRepositorio historial;
     private final NotificacionRepositorio notificaciones;
     private final MailService mailService;
+    private final ProgresoServicio progresoServicio;
     private final CurrentUserService actual;
     private final Clock clock;
 
@@ -156,6 +157,7 @@ public class AdministrarSesionesServicio {
         a.setRegistradaPorUsuarioId(actual.get().userId());
         a.setModificadaEn(clock.instant());
         asistencias.save(a);
+        progresoServicio.completarPorAsistencia(a.getMatricula(), a.getLeccion(), p.nuevoEstado());
     }
 
     /** HU-027 — Lista la asistencia de una sesión ya realizada, para el modal "Corregir". */
