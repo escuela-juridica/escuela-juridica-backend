@@ -5,4 +5,6 @@ import pe.edu.utp.escuela.app.entity.Notificacion;
 
 public interface NotificacionRepository extends JpaRepository<Notificacion, Long> {
     java.util.Optional<Notificacion> findTopByTipoOrderByCreadoEnDesc(String tipo);
+
+    boolean existsByUsuario_IdAndTipo(Long usuarioId, String tipo);
 }

@@ -72,6 +72,25 @@ public class ArchivoAlmacenamientoService {
      * servicio autenticado pueda transmitir sus bytes sin exponer la ruta real de almacenamiento.
      * Se defiende contra path traversal validando que el Path resuelto y normalizado siga
      * quedando dentro de {@code raiz} antes de devolver nada. */
+    /**
+     * HU-032 — Guarda un archivo generado por el propio sistema (p. ej. el PDF de un certificado) y
+     * devuelve su referencia privada, la misma forma que usa {@link #cargar(String)}. El nombre lo
+     * decide el servidor: nunca viene del usuario.
+     */
+    public String guardarBytes(String carpeta, String nombreArchivo, byte[] contenido) {
+        Path destino = raiz.resolve(carpeta).resolve(nombreArchivo).normalize();
+        if (!destino.startsWith(raiz)) {
+            throw new BusinessValidationException("No pudimos guardar el archivo.");
+        }
+        try {
+            Files.createDirectories(destino.getParent());
+            Files.write(destino, contenido);
+        } catch (java.io.IOException e) {
+            throw new BusinessValidationException("No pudimos guardar el archivo.");
+        }
+        return "/uploads/" + carpeta + "/" + nombreArchivo;
+    }
+
     public Resource cargar(String referencia) {
         String prefijo = "/uploads/";
         if (referencia == null || !referencia.startsWith(prefijo)) {

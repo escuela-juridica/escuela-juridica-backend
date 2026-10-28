@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utp.escuela.app.entity.Asistencia;
@@ -22,6 +23,7 @@ import pe.edu.utp.escuela.app.entity.ProgresoLeccion;
 import pe.edu.utp.escuela.app.entity.ProgresoMaterial;
 import pe.edu.utp.escuela.app.entity.Recurso;
 import pe.edu.utp.escuela.app.entity.ReglaCurso;
+import pe.edu.utp.escuela.app.event.ReevaluarCertificacionEvent;
 import pe.edu.utp.escuela.app.exception.BusinessValidationException;
 import pe.edu.utp.escuela.app.exception.ForbiddenException;
 import pe.edu.utp.escuela.app.exception.ResourceNotFoundException;
@@ -56,6 +58,7 @@ public class ProgresoService {
     private final RecursoRepository recursos;
     private final AsistenciaRepository asistencias;
     private final RutaAcademicaService rutaAcademica;
+    private final ApplicationEventPublisher eventos;
     private final CurrentUserService actual;
     private final Clock clock;
 
@@ -230,6 +233,8 @@ public class ProgresoService {
         progreso.setCompletadaEn(ahora);
         progreso.setUltimaVisitaEn(ahora);
         progresoLecciones.save(progreso);
+        // HU-032: completar una lección puede hacer que el alumno cumpla el curso.
+        eventos.publishEvent(new ReevaluarCertificacionEvent(matricula.getId()));
     }
 
     /** Registra que el alumno "reabrió" la lección sin alcanzar aún el umbral de completado. Por

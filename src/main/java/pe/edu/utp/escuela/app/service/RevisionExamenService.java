@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +31,7 @@ import pe.edu.utp.escuela.app.entity.Notificacion;
 import pe.edu.utp.escuela.app.entity.ReglaCurso;
 import pe.edu.utp.escuela.app.entity.RespuestaIntento;
 import pe.edu.utp.escuela.app.entity.RevisionRespuesta;
+import pe.edu.utp.escuela.app.event.ReevaluarCertificacionEvent;
 import pe.edu.utp.escuela.app.exception.BusinessValidationException;
 import pe.edu.utp.escuela.app.exception.ForbiddenException;
 import pe.edu.utp.escuela.app.exception.MailDeliveryException;
@@ -67,6 +69,7 @@ public class RevisionExamenService {
     private final ReglaCursoRepository reglasCurso;
     private final NotificacionRepository notificaciones;
     private final MailService mailService;
+    private final ApplicationEventPublisher eventos;
     private final CurrentUserService actual;
     private final Clock clock;
 
@@ -185,6 +188,8 @@ public class RevisionExamenService {
         intentos.save(intento);
 
         avisar(intento);
+        // HU-032: la nota definitiva reevalúa finalización y certificación.
+        eventos.publishEvent(new ReevaluarCertificacionEvent(intento.getMatricula().getId()));
         return construir(intento);
     }
 

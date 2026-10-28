@@ -7,6 +7,7 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utp.escuela.app.dto.AsistenciaSesionResponse;
@@ -23,6 +24,7 @@ import pe.edu.utp.escuela.app.entity.HistorialSesion;
 import pe.edu.utp.escuela.app.entity.Leccion;
 import pe.edu.utp.escuela.app.entity.Matricula;
 import pe.edu.utp.escuela.app.entity.Notificacion;
+import pe.edu.utp.escuela.app.event.ReevaluarCertificacionEvent;
 import pe.edu.utp.escuela.app.exception.BusinessValidationException;
 import pe.edu.utp.escuela.app.exception.ForbiddenException;
 import pe.edu.utp.escuela.app.exception.MailDeliveryException;
@@ -58,6 +60,7 @@ public class AdministrarSesionesService {
     private final ExcepcionAcademicaRepository excepciones;
     private final MailService mailService;
     private final ProgresoService progresoService;
+    private final ApplicationEventPublisher eventos;
     private final CurrentUserService actual;
     private final Clock clock;
 
@@ -178,6 +181,8 @@ public class AdministrarSesionesService {
         excepcion.setRealizadoEn(clock.instant());
         excepciones.save(excepcion);
         progresoService.completarPorAsistencia(a.getMatricula(), a.getLeccion(), p.nuevoEstado());
+        // HU-032: la asistencia corregida puede cambiar el cumplimiento del curso.
+        eventos.publishEvent(new ReevaluarCertificacionEvent(a.getMatricula().getId()));
     }
 
     /** HU-027 — Lista la asistencia de una sesión ya realizada, para el modal "Corregir". */

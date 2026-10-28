@@ -70,6 +70,12 @@
             <artifactId>pdfbox</artifactId>
             <version>3.0.3</version>
         </dependency>
+        <!-- HU-032: código QR del certificado (solo el codificador; sin dependencias transitivas). -->
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>3.5.3</version>
+        </dependency>
 
         <dependency>
             <groupId>org.projectlombok</groupId>

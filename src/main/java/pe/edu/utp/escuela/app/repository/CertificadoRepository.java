@@ -11,4 +11,8 @@ public interface CertificadoRepository extends JpaRepository<Certificado, Long> 
 
     /** HU-043: certificados de varias matrículas de una vez. */
     List<Certificado> findByLogro_Matricula_IdIn(Collection<Long> matriculaIds);
+
+    Optional<Certificado> findByCodigo(String codigo);
+
+    boolean existsByCodigo(String codigo);
 }

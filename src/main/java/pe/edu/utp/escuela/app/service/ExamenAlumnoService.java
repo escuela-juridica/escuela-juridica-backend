@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +36,7 @@ import pe.edu.utp.escuela.app.entity.Pregunta;
 import pe.edu.utp.escuela.app.entity.ReglaCurso;
 import pe.edu.utp.escuela.app.entity.RespuestaIntento;
 import pe.edu.utp.escuela.app.entity.RevisionRespuesta;
+import pe.edu.utp.escuela.app.event.ReevaluarCertificacionEvent;
 import pe.edu.utp.escuela.app.exception.BusinessValidationException;
 import pe.edu.utp.escuela.app.exception.ForbiddenException;
 import pe.edu.utp.escuela.app.exception.ResourceNotFoundException;
@@ -84,6 +86,7 @@ public class ExamenAlumnoService {
     private final ReglaCursoRepository reglasCurso;
     private final RevisionRespuestaRepository revisiones;
     private final RutaAcademicaService rutaAcademica;
+    private final ApplicationEventPublisher eventos;
     private final CurrentUserService actual;
     private final Clock clock;
 
@@ -328,6 +331,8 @@ public class ExamenAlumnoService {
             intento.setCalificadoEn(momentoEnvio);
         }
         intentos.save(intento);
+        // HU-032: una nota nueva (o un intento en revisión) puede cambiar el cumplimiento del curso.
+        eventos.publishEvent(new ReevaluarCertificacionEvent(intento.getMatricula().getId()));
     }
 
     /** Nota sobre 20 con dos decimales, sin penalización. La usan la corrección automática y la calificación
