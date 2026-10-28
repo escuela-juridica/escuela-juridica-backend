@@ -188,7 +188,7 @@ public class ReporteAsistenciaServicio {
             ReglaCurso regla = reglas.get(cursoPorMatricula.get(fila.matriculaId()));
             return new ReporteAsistenciaRespuesta(
                     fila.matriculaId(), fila.cursoId(), fila.curso(), fila.modalidad(),
-                    fila.leccionId(), fila.sesion(), fila.fechaSesion(), fila.alumno(), fila.correo(),
+                    fila.leccionId(), fila.sesion(), fila.modulo(), fila.fechaSesion(), fila.alumno(), fila.correo(),
                     fila.asistencia(), fila.origen(), fila.motivoCorreccion(), porcentaje,
                     cumplimiento(regla, porcentaje));
         };

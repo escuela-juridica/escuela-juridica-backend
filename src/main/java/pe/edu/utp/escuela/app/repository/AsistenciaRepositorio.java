@@ -49,7 +49,7 @@ public interface AsistenciaRepositorio extends JpaRepository<Asistencia, Long> {
 
     String SELECCION_REPORTE = """
             select new pe.edu.utp.escuela.app.dto.ReporteAsistenciaFila(
-                m.id, c.id, c.titulo, c.modalidad, l.id, l.titulo, l.fechaHoraInicio,
+                m.id, c.id, c.titulo, c.modalidad, l.id, l.titulo, mo.titulo, l.fechaHoraInicio,
                 concat(p.nombres, ' ', p.apellidoPaterno), u.correo,
                 coalesce(a.estado, 'PENDIENTE'),
                 case when a.id is null then null

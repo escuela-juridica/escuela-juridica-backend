@@ -11,6 +11,7 @@ public record ReporteAsistenciaFila(
         String modalidad,
         Long leccionId,
         String sesion,
+        String modulo,
         Instant fechaSesion,
         String alumno,
         String correo,

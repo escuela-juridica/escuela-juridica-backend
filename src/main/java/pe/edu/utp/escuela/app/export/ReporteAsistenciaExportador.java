@@ -27,7 +27,7 @@ public class ReporteAsistenciaExportador {
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(LIMA);
 
     private static final String[] ENCABEZADOS = {
-            "Curso", "Modalidad", "Sesión", "Fecha de la sesión", "Alumno", "Correo",
+            "Curso", "Modalidad", "Módulo", "Sesión", "Fecha de la sesión", "Alumno", "Correo",
             "Asistencia", "Origen", "Motivo de la corrección", "Porcentaje acumulado", "Cumplimiento del mínimo"
     };
 
@@ -56,6 +56,7 @@ public class ReporteAsistenciaExportador {
                 String[] valores = {
                         f.curso(),
                         etiquetaModalidad(f.modalidad()),
+                        f.modulo(),
                         f.sesion(),
                         f.fechaSesion() == null ? "" : FECHA_HORA.format(f.fechaSesion()),
                         f.alumno(),
