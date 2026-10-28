@@ -13,7 +13,9 @@ public record AulaResponse(
         List<ModuloAulaResponse> modulos,
         Long ultimaLeccionIdValida,
         AvanceCertificadoResponse avanceCertificado,
-        List<ExamenAulaResponse> examenesFinales) {
+        List<ExamenAulaResponse> examenesFinales,
+        String imagenPortadaUrl,
+        java.math.BigDecimal horasAcademicas) {
 
     public AulaResponse {
         modulos = List.copyOf(modulos);

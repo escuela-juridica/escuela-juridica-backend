@@ -22,6 +22,8 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import pe.edu.utp.escuela.app.entity.Certificado;
 import pe.edu.utp.escuela.app.entity.CertificadoFirmante;
@@ -56,11 +58,12 @@ public class CertificadoPdfExport {
             try (PDPageContentStream c = new PDPageContentStream(documento, pagina)) {
                 marco(c, ancho, alto);
 
-                texto(c, negrita, 26, AZUL, "ESCUELA JURÍDICA", ancho, alto - 85);
+                logo(documento, c, ancho, alto);
+                texto(c, negrita, 26, AZUL, "ESCUELA JURÍDICA", ancho, alto - 110);
                 String subtitulo = "REFRENDADO".equals(certificado.getNivel()) && certificado.getEntidadImpresa() != null
                         ? "Certificado refrendado por " + certificado.getEntidadImpresa()
                         : "Certificado de aprobación";
-                texto(c, normal, 13, GRIS, subtitulo, ancho, alto - 108);
+                texto(c, normal, 13, GRIS, subtitulo, ancho, alto - 130);
 
                 texto(c, normal, 13, Color.BLACK, "Se otorga el presente certificado a", ancho, alto - 160);
                 float tamanoNombre = ajustar(negrita, certificado.getNombresImpresos(), 30, ancho - 160);
@@ -110,6 +113,18 @@ public class CertificadoPdfExport {
     }
 
     // ----------------------------------------------------------------- dibujo --
+
+    /** Logo institucional centrado arriba. Si el recurso no está disponible, el certificado sale igual solo con texto. */
+    private void logo(PDDocument documento, PDPageContentStream c, float ancho, float alto) {
+        try (var entrada = new ClassPathResource("certificado/logo-esejur.png").getInputStream()) {
+            PDImageXObject imagen = PDImageXObject.createFromByteArray(documento, entrada.readAllBytes(), "logo");
+            float h = 46;
+            float w = imagen.getWidth() * h / imagen.getHeight();
+            c.drawImage(imagen, (ancho - w) / 2, alto - 82, w, h);
+        } catch (IOException | RuntimeException e) {
+            // Sin logo no se pierde ninguna información del certificado.
+        }
+    }
 
     private void marco(PDPageContentStream c, float ancho, float alto) throws IOException {
         c.setStrokingColor(AZUL);

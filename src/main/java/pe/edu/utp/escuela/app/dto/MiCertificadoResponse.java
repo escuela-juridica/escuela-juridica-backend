@@ -10,6 +10,7 @@ import java.time.Instant;
  */
 public record MiCertificadoResponse(
         String codigo,
+        String titular,
         Long cursoId,
         String curso,
         String nivel,

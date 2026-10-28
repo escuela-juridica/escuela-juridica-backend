@@ -30,7 +30,7 @@ public class MisCertificadosService {
         return certificados.findByLogro_Matricula_Usuario_IdOrderByEmitidoEnDesc(actual.get().userId()).stream()
                 .map(c -> {
                     boolean vigente = Certificado.VIGENTE.equals(c.getEstado());
-                    return new MiCertificadoResponse(c.getCodigo(), c.getLogro().getMatricula().getCurso().getId(),
+                    return new MiCertificadoResponse(c.getCodigo(), c.getNombresImpresos(), c.getLogro().getMatricula().getCurso().getId(),
                             c.getTituloCursoImpreso(), c.getNivel(), c.getEntidadImpresa(), c.getHorasImpresas(),
                             c.getEmitidoEn(), vigente ? Certificado.VIGENTE : Certificado.ANULADO, c.getAnuladoEn(),
                             vigente ? "/api/app/certificados/" + c.getCodigo() + "/descargar" : null);

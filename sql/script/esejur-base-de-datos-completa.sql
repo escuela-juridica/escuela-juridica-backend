@@ -1884,6 +1884,18 @@ JOIN leccion l ON l.modulo_id=mo.modulo_id
 WHERE u.correo='gabriel.mayanga@escuelajuridica.edu.pe'
   AND c.url_amigable='derecho-registral-notarial';
 
+-- Joel termino las lecciones del modulo 1 del curso virtual de funcion notarial: su examen del
+-- modulo queda habilitado, sin intentos usados, para probar la rendicion completa.
+INSERT INTO progreso_leccion
+    (matricula_id,leccion_id,forma_completado,completada,completada_en)
+SELECT m.matricula_id,l.leccion_id,'CONFIRMACION',true,CURRENT_TIMESTAMP-interval '1 day'
+FROM matricula m JOIN usuario u ON u.usuario_id=m.usuario_id
+JOIN curso c ON c.curso_id=m.curso_id
+JOIN modulo mo ON mo.curso_id=c.curso_id AND mo.orden=1
+JOIN leccion l ON l.modulo_id=mo.modulo_id
+WHERE u.correo='joel.saldana@escuelajuridica.edu.pe'
+  AND c.url_amigable='funcion-notarial';
+
 -- Asistencia de Juan en las sesiones elegibles del curso hibrido.
 INSERT INTO asistencia (matricula_id,leccion_id,estado,registrada_por_usuario_id)
 SELECT m.matricula_id,l.leccion_id,'PRESENTE',a.usuario_id

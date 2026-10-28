@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import pe.edu.utp.escuela.app.dto.CertificacionResponse;
 import pe.edu.utp.escuela.app.dto.ConfirmarDatosRequest;
@@ -80,13 +81,16 @@ public class CertificacionController {
     @Operation(summary = "Descargar el PDF de un certificado",
             description = "Privado: solo lo descarga su dueño (o un administrador). El PDF nunca se envía por correo.")
     @ApiResponse(responseCode = "404", description = "El certificado no existe o no es tuyo")
-    public ResponseEntity<Resource> descargar(@PathVariable String codigo) {
+    // enLinea=true lo muestra en el visor del navegador (sin descargarlo); sigue siendo privado.
+    public ResponseEntity<Resource> descargar(@PathVariable String codigo,
+            @RequestParam(name = "enLinea", defaultValue = "false") boolean enLinea) {
         Descarga descarga = service.descargar(codigo);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .cacheControl(CacheControl.noStore())
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        ContentDisposition.attachment().filename(descarga.nombre()).build().toString())
+                        (enLinea ? ContentDisposition.inline() : ContentDisposition.attachment())
+                                .filename(descarga.nombre()).build().toString())
                 .body(descarga.archivo());
     }
 }

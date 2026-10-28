@@ -117,7 +117,8 @@ public class AulaService {
 
         return new AulaResponse(matricula.getId(), matricula.getCurso().getId(), matricula.getCurso().getTitulo(),
                 matricula.getCurso().getModalidad(), avance.porcentaje(), modulosRespuesta, ultimaLeccionIdValida,
-                avance.comoRespuesta(), ruta.examenesFinales());
+                avance.comoRespuesta(), ruta.examenesFinales(),
+                matricula.getCurso().getImagenPortadaUrl(), matricula.getCurso().getHorasAcademicas());
     }
 
     private String estadoSesion(Leccion leccion, Instant ahora) {
