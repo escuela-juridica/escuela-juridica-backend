@@ -196,7 +196,7 @@ public class CertificadoPdfExport {
             float centro = inicio + zona * i + zona / 2;
             imagen(documento, c, imagenes.apply(f.getImagenFirmaUrl()), centro - 80, 114, 160, 48, false);
             linea(c, centro - 95, 110, centro + 95, 110);
-            centrar(c, negrita, 10, Color.BLACK, f.getNombreImpreso(), centro, 96);
+            centrar(c, negrita, 10, Color.BLACK, f.getNombreImpreso().toUpperCase(Locale.forLanguageTag("es-PE")), centro, 96);
             centrar(c, cursiva, 9, GRIS, f.getCargoImpreso(), centro, 83);
         }
     }
