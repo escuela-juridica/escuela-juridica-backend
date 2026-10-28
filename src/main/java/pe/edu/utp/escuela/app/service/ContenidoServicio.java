@@ -653,7 +653,8 @@ public class ContenidoServicio {
         return new LeccionRespuesta(
                 l.getId(), l.getTitulo(), l.getDescripcion(), l.getOrden(), l.getTipo(),
                 l.isEsObligatoria(), l.isEsVistaPrevia(), l.getFechaHoraInicio(), l.getFechaHoraFin(),
-                l.getEnlaceReunion(), l.isActivo(), l.getLeccionOrigenId(), materialesRespuesta);
+                l.getEnlaceReunion(), l.getEstado(), l.getMotivoCancelacion(), l.isActivo(),
+                l.getLeccionOrigenId(), materialesRespuesta);
     }
 
     private MaterialRespuesta mapearMaterial(MaterialLeccion m) {

@@ -14,6 +14,8 @@ public record LeccionRespuesta(
         Instant fechaHoraInicio,
         Instant fechaHoraFin,
         String enlaceReunion,
+        String estado,
+        String motivoCancelacion,
         boolean activo,
         Long leccionOrigenId,
         List<MaterialRespuesta> materiales) {
