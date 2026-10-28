@@ -1,6 +1,7 @@
 package pe.edu.utp.escuela.app.dto;
 
 import pe.edu.utp.escuela.app.entity.MaterialLeccion;
+import pe.edu.utp.escuela.app.entity.ProgresoMaterial;
 import pe.edu.utp.escuela.app.entity.Recurso;
 
 /** HU-023 — Material de una lección tal como lo ve el alumno. Para origen SUBIDO, {@code verUrl}
@@ -16,9 +17,16 @@ public record MaterialAlumnoRespuesta(
         String origen,
         boolean permiteDescarga,
         String verUrl,
-        String descargarUrl) {
+        String descargarUrl,
+        String nombreArchivo,
+        String tipoMime,
+        Long tamanoBytes,
+        Integer duracionSegundos,
+        Integer posicionSegundos,
+        Integer porcentajeVisto) {
 
-    public static MaterialAlumnoRespuesta de(MaterialLeccion material) {
+    /** {@code progreso} puede ser {@code null} (el alumno todavía no abrió el material). */
+    public static MaterialAlumnoRespuesta de(MaterialLeccion material, ProgresoMaterial progreso) {
         Recurso recurso = material.getRecurso();
         boolean subido = "SUBIDO".equals(recurso.getOrigen());
         String verUrl = subido
@@ -29,6 +37,10 @@ public record MaterialAlumnoRespuesta(
                 : null;
         return new MaterialAlumnoRespuesta(
                 material.getId(), material.getTitulo(), material.getOrden(), recurso.getTipo(),
-                recurso.getOrigen(), material.isPermiteDescarga(), verUrl, descargarUrl);
+                recurso.getOrigen(), material.isPermiteDescarga(), verUrl, descargarUrl,
+                recurso.getNombreArchivo(), recurso.getTipoMime(), recurso.getTamanoBytes(),
+                recurso.getDuracionSegundos(),
+                progreso == null ? null : progreso.getUltimaPosicionSegundos(),
+                progreso == null ? null : progreso.getPorcentajeVideo().intValue());
     }
 }

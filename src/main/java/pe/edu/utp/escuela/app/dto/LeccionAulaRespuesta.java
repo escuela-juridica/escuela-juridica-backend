@@ -20,5 +20,7 @@ public record LeccionAulaRespuesta(
         Instant fechaHoraInicio,
         Instant fechaHoraFin,
         String estadoSesion,
-        boolean grabacionDisponible) {
+        boolean grabacionDisponible,
+        String descripcion,
+        Integer duracionSegundos) {
 }

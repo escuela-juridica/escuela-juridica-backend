@@ -5,6 +5,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -14,6 +16,7 @@ import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.Leccion;
 import pe.edu.utp.escuela.app.entity.MaterialLeccion;
 import pe.edu.utp.escuela.app.entity.Matricula;
+import pe.edu.utp.escuela.app.entity.ProgresoMaterial;
 import pe.edu.utp.escuela.app.entity.Recurso;
 import pe.edu.utp.escuela.app.exception.BusinessValidationException;
 import pe.edu.utp.escuela.app.exception.ForbiddenException;
@@ -21,6 +24,7 @@ import pe.edu.utp.escuela.app.exception.ResourceNotFoundException;
 import pe.edu.utp.escuela.app.repository.LeccionRepositorio;
 import pe.edu.utp.escuela.app.repository.MaterialLeccionRepositorio;
 import pe.edu.utp.escuela.app.repository.MatriculaRepositorio;
+import pe.edu.utp.escuela.app.repository.ProgresoMaterialRepositorio;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 
 /** HU-023 — Consultar materiales protegidos: cada solicitud (listar, ver contenido o descargar)
@@ -42,6 +46,7 @@ public class MaterialAlumnoServicio {
     private final LeccionRepositorio lecciones;
     private final MaterialLeccionRepositorio materiales;
     private final MatriculaRepositorio matriculas;
+    private final ProgresoMaterialRepositorio progresoMateriales;
     private final ArchivoAlmacenamientoServicio almacenamiento;
     private final CurrentUserService actual;
     private final Clock clock;
@@ -51,12 +56,17 @@ public class MaterialAlumnoServicio {
         requiereAlumno();
         Leccion leccion = lecciones.findById(leccionId)
                 .orElseThrow(() -> new ResourceNotFoundException("La lección no existe."));
-        verificarAccesoAlCurso(leccion);
+        Matricula matricula = verificarAccesoAlCurso(leccion);
 
-        return materiales.findByLeccion_IdOrderByOrdenAsc(leccionId).stream()
+        List<MaterialLeccion> activos = materiales.findByLeccion_IdOrderByOrdenAsc(leccionId).stream()
                 .filter(MaterialLeccion::isActivo)
-                .map(MaterialAlumnoRespuesta::de)
                 .toList();
+        // Punto donde el alumno dejó cada video (para retomarlo) y cuánto lleva visto.
+        Map<Long, ProgresoMaterial> progreso = activos.isEmpty() ? Map.of()
+                : progresoMateriales.findByMatricula_IdAndMaterialLeccion_IdIn(
+                        matricula.getId(), activos.stream().map(MaterialLeccion::getId).toList()).stream()
+                        .collect(Collectors.toMap(p -> p.getMaterialLeccion().getId(), p -> p, (a, b) -> a));
+        return activos.stream().map(m -> MaterialAlumnoRespuesta.de(m, progreso.get(m.getId()))).toList();
     }
 
     @Transactional(readOnly = true)
@@ -98,11 +108,12 @@ public class MaterialAlumnoServicio {
         }
     }
 
-    private void verificarAccesoAlCurso(Leccion leccion) {
+    private Matricula verificarAccesoAlCurso(Leccion leccion) {
         Curso curso = leccion.getModulo().getCurso();
         Matricula matricula = matriculas.findByUsuario_IdAndCurso_Id(actual.get().userId(), curso.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("No tienes una matrícula en este curso."));
         verificarAcceso(matricula);
+        return matricula;
     }
 
     /** Replica exactamente {@code AulaServicio#verificarAcceso} (y, en última instancia,

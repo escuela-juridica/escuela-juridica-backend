@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utp.escuela.app.dto.AulaRespuesta;
 import pe.edu.utp.escuela.app.dto.AvanceCertificadoRespuesta;
 import pe.edu.utp.escuela.app.dto.CondicionAvanceRespuesta;
+import pe.edu.utp.escuela.app.dto.DuracionLeccionFila;
 import pe.edu.utp.escuela.app.dto.LeccionAulaRespuesta;
 import pe.edu.utp.escuela.app.dto.ModuloAulaRespuesta;
 import pe.edu.utp.escuela.app.entity.Examen;
@@ -75,6 +76,13 @@ public class AulaServicio {
                         .map(m -> m.getLeccion().getId())
                         .collect(Collectors.toSet());
 
+        // Duración de la lección = la del video más largo entre sus materiales activos (si la hay).
+        Map<Long, Integer> duraciones = idsLecciones.isEmpty() ? Map.of()
+                : materiales.buscarDuraciones(idsLecciones).stream()
+                        .filter(f -> f.getDuracionSegundos() != null)
+                        .collect(Collectors.toMap(DuracionLeccionFila::getLeccionId,
+                                DuracionLeccionFila::getDuracionSegundos, (a, b) -> a));
+
         Instant ahora = clock.instant();
         Map<Long, LeccionAulaRespuesta> respuestaPorLeccion = new java.util.HashMap<>();
         for (Leccion leccion : globalOrden) {
@@ -93,7 +101,8 @@ public class AulaServicio {
             respuestaPorLeccion.put(leccion.getId(), new LeccionAulaRespuesta(
                     leccion.getId(), leccion.getTitulo(), leccion.getTipo(), leccion.getOrden(),
                     leccion.isEsObligatoria(), estado, motivoBloqueo,
-                    leccion.getFechaHoraInicio(), leccion.getFechaHoraFin(), estadoSesion, grabacionDisponible));
+                    leccion.getFechaHoraInicio(), leccion.getFechaHoraFin(), estadoSesion, grabacionDisponible,
+                    leccion.getDescripcion(), duraciones.get(leccion.getId())));
         }
 
         List<ModuloAulaRespuesta> modulosRespuesta = new ArrayList<>();
