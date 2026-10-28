@@ -1479,9 +1479,9 @@ INSERT INTO categoria_tematica (codigo, nombre, orden) VALUES
 ('HABILIDADES_PROFESIONALES', 'Habilidades profesionales', 120);
 
 INSERT INTO entidad_certificadora (nombre, logo_url) VALUES
-('Colegio de Abogados de Lima', 'entidades/cal.png'),
-('Colegio de Abogados de Lima Sur', 'entidades/calsur.png'),
-('Ilustre Colegio de Abogados de Canete', 'entidades/icac.png');
+('Colegio de Abogados de Lima', NULL),
+('Colegio de Abogados de Lima Sur', NULL),
+('Ilustre Colegio de Abogados de Canete', NULL);
 
 INSERT INTO estado_curso (codigo, nombre, descripcion, orden) VALUES
 ('BORRADOR', 'Borrador', 'Curso en preparacion y no visible para el publico.', 10),
@@ -1566,8 +1566,8 @@ FROM usuario u WHERE u.correo = 'admin@escuelajuridica.edu.pe';
 INSERT INTO firmante (persona_id, cargo_firma, imagen_firma_url)
 SELECT p.persona_id, v.cargo, v.imagen
 FROM (VALUES
-    ('Lilia Mercedes', 'Guerra', 'Directora academica', 'firmas/lilia-guerra.png'),
-    ('Yourka Lisbeth', 'Lucich', 'Directora institucional', 'firmas/yourka-lucich.png')
+    ('Lilia Mercedes', 'Guerra', 'Directora academica', '/uploads/firmas/lilia-guerra.png'),
+    ('Yourka Lisbeth', 'Lucich', 'Directora institucional', '/uploads/firmas/yourka-lucich.png')
 ) v(nombres, apellido, cargo, imagen)
 JOIN persona p ON p.nombres = v.nombres AND p.apellido_paterno = v.apellido;
 

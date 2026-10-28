@@ -25,6 +25,8 @@ import pe.edu.utp.escuela.app.repository.ReglaArchivoRepository;
 @Service
 public class ArchivoAlmacenamientoService {
 
+    private static final long TAMANO_MAXIMO_IMAGEN_BYTES = 2L * 1024 * 1024;
+
     private final Path raiz;
     private final ReglaArchivoRepository reglasArchivo;
 
@@ -89,6 +91,39 @@ public class ArchivoAlmacenamientoService {
             throw new BusinessValidationException("No pudimos guardar el archivo.");
         }
         return "/uploads/" + carpeta + "/" + nombreArchivo;
+    }
+
+    /**
+     * HU-009 — Guarda la imagen de una firma o el logo de una entidad. Solo admite PNG o JPG, de hasta
+     * 2 MB, y comprueba el contenido real del archivo (no solo su extensión). El nombre lo decide el
+     * servidor y la referencia devuelta es la que se guarda en el firmante o la entidad.
+     */
+    public String guardarImagen(String carpeta, MultipartFile archivo) {
+        if (archivo == null || archivo.isEmpty()) {
+            throw new BusinessValidationException("Selecciona una imagen para subir.");
+        }
+        if (archivo.getSize() > TAMANO_MAXIMO_IMAGEN_BYTES) {
+            throw new BusinessValidationException("La imagen supera el tamaño máximo permitido (2.0 MB).");
+        }
+        byte[] contenido;
+        try {
+            contenido = archivo.getBytes();
+        } catch (IOException e) {
+            throw new BusinessValidationException("No pudimos leer la imagen. Inténtalo nuevamente.");
+        }
+        String extension = esPng(contenido) ? "png" : esJpeg(contenido) ? "jpg" : null;
+        if (extension == null) {
+            throw new BusinessValidationException("Solo se admiten imágenes PNG o JPG.");
+        }
+        return guardarBytes(carpeta, UUID.randomUUID() + "." + extension, contenido);
+    }
+
+    private static boolean esPng(byte[] b) {
+        return b.length > 8 && (b[0] & 0xFF) == 0x89 && b[1] == 'P' && b[2] == 'N' && b[3] == 'G';
+    }
+
+    private static boolean esJpeg(byte[] b) {
+        return b.length > 3 && (b[0] & 0xFF) == 0xFF && (b[1] & 0xFF) == 0xD8 && (b[2] & 0xFF) == 0xFF;
     }
 
     public Resource cargar(String referencia) {

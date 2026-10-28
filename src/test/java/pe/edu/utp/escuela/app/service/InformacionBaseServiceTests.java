@@ -65,6 +65,7 @@ class InformacionBaseServiceTests {
     @Mock private TipoMaterialRepository tiposMaterial;
     @Mock private ReglaArchivoRepository reglasArchivo;
     @Mock private ConfiguracionInstitucionalRepository configuraciones;
+    @Mock private ArchivoAlmacenamientoService almacenamiento;
     @Mock private CurrentUserService currentUserService;
 
     private InformacionBaseService service;
@@ -73,7 +74,7 @@ class InformacionBaseServiceTests {
     @BeforeEach
     void setUp() {
         service = new InformacionBaseService(tiposCurso, categorias, personas, entidades, firmantes,
-                tiposMaterial, reglasArchivo, configuraciones, currentUserService, new TextNormalizer());
+                tiposMaterial, reglasArchivo, configuraciones, almacenamiento, currentUserService, new TextNormalizer());
     }
 
     private void comoAdministrador() {

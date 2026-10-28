@@ -17,6 +17,7 @@ import pe.edu.utp.escuela.app.dto.EntidadRequest;
 import pe.edu.utp.escuela.app.dto.EntidadResponse;
 import pe.edu.utp.escuela.app.dto.FirmanteRequest;
 import pe.edu.utp.escuela.app.dto.FirmanteResponse;
+import pe.edu.utp.escuela.app.dto.ImagenSubidaResponse;
 import pe.edu.utp.escuela.app.dto.PageResponse;
 import pe.edu.utp.escuela.app.dto.ReglaArchivoRequest;
 import pe.edu.utp.escuela.app.dto.ReglaArchivoResponse;
@@ -32,6 +33,8 @@ import pe.edu.utp.escuela.app.entity.Persona;
 import pe.edu.utp.escuela.app.entity.ReglaArchivo;
 import pe.edu.utp.escuela.app.entity.TipoCurso;
 import pe.edu.utp.escuela.app.entity.TipoMaterial;
+import org.springframework.web.multipart.MultipartFile;
+import pe.edu.utp.escuela.app.exception.BusinessValidationException;
 import pe.edu.utp.escuela.app.exception.DuplicateResourceException;
 import pe.edu.utp.escuela.app.exception.ForbiddenException;
 import pe.edu.utp.escuela.app.exception.ResourceNotFoundException;
@@ -61,6 +64,7 @@ public class InformacionBaseService {
     private final TipoMaterialRepository tiposMaterial;
     private final ReglaArchivoRepository reglasArchivo;
     private final ConfiguracionInstitucionalRepository configuraciones;
+    private final ArchivoAlmacenamientoService almacenamiento;
     private final CurrentUserService currentUserService;
     private final TextNormalizer textos;
 
@@ -276,6 +280,18 @@ public class InformacionBaseService {
 
     private EntidadResponse mapear(EntidadCertificadora e) {
         return new EntidadResponse(e.getId(), e.getNombre(), e.getLogoUrl(), e.isActivo());
+    }
+
+    /** Sube la imagen de una firma ({@code FIRMA}) o el logo de una entidad ({@code LOGO}). */
+    @Transactional(readOnly = true)
+    public ImagenSubidaResponse subirImagenCertificado(String tipo, MultipartFile archivo) {
+        exigirAdministrador();
+        String carpeta = switch (tipo == null ? "" : tipo) {
+            case "FIRMA" -> "firmas";
+            case "LOGO" -> "entidades";
+            default -> throw new BusinessValidationException("Indica si la imagen es una firma o un logo.");
+        };
+        return new ImagenSubidaResponse(almacenamiento.guardarImagen(carpeta, archivo));
     }
 
     // ---------------------------------------------------------------- Firmantes --

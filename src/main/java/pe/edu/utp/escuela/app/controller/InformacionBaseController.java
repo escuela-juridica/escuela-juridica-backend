@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import pe.edu.utp.escuela.app.dto.ActivoRequest;
 import pe.edu.utp.escuela.app.dto.ActualizarConfiguracionRequest;
 import pe.edu.utp.escuela.app.dto.CategoriaRequest;
@@ -21,6 +22,7 @@ import pe.edu.utp.escuela.app.dto.EntidadRequest;
 import pe.edu.utp.escuela.app.dto.EntidadResponse;
 import pe.edu.utp.escuela.app.dto.FirmanteRequest;
 import pe.edu.utp.escuela.app.dto.FirmanteResponse;
+import pe.edu.utp.escuela.app.dto.ImagenSubidaResponse;
 import pe.edu.utp.escuela.app.dto.PageResponse;
 import pe.edu.utp.escuela.app.dto.ReglaArchivoRequest;
 import pe.edu.utp.escuela.app.dto.ReglaArchivoResponse;
@@ -141,6 +143,13 @@ public class InformacionBaseController {
     public ResponseEntity<EntidadResponse> cambiarActivoEntidad(
             @PathVariable Long id, @Valid @RequestBody ActivoRequest p) {
         return ResponseEntity.ok(service.cambiarActivoEntidad(id, p.activo()));
+    }
+
+    // ---- Imágenes del certificado (firmas y logos) ----
+    @PostMapping(value = "/imagenes-certificado", consumes = "multipart/form-data")
+    public ResponseEntity<ImagenSubidaResponse> subirImagenCertificado(
+            @RequestParam("tipo") String tipo, @RequestParam("archivo") MultipartFile archivo) {
+        return ResponseEntity.ok(service.subirImagenCertificado(tipo, archivo));
     }
 
     // ---- Firmantes ----
