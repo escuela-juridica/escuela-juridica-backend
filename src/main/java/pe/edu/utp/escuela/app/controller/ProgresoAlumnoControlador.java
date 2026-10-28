@@ -34,7 +34,8 @@ public class ProgresoAlumnoControlador {
     @ApiResponse(responseCode = "404", description = "El material no existe o está inactivo")
     public ResponseEntity<Void> registrarProgresoVideo(
             @PathVariable Long id, @Valid @RequestBody ProgresoVideoPeticion p) {
-        servicio.registrarProgresoVideo(id, p.segundosReproducidos(), p.ultimaPosicionSegundos());
+        servicio.registrarProgresoVideo(
+                id, p.segundosReproducidos(), p.ultimaPosicionSegundos(), p.duracionSegundosTotal());
         return ResponseEntity.noContent().build();
     }
 

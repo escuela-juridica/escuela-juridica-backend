@@ -31,6 +31,7 @@ import pe.edu.utp.escuela.app.repository.MaterialLeccionRepositorio;
 import pe.edu.utp.escuela.app.repository.MatriculaRepositorio;
 import pe.edu.utp.escuela.app.repository.ProgresoLeccionRepositorio;
 import pe.edu.utp.escuela.app.repository.ProgresoMaterialRepositorio;
+import pe.edu.utp.escuela.app.repository.RecursoRepositorio;
 import pe.edu.utp.escuela.app.repository.ReglaCursoRepositorio;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 
@@ -52,12 +53,15 @@ public class ProgresoServicio {
     private final ProgresoLeccionRepositorio progresoLecciones;
     private final ProgresoMaterialRepositorio progresoMateriales;
     private final ReglaCursoRepositorio reglasCurso;
+    private final RecursoRepositorio recursos;
     private final AsistenciaRepositorio asistencias;
     private final CurrentUserService actual;
     private final Clock clock;
 
     @Transactional
-    public void registrarProgresoVideo(Long materialLeccionId, int segundosReproducidos, int ultimaPosicionSegundos) {
+    public void registrarProgresoVideo(
+            Long materialLeccionId, int segundosReproducidos, int ultimaPosicionSegundos,
+            Integer duracionSegundosCliente) {
         if (!actual.get().hasRole("ALUMNO")) {
             throw new ForbiddenException();
         }
@@ -72,8 +76,24 @@ public class ProgresoServicio {
         verificarAcceso(matricula);
 
         Recurso recurso = material.getRecurso();
-        if (!recurso.isDuracionDetectada() || !"VIDEO".equals(recurso.getTipo())) {
+        if (!esVideoDetectable(material)) {
+            // YouTube/enlaces externos no son detectables por diseño: ESEJUR no puede medir su
+            // reproducción real (ver historia). Solo un video SUBIDO, que el propio reproductor de
+            // ESEJUR transmite, puede reportar avance.
             throw new BusinessValidationException("Este material no permite registrar progreso de video.");
+        }
+        // La subida de un archivo (HU-011) nunca llegó a registrar su duración real (no hay
+        // procesamiento de video en el servidor): la primera vez que el navegador la reporta aquí
+        // (vía <video>.duration, al cargar los metadatos), el backend la adopta como oficial y
+        // recién ahí el video queda "detectable" para el umbral de esta historia.
+        if (recurso.getDuracionSegundos() == null && duracionSegundosCliente != null) {
+            recurso.setDuracionSegundos(duracionSegundosCliente);
+            recurso.setDuracionDetectada(true);
+            recursos.save(recurso);
+        }
+        if (!recurso.isDuracionDetectada()) {
+            // Todavía no conocemos la duración real: no hay umbral que aplicar en este reporte.
+            return;
         }
 
         int duracionSegundos = recurso.getDuracionSegundos() != null ? recurso.getDuracionSegundos() : 0;
@@ -105,7 +125,7 @@ public class ProgresoServicio {
         List<MaterialLeccion> materialesVideoLeccion = materiales.findByLeccion_IdOrderByOrdenAsc(leccion.getId())
                 .stream()
                 .filter(MaterialLeccion::isActivo)
-                .filter(m -> "VIDEO".equals(m.getRecurso().getTipo()) && m.getRecurso().isDuracionDetectada())
+                .filter(this::esVideoDetectable)
                 .toList();
 
         boolean umbralAlcanzado = false;
@@ -142,8 +162,7 @@ public class ProgresoServicio {
         List<MaterialLeccion> materialesActivos = materiales.findByLeccion_IdOrderByOrdenAsc(leccionId).stream()
                 .filter(MaterialLeccion::isActivo)
                 .toList();
-        boolean tieneVideoDetectable = materialesActivos.stream()
-                .anyMatch(m -> "VIDEO".equals(m.getRecurso().getTipo()) && m.getRecurso().isDuracionDetectada());
+        boolean tieneVideoDetectable = materialesActivos.stream().anyMatch(this::esVideoDetectable);
         if (tieneVideoDetectable) {
             throw new BusinessValidationException("Esta lección se completa automáticamente al ver el video.");
         }
@@ -168,6 +187,17 @@ public class ProgresoServicio {
         }
 
         marcarCompletadaSiNoLoEstaba(matricula, leccion, "MANUAL");
+    }
+
+    /** Un video es "detectable" por ser SUBIDO (ESEJUR transmite sus bytes y puede medir su
+     * reproducción), nunca por el valor momentáneo de {@code Recurso.duracionDetectada} — esa
+     * bandera arranca en falso y solo se activa cuando el navegador reporta la duración real la
+     * primera vez (ver {@code registrarProgresoVideo}). Decidir "tiene video detectable" por esa
+     * bandera permitiría completar manualmente una lección con un video SUBIDO que todavía no se
+     * reprodujo ni una vez. YouTube/enlaces externos nunca cuentan como detectables. */
+    private boolean esVideoDetectable(MaterialLeccion material) {
+        Recurso recurso = material.getRecurso();
+        return "VIDEO".equals(recurso.getTipo()) && "SUBIDO".equals(recurso.getOrigen());
     }
 
     /** Invocado por el propio backend (job de HU-026, corrección de HU-027), nunca directamente
