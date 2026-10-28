@@ -1479,9 +1479,9 @@ INSERT INTO categoria_tematica (codigo, nombre, orden) VALUES
 ('HABILIDADES_PROFESIONALES', 'Habilidades profesionales', 120);
 
 INSERT INTO entidad_certificadora (nombre, logo_url) VALUES
-('Colegio de Abogados de Lima', 'img/entidades/cal.png'),
-('Colegio de Abogados de Lima Sur', 'img/entidades/calsur.png'),
-('Ilustre Colegio de Abogados de Canete', 'img/entidades/icac.png');
+('Colegio de Abogados de Lima', 'entidades/cal.png'),
+('Colegio de Abogados de Lima Sur', 'entidades/calsur.png'),
+('Ilustre Colegio de Abogados de Canete', 'entidades/icac.png');
 
 INSERT INTO estado_curso (codigo, nombre, descripcion, orden) VALUES
 ('BORRADOR', 'Borrador', 'Curso en preparacion y no visible para el publico.', 10),
@@ -1566,8 +1566,8 @@ FROM usuario u WHERE u.correo = 'admin@escuelajuridica.edu.pe';
 INSERT INTO firmante (persona_id, cargo_firma, imagen_firma_url)
 SELECT p.persona_id, v.cargo, v.imagen
 FROM (VALUES
-    ('Lilia Mercedes', 'Guerra', 'Directora academica', 'img/firmas/lilia-guerra.png'),
-    ('Yourka Lisbeth', 'Lucich', 'Directora institucional', 'img/firmas/yourka-lucich.png')
+    ('Lilia Mercedes', 'Guerra', 'Directora academica', 'firmas/lilia-guerra.png'),
+    ('Yourka Lisbeth', 'Lucich', 'Directora institucional', 'firmas/yourka-lucich.png')
 ) v(nombres, apellido, cargo, imagen)
 JOIN persona p ON p.nombres = v.nombres AND p.apellido_paterno = v.apellido;
 
@@ -1896,12 +1896,20 @@ JOIN leccion l ON l.modulo_id=mo.modulo_id
 WHERE u.correo='joel.saldana@escuelajuridica.edu.pe'
   AND c.url_amigable='funcion-notarial';
 
--- Asistencia de Juan en las sesiones elegibles del curso hibrido.
+-- La sesion en vivo del modulo 1 del curso hibrido ya se realizo (hace cuatro dias): permite corregir
+-- su asistencia. La del modulo 2 sigue programada a futuro.
+UPDATE leccion SET fecha_hora_inicio=CURRENT_TIMESTAMP-interval '4 days',
+                   fecha_hora_fin=CURRENT_TIMESTAMP-interval '4 days'+interval '2 hours'
+WHERE tipo='EN_VIVO'
+  AND modulo_id=(SELECT mo.modulo_id FROM modulo mo JOIN curso c ON c.curso_id=mo.curso_id
+                 WHERE c.url_amigable='contrataciones-estado' AND mo.orden=1);
+
+-- Asistencia de Juan en la sesion ya realizada del curso hibrido.
 INSERT INTO asistencia (matricula_id,leccion_id,estado,registrada_por_usuario_id)
 SELECT m.matricula_id,l.leccion_id,'PRESENTE',a.usuario_id
 FROM matricula m JOIN usuario u ON u.usuario_id=m.usuario_id
 JOIN curso c ON c.curso_id=m.curso_id
-JOIN modulo mo ON mo.curso_id=c.curso_id
+JOIN modulo mo ON mo.curso_id=c.curso_id AND mo.orden=1
 JOIN leccion l ON l.modulo_id=mo.modulo_id AND l.tipo='EN_VIVO'
 JOIN usuario a ON a.correo='admin@escuelajuridica.edu.pe'
 WHERE u.correo='juan.morales@escuelajuridica.edu.pe'
@@ -2004,6 +2012,146 @@ SELECT ce.certificado_id,'CORRECCION','Nombre: Gabriel A. Mayanga',
        CURRENT_TIMESTAMP-interval '12 hours'
 FROM certificado ce JOIN usuario a ON a.correo='admin@escuelajuridica.edu.pe'
 WHERE ce.codigo='ESEJUR-2026-DEMO-0001';
+
+-- =============================================================================
+-- EP05: escenarios demostrativos para validar evaluacion, excepciones y certificacion
+-- =============================================================================
+
+-- (1) Intento adicional: Juan agoto los tres intentos del examen del modulo 1 de Contrataciones sin
+--     aprobar. Ya asistio a la sesion en vivo del modulo, que ahora tambien permite corregir asistencia.
+--     Se matriculo antes de esa sesion, por eso su asistencia cuenta.
+UPDATE matricula SET fecha_matricula=CURRENT_TIMESTAMP-interval '20 days',
+                     fecha_activacion=CURRENT_TIMESTAMP-interval '20 days'
+WHERE matricula_id=(SELECT m.matricula_id FROM matricula m JOIN usuario u ON u.usuario_id=m.usuario_id
+                    JOIN curso c ON c.curso_id=m.curso_id
+                    WHERE u.correo='juan.morales@escuelajuridica.edu.pe' AND c.url_amigable='contrataciones-estado');
+
+INSERT INTO progreso_leccion (matricula_id,leccion_id,forma_completado,completada,completada_en)
+SELECT m.matricula_id,l.leccion_id,
+       CASE WHEN l.tipo='EN_VIVO' THEN 'ASISTENCIA' ELSE 'CONFIRMACION' END,
+       true,CURRENT_TIMESTAMP-interval '4 days'
+FROM matricula m JOIN usuario u ON u.usuario_id=m.usuario_id
+JOIN curso c ON c.curso_id=m.curso_id
+JOIN modulo mo ON mo.curso_id=c.curso_id AND mo.orden=1
+JOIN leccion l ON l.modulo_id=mo.modulo_id
+WHERE u.correo='juan.morales@escuelajuridica.edu.pe' AND c.url_amigable='contrataciones-estado';
+
+INSERT INTO intento_examen
+    (matricula_id,examen_id,numero_intento,estado,puntaje_obtenido,puntaje_total,nota,aprobado,
+     iniciado_en,enviado_en,calificado_en)
+SELECT m.matricula_id,e.examen_id,v.numero,'CALIFICADO',v.puntaje,20,v.puntaje,false,
+       CURRENT_TIMESTAMP-(v.dias||' days')::interval,CURRENT_TIMESTAMP-(v.dias||' days')::interval,
+       CURRENT_TIMESTAMP-(v.dias||' days')::interval
+FROM (VALUES (1,8.00::numeric,3),(2,9.00::numeric,2),(3,10.50::numeric,1)) v(numero,puntaje,dias)
+JOIN usuario u ON u.correo='juan.morales@escuelajuridica.edu.pe'
+JOIN curso c ON c.url_amigable='contrataciones-estado'
+JOIN matricula m ON m.usuario_id=u.usuario_id AND m.curso_id=c.curso_id
+JOIN examen e ON e.curso_id=c.curso_id;
+
+-- (2) Emision automatica con espera: el curso virtual de tributacion espera dos dias. Gabriel termino
+--     hace cinco, ya confirmo sus datos y la fecha programada paso: el sistema lo emite solo. Joel
+--     tambien termino pero no confirmo sus nombres: recibe la solicitud y, al confirmar, se emite.
+UPDATE regla_curso SET dias_espera_certificado=2
+WHERE curso_id=(SELECT curso_id FROM curso WHERE url_amigable='tributacion-empresarial');
+
+INSERT INTO matricula
+    (usuario_id,curso_id,estado,forma_ingreso,fecha_matricula,fecha_activacion,fecha_finalizacion,
+     creado_por_usuario_id,creado_en,modificado_en)
+SELECT u.usuario_id,c.curso_id,'ACTIVA','ADMINISTRADOR',CURRENT_TIMESTAMP-interval '30 days',
+       CURRENT_TIMESTAMP-interval '30 days',
+       CASE WHEN v.slug='tributacion-empresarial' THEN CURRENT_TIMESTAMP-interval '5 days'
+            ELSE CURRENT_TIMESTAMP-interval '20 days' END,
+       a.usuario_id,CURRENT_TIMESTAMP-interval '30 days',CURRENT_TIMESTAMP-interval '5 days'
+FROM (VALUES
+ ('gabriel.mayanga@escuelajuridica.edu.pe','tributacion-empresarial'),
+ ('joel.saldana@escuelajuridica.edu.pe','tributacion-empresarial'),
+ ('juan.morales@escuelajuridica.edu.pe','derecho-urbanistico')
+) v(correo,slug)
+JOIN usuario u ON u.correo=v.correo
+JOIN curso c ON c.url_amigable=v.slug
+JOIN usuario a ON a.correo='admin@escuelajuridica.edu.pe';
+
+INSERT INTO historial_estado_matricula (matricula_id,estado_nuevo,realizado_por_usuario_id)
+SELECT m.matricula_id,m.estado,m.creado_por_usuario_id FROM matricula m
+WHERE m.matricula_id NOT IN (SELECT h.matricula_id FROM historial_estado_matricula h);
+
+INSERT INTO progreso_leccion (matricula_id,leccion_id,forma_completado,completada,completada_en)
+SELECT m.matricula_id,l.leccion_id,'CONFIRMACION',true,CURRENT_TIMESTAMP-interval '5 days'
+FROM matricula m JOIN usuario u ON u.usuario_id=m.usuario_id
+JOIN curso c ON c.curso_id=m.curso_id
+JOIN modulo mo ON mo.curso_id=c.curso_id
+JOIN leccion l ON l.modulo_id=mo.modulo_id
+WHERE (u.correo IN ('gabriel.mayanga@escuelajuridica.edu.pe','joel.saldana@escuelajuridica.edu.pe')
+       AND c.url_amigable='tributacion-empresarial')
+   OR (u.correo='juan.morales@escuelajuridica.edu.pe' AND c.url_amigable='derecho-urbanistico');
+
+INSERT INTO intento_examen
+    (matricula_id,examen_id,numero_intento,estado,puntaje_obtenido,puntaje_total,nota,aprobado,
+     iniciado_en,enviado_en,calificado_en)
+SELECT m.matricula_id,e.examen_id,1,'CALIFICADO',15,20,15,true,
+       CURRENT_TIMESTAMP-interval '6 days',CURRENT_TIMESTAMP-interval '6 days',CURRENT_TIMESTAMP-interval '6 days'
+FROM matricula m JOIN usuario u ON u.usuario_id=m.usuario_id
+JOIN curso c ON c.curso_id=m.curso_id JOIN examen e ON e.curso_id=c.curso_id
+WHERE u.correo IN ('gabriel.mayanga@escuelajuridica.edu.pe','joel.saldana@escuelajuridica.edu.pe')
+  AND c.url_amigable='tributacion-empresarial';
+
+INSERT INTO logro_certificacion
+    (matricula_id,estado,nota_final,progreso_final,nivel,fecha_finalizacion,fecha_emision_programada,
+     datos_confirmados_en,nombres_confirmados)
+SELECT m.matricula_id,
+       CASE WHEN u.correo LIKE 'gabriel%' THEN 'ESPERA' ELSE 'DATOS_PENDIENTES' END,
+       15,100,'NORMAL',CURRENT_TIMESTAMP-interval '5 days',CURRENT_TIMESTAMP-interval '3 days',
+       CASE WHEN u.correo LIKE 'gabriel%' THEN CURRENT_TIMESTAMP-interval '4 days' END,
+       CASE WHEN u.correo LIKE 'gabriel%' THEN 'Gabriel Antonio Mayanga Cabrera' END
+FROM matricula m JOIN usuario u ON u.usuario_id=m.usuario_id
+JOIN curso c ON c.curso_id=m.curso_id
+WHERE u.correo IN ('gabriel.mayanga@escuelajuridica.edu.pe','joel.saldana@escuelajuridica.edu.pe')
+  AND c.url_amigable='tributacion-empresarial';
+
+-- (3) Certificado anulado: se ve como no valido en "Mis certificados" y en la verificacion publica.
+INSERT INTO logro_certificacion
+    (matricula_id,estado,nota_final,progreso_final,nivel,fecha_finalizacion,fecha_emision_programada,
+     datos_confirmados_en,nombres_confirmados)
+SELECT m.matricula_id,'EMITIDO',17,100,'REFRENDADO',m.fecha_finalizacion,m.fecha_finalizacion,
+       m.fecha_finalizacion,'Juan Jose Morales Velasquez'
+FROM matricula m JOIN usuario u ON u.usuario_id=m.usuario_id
+JOIN curso c ON c.curso_id=m.curso_id
+WHERE u.correo='juan.morales@escuelajuridica.edu.pe' AND c.url_amigable='derecho-urbanistico';
+
+INSERT INTO certificado
+    (logro_certificacion_id,codigo,estado,tipo_emision,nivel,nombres_impresos,
+     titulo_curso_impreso,tipo_curso_impreso,horas_impresas,fecha_inicio_impresa,
+     fecha_fin_impresa,lugar_emision,entidad_impresa,nota_impresa,archivo_pdf_url,emitido_en,
+     anulado_en,motivo_anulacion)
+SELECT lc.logro_certificacion_id,'ESEJUR-2026-DEMO-0002','ANULADO','SOLICITADA',lc.nivel,
+       lc.nombres_confirmados,c.titulo,tc.nombre,c.horas_academicas,
+       (m.fecha_matricula AT TIME ZONE 'America/Lima')::date,
+       (lc.fecha_finalizacion AT TIME ZONE 'America/Lima')::date,
+       'Lima, Peru',ec.nombre,lc.nota_final,'certificados/ESEJUR-2026-DEMO-0002.pdf',
+       CURRENT_TIMESTAMP-interval '10 days',CURRENT_TIMESTAMP-interval '1 day',
+       'Emitido por error administrativo: el alumno solicito su correccion.'
+FROM logro_certificacion lc JOIN matricula m ON m.matricula_id=lc.matricula_id
+JOIN usuario u ON u.usuario_id=m.usuario_id
+JOIN curso c ON c.curso_id=m.curso_id JOIN tipo_curso tc ON tc.tipo_curso_id=c.tipo_curso_id
+LEFT JOIN entidad_certificadora ec ON ec.entidad_certificadora_id=c.entidad_certificadora_id
+WHERE u.correo='juan.morales@escuelajuridica.edu.pe' AND c.url_amigable='derecho-urbanistico';
+
+INSERT INTO certificado_firmante
+    (certificado_id,firmante_id,orden,nombre_impreso,cargo_impreso,imagen_firma_url)
+SELECT ce.certificado_id,f.firmante_id,cf.orden,
+       concat_ws(' ',p.nombres,p.apellido_paterno,p.apellido_materno),f.cargo_firma,f.imagen_firma_url
+FROM certificado ce JOIN logro_certificacion lc ON lc.logro_certificacion_id=ce.logro_certificacion_id
+JOIN matricula m ON m.matricula_id=lc.matricula_id
+JOIN curso_firmante cf ON cf.curso_id=m.curso_id
+JOIN firmante f ON f.firmante_id=cf.firmante_id JOIN persona p ON p.persona_id=f.persona_id
+WHERE ce.codigo='ESEJUR-2026-DEMO-0002';
+
+INSERT INTO historial_certificado
+    (certificado_id,accion,datos_anteriores,datos_nuevos,motivo,realizado_por_usuario_id,realizado_en)
+SELECT ce.certificado_id,'ANULACION','Estado: VIGENTE','Estado: ANULADO',ce.motivo_anulacion,a.usuario_id,
+       ce.anulado_en
+FROM certificado ce JOIN usuario a ON a.correo='admin@escuelajuridica.edu.pe'
+WHERE ce.codigo='ESEJUR-2026-DEMO-0002';
 
 -- Queja respondida para probar el libro de reclamaciones.
 INSERT INTO reclamacion

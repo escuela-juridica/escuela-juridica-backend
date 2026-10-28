@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Function;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -47,7 +48,13 @@ public class CertificadoPdfExport {
     private final PDFont negrita = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
     private final PDFont cursiva = new PDType1Font(Standard14Fonts.FontName.HELVETICA_OBLIQUE);
 
-    public byte[] generar(Certificado certificado, List<CertificadoFirmante> firmantes, String urlVerificacion) {
+    /**
+     * @param imagenes resuelve la referencia de una imagen (firma o logo) a sus bytes; devuelve {@code null}
+     *                 si no está disponible, y entonces el certificado sale solo con el texto
+     * @param logoEntidadUrl referencia del logo de la entidad refrendante, o {@code null}
+     */
+    public byte[] generar(Certificado certificado, List<CertificadoFirmante> firmantes, String urlVerificacion,
+            Function<String, byte[]> imagenes, String logoEntidadUrl) {
         try (PDDocument documento = new PDDocument(); ByteArrayOutputStream salida = new ByteArrayOutputStream()) {
             PDRectangle tamano = new PDRectangle(PDRectangle.A4.getHeight(), PDRectangle.A4.getWidth());
             PDPage pagina = new PDPage(tamano);
@@ -90,7 +97,10 @@ public class CertificadoPdfExport {
                 texto(c, normal, 12, GRIS, certificado.getLugarEmision() + ", "
                         + fechaLarga(certificado.getEmitidoEn().atZone(LIMA).toLocalDate()), ancho, y - 8);
 
-                firmas(c, firmantes, ancho);
+                firmas(documento, c, firmantes, ancho, imagenes);
+                if ("REFRENDADO".equals(certificado.getNivel())) {
+                    imagen(documento, c, imagenes.apply(logoEntidadUrl), ancho - 40 - 130, 38, 130, 52, true);
+                }
                 qr(c, urlVerificacion, 40, 38, 84);
                 c.beginText();
                 c.setFont(normal, 8);
@@ -156,7 +166,25 @@ public class CertificadoPdfExport {
         c.endText();
     }
 
-    private void firmas(PDPageContentStream c, List<CertificadoFirmante> firmantes, float ancho) throws IOException {
+    /** Dibuja la imagen dentro de la caja dada, conservando su proporción; ignora lo que no sea una imagen válida. */
+    private void imagen(PDDocument documento, PDPageContentStream c, byte[] bytes, float x, float y, float anchoMaximo,
+            float altoMaximo, boolean alineadaALaDerecha) {
+        if (bytes == null) {
+            return;
+        }
+        try {
+            PDImageXObject imagen = PDImageXObject.createFromByteArray(documento, bytes, "imagen");
+            float escala = Math.min(anchoMaximo / imagen.getWidth(), altoMaximo / imagen.getHeight());
+            float w = imagen.getWidth() * escala;
+            float h = imagen.getHeight() * escala;
+            c.drawImage(imagen, alineadaALaDerecha ? x + anchoMaximo - w : x + (anchoMaximo - w) / 2, y, w, h);
+        } catch (IOException | RuntimeException e) {
+            // Una imagen ilegible no impide emitir el certificado.
+        }
+    }
+
+    private void firmas(PDDocument documento, PDPageContentStream c, List<CertificadoFirmante> firmantes, float ancho,
+            Function<String, byte[]> imagenes) throws IOException {
         if (firmantes.isEmpty()) {
             return;
         }
@@ -166,6 +194,7 @@ public class CertificadoPdfExport {
         for (int i = 0; i < usados.size(); i++) {
             CertificadoFirmante f = usados.get(i);
             float centro = inicio + zona * i + zona / 2;
+            imagen(documento, c, imagenes.apply(f.getImagenFirmaUrl()), centro - 80, 114, 160, 48, false);
             linea(c, centro - 95, 110, centro + 95, 110);
             centrar(c, negrita, 10, Color.BLACK, f.getNombreImpreso(), centro, 96);
             centrar(c, cursiva, 9, GRIS, f.getCargoImpreso(), centro, 83);

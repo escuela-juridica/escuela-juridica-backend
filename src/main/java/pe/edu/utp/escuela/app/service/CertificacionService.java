@@ -92,6 +92,7 @@ public class CertificacionService {
     private final AvanceAcademicoService avanceAcademico;
     private final ArchivoAlmacenamientoService archivos;
     private final CertificadoPdfExport pdf;
+    private final ImagenCertificadoService imagenes;
     private final CurrentUserService actual;
     private final PlatformTransactionManager transacciones;
     private final Clock clock;
@@ -367,7 +368,9 @@ public class CertificacionService {
         certificadoFirmantes.saveAll(firmantes);
 
         String verificacion = frontendBaseUrl + "/verificar-certificado?codigo=" + c.getCodigo();
-        archivos.guardarBytes("certificados", c.getCodigo() + ".pdf", pdf.generar(c, firmantes, verificacion));
+        String logoEntidad = curso.getEntidadCertificadora() != null ? curso.getEntidadCertificadora().getLogoUrl() : null;
+        archivos.guardarBytes("certificados", c.getCodigo() + ".pdf",
+                pdf.generar(c, firmantes, verificacion, imagenes::cargar, logoEntidad));
 
         logro.setEstado(LogroCertificacion.EMITIDO);
         logro.setNotaFinal(s.nota());
