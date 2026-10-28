@@ -9,6 +9,7 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.edu.utp.escuela.app.dto.AsistenciaSesionRespuesta;
 import pe.edu.utp.escuela.app.dto.CancelarSesionPeticion;
 import pe.edu.utp.escuela.app.dto.CorregirAsistenciaPeticion;
 import pe.edu.utp.escuela.app.dto.CorregirEnlaceSesionPeticion;
@@ -155,6 +156,16 @@ public class AdministrarSesionesServicio {
         a.setRegistradaPorUsuarioId(actual.get().userId());
         a.setModificadaEn(clock.instant());
         asistencias.save(a);
+    }
+
+    /** HU-027 — Lista la asistencia de una sesión ya realizada, para el modal "Corregir". */
+    @Transactional(readOnly = true)
+    public List<AsistenciaSesionRespuesta> listarAsistencias(Long leccionId) {
+        exigirAdministrador();
+        return asistencias.buscarDeLeccionConAlumno(leccionId).stream()
+                .map(a -> new AsistenciaSesionRespuesta(a.getId(), a.getMatricula().getId(),
+                        a.getMatricula().getUsuario().getPersona().nombreCompleto(), a.getEstado()))
+                .toList();
     }
 
     @Transactional(readOnly = true)

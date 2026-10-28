@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import pe.edu.utp.escuela.app.dto.ActivoPeticion;
 import pe.edu.utp.escuela.app.dto.ActualizarMaterialPeticion;
+import pe.edu.utp.escuela.app.dto.AsistenciaSesionRespuesta;
 import pe.edu.utp.escuela.app.dto.ActualizarSesionPeticion;
 import pe.edu.utp.escuela.app.dto.CancelarSesionPeticion;
 import pe.edu.utp.escuela.app.dto.CorregirAsistenciaPeticion;
@@ -189,6 +190,14 @@ public class ContenidoControlador {
             @PathVariable Long id, @Valid @RequestBody CorregirAsistenciaPeticion p) {
         administrarSesionesServicio.corregirAsistencia(id, p);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/lecciones/{id}/sesion/asistencias")
+    @Operation(summary = "Consultar la asistencia de una sesión",
+            description = "HU-027. Alumno, estado de asistencia y su identificador, para el modal de corrección.")
+    public ResponseEntity<List<AsistenciaSesionRespuesta>> asistenciasSesion(@PathVariable Long id) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(administrarSesionesServicio.listarAsistencias(id));
     }
 
     @GetMapping("/lecciones/{id}/sesion/historial")
