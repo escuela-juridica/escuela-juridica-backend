@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
@@ -20,8 +21,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import pe.edu.utp.escuela.app.dto.CertificacionResponse;
 import pe.edu.utp.escuela.app.dto.ConfirmarDatosRequest;
+import pe.edu.utp.escuela.app.dto.MiCertificadoResponse;
 import pe.edu.utp.escuela.app.service.CertificacionService;
 import pe.edu.utp.escuela.app.service.CertificacionService.Descarga;
+import pe.edu.utp.escuela.app.service.MisCertificadosService;
 
 @RestController
 @RequestMapping("/api/app")
@@ -32,6 +35,7 @@ import pe.edu.utp.escuela.app.service.CertificacionService.Descarga;
 public class CertificacionController {
 
     private final CertificacionService service;
+    private final MisCertificadosService misCertificados;
 
     @GetMapping("/cursos/{cursoId}/certificacion")
     @Operation(summary = "Consultar la situación de mi certificado en un curso",
@@ -61,6 +65,15 @@ public class CertificacionController {
     @ApiResponse(responseCode = "400", description = "Todavía no se puede emitir o ya fue emitido")
     public CertificacionResponse emitir(@PathVariable Long cursoId) {
         return service.emitirAhora(cursoId);
+    }
+
+    @GetMapping("/certificados")
+    @Operation(summary = "Listar mis certificados",
+            description = "Solo los del alumno autenticado, del más reciente al más antiguo. Un certificado anulado "
+                    + "se lista como no válido y sin enlace de descarga.")
+    @ApiResponse(responseCode = "403", description = "La cuenta autenticada no tiene rol Alumno")
+    public List<MiCertificadoResponse> misCertificados() {
+        return misCertificados.listar();
     }
 
     @GetMapping("/certificados/{codigo}/descargar")
