@@ -6,8 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.EntityGraph;
-import pe.edu.utp.escuela.app.dto.DuracionLeccionFila;
-import pe.edu.utp.escuela.app.dto.RecursoVistaPreviaFila;
+import pe.edu.utp.escuela.app.dto.DuracionLeccionRow;
+import pe.edu.utp.escuela.app.dto.RecursoVistaPreviaRow;
 import pe.edu.utp.escuela.app.entity.MaterialLeccion;
 
 public interface MaterialLeccionRepository extends JpaRepository<MaterialLeccion, Long> {
@@ -30,10 +30,10 @@ public interface MaterialLeccionRepository extends JpaRepository<MaterialLeccion
               and ml.activo = true and r.activo = true and r.tipo = 'VIDEO'
             group by ml.leccion.id
             """)
-    List<DuracionLeccionFila> buscarDuraciones(@Param("leccionIds") Collection<Long> leccionIds);
+    List<DuracionLeccionRow> buscarDuraciones(@Param("leccionIds") Collection<Long> leccionIds);
 
     @Query("""
-            select new pe.edu.utp.escuela.app.dto.RecursoVistaPreviaFila(
+            select new pe.edu.utp.escuela.app.dto.RecursoVistaPreviaRow(
                 l.id, ml.id, ml.titulo, ml.orden, r.tipo, r.origen,
                 r.referencia, r.nombreArchivo, r.tipoMime, r.duracionSegundos,
                 ml.permiteDescarga)
@@ -45,7 +45,7 @@ public interface MaterialLeccionRepository extends JpaRepository<MaterialLeccion
               and ml.activo = true and r.activo = true
             order by ml.orden
             """)
-    List<RecursoVistaPreviaFila> buscarVistaPrevia(
+    List<RecursoVistaPreviaRow> buscarVistaPrevia(
             @Param("slug") String slug, @Param("leccionId") Long leccionId);
 
     /** HU-026: lecciones (de las dadas) que ya tienen al menos un material activo, p. ej. la grabación. */

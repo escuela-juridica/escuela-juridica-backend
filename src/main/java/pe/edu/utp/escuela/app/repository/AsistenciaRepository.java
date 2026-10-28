@@ -9,8 +9,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import pe.edu.utp.escuela.app.dto.MatriculaAlcanceFila;
-import pe.edu.utp.escuela.app.dto.ReporteAsistenciaFila;
+import pe.edu.utp.escuela.app.dto.MatriculaAlcanceRow;
+import pe.edu.utp.escuela.app.dto.ReporteAsistenciaRow;
 import pe.edu.utp.escuela.app.entity.Asistencia;
 
 public interface AsistenciaRepository extends JpaRepository<Asistencia, Long> {
@@ -48,7 +48,7 @@ public interface AsistenciaRepository extends JpaRepository<Asistencia, Long> {
             """;
 
     String SELECCION_REPORTE = """
-            select new pe.edu.utp.escuela.app.dto.ReporteAsistenciaFila(
+            select new pe.edu.utp.escuela.app.dto.ReporteAsistenciaRow(
                 m.id, c.id, c.titulo, c.modalidad, l.id, l.titulo, mo.titulo, l.fechaHoraInicio,
                 concat(p.nombres, ' ', p.apellidoPaterno), u.correo,
                 coalesce(a.estado, 'PENDIENTE'),
@@ -82,7 +82,7 @@ public interface AsistenciaRepository extends JpaRepository<Asistencia, Long> {
 
     @Query(value = SELECCION_REPORTE + ALCANCE_REPORTE + ORDEN_REPORTE,
             countQuery = "select count(l) " + ALCANCE_REPORTE)
-    Page<ReporteAsistenciaFila> buscarReporte(
+    Page<ReporteAsistenciaRow> buscarReporte(
             @Param("texto") String texto, @Param("cursoId") Long cursoId,
             @Param("sesionId") Long sesionId, @Param("modalidad") String modalidad,
             @Param("desde") Instant desde, @Param("hasta") Instant hasta,
@@ -91,7 +91,7 @@ public interface AsistenciaRepository extends JpaRepository<Asistencia, Long> {
             @Param("matriculaIds") Collection<Long> matriculaIds, Pageable pageable);
 
     @Query(SELECCION_REPORTE + ALCANCE_REPORTE + ORDEN_REPORTE)
-    List<ReporteAsistenciaFila> exportarReporte(
+    List<ReporteAsistenciaRow> exportarReporte(
             @Param("texto") String texto, @Param("cursoId") Long cursoId,
             @Param("sesionId") Long sesionId, @Param("modalidad") String modalidad,
             @Param("desde") Instant desde, @Param("hasta") Instant hasta,
@@ -102,7 +102,7 @@ public interface AsistenciaRepository extends JpaRepository<Asistencia, Long> {
     /** HU-045: matrículas en alcance del reporte (por curso, modalidad y texto), sobre las que se
      * calcula el cumplimiento del mínimo antes de filtrar filas por cumplimiento. */
     @Query("""
-            select distinct new pe.edu.utp.escuela.app.dto.MatriculaAlcanceFila(m.id, c.id) from Matricula m
+            select distinct new pe.edu.utp.escuela.app.dto.MatriculaAlcanceRow(m.id, c.id) from Matricula m
             join m.curso c join m.usuario u join u.persona p
             where c.modalidad in ('EN_VIVO', 'HIBRIDO') and m.estado in ('ACTIVA', 'VENCIDA')
               and (:cursoId is null or c.id = :cursoId)
@@ -111,7 +111,7 @@ public interface AsistenciaRepository extends JpaRepository<Asistencia, Long> {
                    or lower(u.correo) like concat('%', :texto, '%')
                    or lower(concat(p.nombres, ' ', p.apellidoPaterno)) like concat('%', :texto, '%'))
             """)
-    List<MatriculaAlcanceFila> matriculasEnAlcance(
+    List<MatriculaAlcanceRow> matriculasEnAlcance(
             @Param("texto") String texto, @Param("cursoId") Long cursoId,
             @Param("modalidad") String modalidad);
 }

@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.DuracionLeccionFila;
+import pe.edu.utp.escuela.app.dto.DuracionLeccionRow;
 import pe.edu.utp.escuela.app.dto.ErrorValidacionCurso;
 import pe.edu.utp.escuela.app.dto.ModalidadCurso;
 import pe.edu.utp.escuela.app.dto.TipoVentaCurso;
@@ -282,7 +282,7 @@ public class PublicacionService {
         // Recorre todos los videos de la lista, no solo el primero fuera de rango: así el
         // administrador ve de una vez cuáles lecciones necesitan ajustar su duración, no una por
         // revisión.
-        for (DuracionLeccionFila fila : materiales.buscarDuraciones(idsGrabadas)) {
+        for (DuracionLeccionRow fila : materiales.buscarDuraciones(idsGrabadas)) {
             Integer segundos = fila.getDuracionSegundos();
             if (segundos == null) {
                 continue;

@@ -8,14 +8,14 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.DocenteFichaFila;
+import pe.edu.utp.escuela.app.dto.DocenteFichaRow;
 import pe.edu.utp.escuela.app.dto.DocenteFichaResponse;
-import pe.edu.utp.escuela.app.dto.DuracionLeccionFila;
+import pe.edu.utp.escuela.app.dto.DuracionLeccionRow;
 import pe.edu.utp.escuela.app.dto.EstadoComercialResponse;
 import pe.edu.utp.escuela.app.dto.FichaCursoResponse;
 import pe.edu.utp.escuela.app.dto.LeccionFichaResponse;
 import pe.edu.utp.escuela.app.dto.ModuloFichaResponse;
-import pe.edu.utp.escuela.app.dto.RecursoVistaPreviaFila;
+import pe.edu.utp.escuela.app.dto.RecursoVistaPreviaRow;
 import pe.edu.utp.escuela.app.dto.RecursoVistaPreviaResponse;
 import pe.edu.utp.escuela.app.dto.VistaPreviaResponse;
 import pe.edu.utp.escuela.app.entity.Curso;
@@ -53,7 +53,7 @@ public class FichaCursoService {
 
         List<DocenteFichaResponse> docentes = cursoDocenteRepository
                 .buscarDocentesDelCurso(curso.getId()).stream()
-                .sorted(Comparator.comparing(DocenteFichaFila::orden))
+                .sorted(Comparator.comparing(DocenteFichaRow::orden))
                 .map(this::mapearDocente)
                 .toList();
 
@@ -71,8 +71,8 @@ public class FichaCursoService {
                 : materialLeccionRepository.buscarDuraciones(leccionIds).stream()
                         .filter(fila -> fila.getDuracionSegundos() != null)
                         .collect(Collectors.toMap(
-                                DuracionLeccionFila::getLeccionId,
-                                DuracionLeccionFila::getDuracionSegundos));
+                                DuracionLeccionRow::getLeccionId,
+                                DuracionLeccionRow::getDuracionSegundos));
 
         Map<Long, List<Leccion>> leccionesPorModulo = lecciones.stream()
                 .collect(Collectors.groupingBy(
@@ -113,7 +113,7 @@ public class FichaCursoService {
 
     @Transactional(readOnly = true)
     public VistaPreviaResponse obtenerVistaPrevia(String urlAmigable, Long leccionId) {
-        List<RecursoVistaPreviaFila> filas = materialLeccionRepository
+        List<RecursoVistaPreviaRow> filas = materialLeccionRepository
                 .buscarVistaPrevia(urlAmigable, leccionId);
         if (filas.isEmpty()) {
             throw new ResourceNotFoundException("No se encontró la vista previa solicitada");
@@ -160,7 +160,7 @@ public class FichaCursoService {
                 estado.action().name());
     }
 
-    private DocenteFichaResponse mapearDocente(DocenteFichaFila fila) {
+    private DocenteFichaResponse mapearDocente(DocenteFichaRow fila) {
         return new DocenteFichaResponse(
                 fila.personaId(),
                 componerNombre(fila.nombres(), fila.apellidoPaterno(), fila.apellidoMaterno()),

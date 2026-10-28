@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utp.escuela.app.dto.CondicionAvanceResponse;
 import pe.edu.utp.escuela.app.dto.OpcionAsistenciaResponse;
-import pe.edu.utp.escuela.app.dto.PendienteRevisionFila;
+import pe.edu.utp.escuela.app.dto.PendienteRevisionRow;
 import pe.edu.utp.escuela.app.dto.ReporteAcademicoResponse;
 import pe.edu.utp.escuela.app.entity.Certificado;
 import pe.edu.utp.escuela.app.entity.Matricula;
@@ -146,15 +146,15 @@ public class ReporteAcademicoService {
             return List.of();
         }
         List<Long> ids = lista.stream().map(Matricula::getId).toList();
-        Map<Long, PendienteRevisionFila> pendientes = respuestas.pendientesPorMatricula(ids).stream()
-                .collect(Collectors.toMap(PendienteRevisionFila::matriculaId, f -> f, (a, b) -> a));
+        Map<Long, PendienteRevisionRow> pendientes = respuestas.pendientesPorMatricula(ids).stream()
+                .collect(Collectors.toMap(PendienteRevisionRow::matriculaId, f -> f, (a, b) -> a));
         Map<Long, Certificado> certificadoPorMatricula = certificados.findByLogro_Matricula_IdIn(ids).stream()
                 .collect(Collectors.toMap(c -> c.getLogro().getMatricula().getId(), c -> c, (a, b) -> a));
         return lista.stream().map(m -> fila(m, avanceAcademico.calcular(m), pendientes.get(m.getId()),
                 certificadoPorMatricula.get(m.getId()))).toList();
     }
 
-    private ReporteAcademicoResponse fila(Matricula m, AvanceAcademico avance, PendienteRevisionFila pendiente,
+    private ReporteAcademicoResponse fila(Matricula m, AvanceAcademico avance, PendienteRevisionRow pendiente,
             Certificado certificado) {
         boolean exigeExamenes = avance.ruta().regla().isRequiereExamenes();
         List<String> condicionesPendientes = avance.condiciones().stream()

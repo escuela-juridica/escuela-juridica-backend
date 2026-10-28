@@ -1,6 +1,6 @@
 package pe.edu.utp.escuela.app.dto;
 
-public record RecursoVistaPreviaFila(
+public record RecursoVistaPreviaRow(
         Long leccionId,
         Long materialLeccionId,
         String titulo,

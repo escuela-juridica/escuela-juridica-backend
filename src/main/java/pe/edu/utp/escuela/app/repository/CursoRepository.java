@@ -11,7 +11,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
-import pe.edu.utp.escuela.app.dto.CursoTarjetaFila;
+import pe.edu.utp.escuela.app.dto.CursoTarjetaRow;
 import pe.edu.utp.escuela.app.entity.Curso;
 
 public interface CursoRepository extends JpaRepository<Curso, Long> {
@@ -67,7 +67,7 @@ public interface CursoRepository extends JpaRepository<Curso, Long> {
     List<String> buscarBeneficiosSugeridos(@Param("texto") String texto);
 
     @Query(value = """
-            select new pe.edu.utp.escuela.app.dto.CursoTarjetaFila(
+            select new pe.edu.utp.escuela.app.dto.CursoTarjetaRow(
                 c.id, c.urlAmigable, c.titulo, c.descripcion, c.imagenPortadaUrl,
                 c.modalidad, c.tipoVenta, c.destacado, c.precioRegular,
                 c.precioPromocional, c.promocionInicioEn, c.promocionFinEn,
@@ -105,7 +105,7 @@ public interface CursoRepository extends JpaRepository<Curso, Long> {
               and (:tipo = '' or t.codigo = :tipo)
               and (:categoria = '' or ca.codigo = :categoria)
             """)
-    Page<CursoTarjetaFila> buscarPublicados(
+    Page<CursoTarjetaRow> buscarPublicados(
             @Param("texto") String texto,
             @Param("tipo") String tipo,
             @Param("categoria") String categoria,

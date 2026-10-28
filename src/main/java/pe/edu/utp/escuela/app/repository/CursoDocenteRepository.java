@@ -6,8 +6,8 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import pe.edu.utp.escuela.app.dto.DocenteCursoFila;
-import pe.edu.utp.escuela.app.dto.DocenteFichaFila;
+import pe.edu.utp.escuela.app.dto.DocenteCursoRow;
+import pe.edu.utp.escuela.app.dto.DocenteFichaRow;
 import pe.edu.utp.escuela.app.entity.CursoDocente;
 import pe.edu.utp.escuela.app.entity.CursoDocenteId;
 
@@ -21,7 +21,7 @@ public interface CursoDocenteRepository extends JpaRepository<CursoDocente, Curs
     void deleteAllByCurso_Id(Long cursoId);
 
     @Query("""
-            select new pe.edu.utp.escuela.app.dto.DocenteCursoFila(
+            select new pe.edu.utp.escuela.app.dto.DocenteCursoRow(
                 cd.curso.id, p.id, p.nombres, p.apellidoPaterno,
                 p.apellidoMaterno, p.fotoUrl, p.cargoProfesional, cd.orden)
             from CursoDocente cd
@@ -29,10 +29,10 @@ public interface CursoDocenteRepository extends JpaRepository<CursoDocente, Curs
             where cd.curso.id in :cursoIds and p.activo = true
             order by cd.curso.id, cd.orden
             """)
-    List<DocenteCursoFila> buscarDocentesDeCursos(@Param("cursoIds") Collection<Long> cursoIds);
+    List<DocenteCursoRow> buscarDocentesDeCursos(@Param("cursoIds") Collection<Long> cursoIds);
 
     @Query("""
-            select new pe.edu.utp.escuela.app.dto.DocenteFichaFila(
+            select new pe.edu.utp.escuela.app.dto.DocenteFichaRow(
                 p.id, p.nombres, p.apellidoPaterno, p.apellidoMaterno,
                 p.fotoUrl, p.cargoProfesional, p.biografiaProfesional, cd.orden)
             from CursoDocente cd
@@ -40,5 +40,5 @@ public interface CursoDocenteRepository extends JpaRepository<CursoDocente, Curs
             where cd.curso.id = :cursoId and p.activo = true
             order by cd.orden
             """)
-    List<DocenteFichaFila> buscarDocentesDelCurso(@Param("cursoId") Long cursoId);
+    List<DocenteFichaRow> buscarDocentesDelCurso(@Param("cursoId") Long cursoId);
 }

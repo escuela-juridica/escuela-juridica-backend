@@ -13,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utp.escuela.app.dto.AulaResponse;
-import pe.edu.utp.escuela.app.dto.DuracionLeccionFila;
+import pe.edu.utp.escuela.app.dto.DuracionLeccionRow;
 import pe.edu.utp.escuela.app.dto.LeccionAulaResponse;
 import pe.edu.utp.escuela.app.dto.ModuloAulaResponse;
 import pe.edu.utp.escuela.app.entity.Leccion;
@@ -75,8 +75,8 @@ public class AulaService {
         Map<Long, Integer> duraciones = idsLecciones.isEmpty() ? Map.of()
                 : materiales.buscarDuraciones(idsLecciones).stream()
                         .filter(f -> f.getDuracionSegundos() != null)
-                        .collect(Collectors.toMap(DuracionLeccionFila::getLeccionId,
-                                DuracionLeccionFila::getDuracionSegundos, (a, b) -> a));
+                        .collect(Collectors.toMap(DuracionLeccionRow::getLeccionId,
+                                DuracionLeccionRow::getDuracionSegundos, (a, b) -> a));
 
         Instant ahora = clock.instant();
         Map<Long, LeccionAulaResponse> respuestaPorLeccion = new java.util.HashMap<>();

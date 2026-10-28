@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 
-public record CursoTarjetaFila(
+public record CursoTarjetaRow(
         Long cursoId,
         String urlAmigable,
         String titulo,

@@ -45,7 +45,7 @@ Todo esto ya existe y se reutiliza, no se recrea:
   recrearlos): `CrearUsuarioAdminRequest`, `CrearUsuarioAdminResponse`, `UsuarioAdminResponse`,
   `ConcederRolRequest`, `CambiarActivoRequest`, `ResetearContrasenaResponse`,
   `RolUsuarioAdmin` (enum `ALUMNO`/`ADMINISTRADOR`, con `codigo()` → `"ROLE_" + name()` y
-  `desdeCodigo(String)`), `UsuarioRolFila` (proyección de `usuario_rol`), `CondicionCuentaAdmin`
+  `desdeCodigo(String)`), `UsuarioRolRow` (proyección de `usuario_rol`), `CondicionCuentaAdmin`
   (enum `NINGUNA`/`PENDIENTE_VERIFICACION`/`CAMBIO_PENDIENTE`/`AMBAS_PENDIENTES`, con el método
   `de(correoVerificado, requiereCambioContrasena)`).
 - `ActualizarPerfilRequest` y `PageResponse<T>` también existen, pero son **compartidos con otras
@@ -325,7 +325,7 @@ import pe.edu.utp.escuela.app.dto.PageResponse;
 import pe.edu.utp.escuela.app.dto.ResetearContrasenaResponse;
 import pe.edu.utp.escuela.app.dto.RolUsuarioAdmin;
 import pe.edu.utp.escuela.app.dto.UsuarioAdminResponse;
-import pe.edu.utp.escuela.app.dto.UsuarioRolFila;
+import pe.edu.utp.escuela.app.dto.UsuarioRolRow;
 import pe.edu.utp.escuela.app.entity.CodigoVerificacionCorreo;
 import pe.edu.utp.escuela.app.entity.Notificacion;
 import pe.edu.utp.escuela.app.entity.Persona;
@@ -375,9 +375,9 @@ public class AdminUsuariosService {
         Page<Usuario> pagina = usuarios.buscarAdministrativos(termino, activo, rolCodigo, pageable);
 
         List<Long> ids = pagina.getContent().stream().map(Usuario::getId).toList();
-        Map<Long, List<UsuarioRolFila>> rolesPorUsuario = ids.isEmpty() ? Map.of()
+        Map<Long, List<UsuarioRolRow>> rolesPorUsuario = ids.isEmpty() ? Map.of()
                 : usuarioRoles.buscarPorUsuarios(ids).stream()
-                        .collect(Collectors.groupingBy(UsuarioRolFila::usuarioId));
+                        .collect(Collectors.groupingBy(UsuarioRolRow::usuarioId));
 
         List<UsuarioAdminResponse> items = pagina.getContent().stream()
                 .map(usuario -> mapear(usuario, rolesPorUsuario.getOrDefault(usuario.getId(), List.of()), null))
@@ -518,9 +518,9 @@ public class AdminUsuariosService {
         exigirAdministrador();
         Usuario usuario = buscarOLanzar(usuarioId);
         Rol rol = rolPorCodigo(rolSolicitado);
-        List<UsuarioRolFila> filas = usuarioRoles.buscarPorUsuario(usuarioId);
+        List<UsuarioRolRow> filas = usuarioRoles.buscarPorUsuario(usuarioId);
 
-        UsuarioRolFila fila = filas.stream()
+        UsuarioRolRow fila = filas.stream()
                 .filter(f -> f.rolCodigo().equals(rol.getCodigo()))
                 .findFirst()
                 .orElse(null);
@@ -543,7 +543,7 @@ public class AdminUsuariosService {
         usuarioRoles.deleteById(new UsuarioRol.Clave(usuarioId, rol.getId()));
 
         if (fila.principal()) {
-            UsuarioRolFila restante = filas.stream()
+            UsuarioRolRow restante = filas.stream()
                     .filter(f -> !f.rolCodigo().equals(rol.getCodigo()))
                     .findFirst()
                     .orElseThrow();
@@ -715,24 +715,24 @@ public class AdminUsuariosService {
     }
 
     private UsuarioAdminResponse detalleDe(Usuario usuario) {
-        List<UsuarioRolFila> filas = usuarioRoles.buscarPorUsuario(usuario.getId());
+        List<UsuarioRolRow> filas = usuarioRoles.buscarPorUsuario(usuario.getId());
         String concedidoPorNombre = filas.stream()
                 .filter(f -> f.rolCodigo().equals(RolUsuarioAdmin.ADMINISTRADOR.codigo()))
                 .findFirst()
-                .map(UsuarioRolFila::asignadoPorUsuarioId)
+                .map(UsuarioRolRow::asignadoPorUsuarioId)
                 .flatMap(usuarios::findWithPersonaById)
                 .map(u -> u.getPersona().nombreCompleto())
                 .orElse(null);
         return mapear(usuario, filas, concedidoPorNombre);
     }
 
-    private UsuarioAdminResponse mapear(Usuario usuario, List<UsuarioRolFila> filas, String concedidoPorNombre) {
+    private UsuarioAdminResponse mapear(Usuario usuario, List<UsuarioRolRow> filas, String concedidoPorNombre) {
         Persona persona = usuario.getPersona();
         List<RolUsuarioAdmin> rolesDeUsuario = filas.stream()
                 .map(f -> RolUsuarioAdmin.desdeCodigo(f.rolCodigo()))
                 .toList();
         RolUsuarioAdmin principal = filas.stream()
-                .filter(UsuarioRolFila::principal)
+                .filter(UsuarioRolRow::principal)
                 .findFirst()
                 .map(f -> RolUsuarioAdmin.desdeCodigo(f.rolCodigo()))
                 .orElse(null);

@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import pe.edu.utp.escuela.app.dto.NotaExamenFila;
+import pe.edu.utp.escuela.app.dto.NotaExamenRow;
 import pe.edu.utp.escuela.app.entity.IntentoExamen;
 
 public interface IntentoExamenRepository extends JpaRepository<IntentoExamen, Long> {
@@ -20,10 +20,10 @@ public interface IntentoExamenRepository extends JpaRepository<IntentoExamen, Lo
     List<Long> idsExamenesAprobados(@Param("matriculaId") Long matriculaId);
 
     /** HU-025: mejor nota calificada por examen de la matrícula. */
-    @Query("select new pe.edu.utp.escuela.app.dto.NotaExamenFila(i.examen.id, max(i.nota)) "
+    @Query("select new pe.edu.utp.escuela.app.dto.NotaExamenRow(i.examen.id, max(i.nota)) "
             + "from IntentoExamen i where i.matricula.id = :matriculaId "
             + "and i.estado = 'CALIFICADO' and i.nota is not null group by i.examen.id")
-    List<NotaExamenFila> mejoresNotas(@Param("matriculaId") Long matriculaId);
+    List<NotaExamenRow> mejoresNotas(@Param("matriculaId") Long matriculaId);
 
     /** HU-028: todos los intentos de la matrícula (la ruta y el aula los agrupan por examen). */
     List<IntentoExamen> findByMatricula_IdOrderByIniciadoEnAsc(Long matriculaId);

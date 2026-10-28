@@ -13,10 +13,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.CursoTarjetaFila;
+import pe.edu.utp.escuela.app.dto.CursoTarjetaRow;
 import pe.edu.utp.escuela.app.dto.CursoTarjetaResponse;
 import pe.edu.utp.escuela.app.dto.DocenteBreveResponse;
-import pe.edu.utp.escuela.app.dto.DocenteCursoFila;
+import pe.edu.utp.escuela.app.dto.DocenteCursoRow;
 import pe.edu.utp.escuela.app.dto.EstadoComercialResponse;
 import pe.edu.utp.escuela.app.dto.FiltrosCursoResponse;
 import pe.edu.utp.escuela.app.dto.OpcionFiltroResponse;
@@ -50,7 +50,7 @@ public class CatalogoService {
     public PageResponse<CursoTarjetaResponse> listar(
             String texto, String tipo, String categoria, int pagina, int tamano) {
         int limite = Math.max(TAMANO_MINIMO, Math.min(tamano, TAMANO_MAXIMO));
-        Page<CursoTarjetaFila> filas = cursoRepository.buscarPublicados(
+        Page<CursoTarjetaRow> filas = cursoRepository.buscarPublicados(
                 normalizarTexto(texto),
                 normalizarCodigo(tipo),
                 normalizarCodigo(categoria),
@@ -61,7 +61,7 @@ public class CatalogoService {
             return PageResponse.from(List.of(), filas);
         }
 
-        List<Long> cursoIds = filas.getContent().stream().map(CursoTarjetaFila::cursoId).toList();
+        List<Long> cursoIds = filas.getContent().stream().map(CursoTarjetaRow::cursoId).toList();
         Map<Long, Long> activas = matriculaRepository.contarActivas(cursoIds);
         Map<Long, List<DocenteBreveResponse>> docentes = agruparDocentes(cursoIds);
 
@@ -91,13 +91,13 @@ public class CatalogoService {
 
     private Map<Long, List<DocenteBreveResponse>> agruparDocentes(List<Long> cursoIds) {
         return cursoDocenteRepository.buscarDocentesDeCursos(cursoIds).stream()
-                .sorted(Comparator.comparing(DocenteCursoFila::orden))
+                .sorted(Comparator.comparing(DocenteCursoRow::orden))
                 .collect(Collectors.groupingBy(
-                        DocenteCursoFila::cursoId,
+                        DocenteCursoRow::cursoId,
                         Collectors.mapping(this::mapearDocente, Collectors.toList())));
     }
 
-    private DocenteBreveResponse mapearDocente(DocenteCursoFila fila) {
+    private DocenteBreveResponse mapearDocente(DocenteCursoRow fila) {
         String nombreCompleto = componerNombre(
                 fila.nombres(), fila.apellidoPaterno(), fila.apellidoMaterno());
         return new DocenteBreveResponse(
@@ -123,7 +123,7 @@ public class CatalogoService {
     }
 
     private CursoTarjetaResponse mapear(
-            CursoTarjetaFila fila, long activas, List<DocenteBreveResponse> docentes) {
+            CursoTarjetaRow fila, long activas, List<DocenteBreveResponse> docentes) {
         CourseCommercialData datos = new CourseCommercialData(
                 fila.modalidad(),
                 fila.tipoVenta(),

@@ -15,9 +15,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.MatriculaAlcanceFila;
+import pe.edu.utp.escuela.app.dto.MatriculaAlcanceRow;
 import pe.edu.utp.escuela.app.dto.OpcionAsistenciaResponse;
-import pe.edu.utp.escuela.app.dto.ReporteAsistenciaFila;
+import pe.edu.utp.escuela.app.dto.ReporteAsistenciaRow;
 import pe.edu.utp.escuela.app.dto.ReporteAsistenciaResponse;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.ReglaCurso;
@@ -65,7 +65,7 @@ public class ReporteAsistenciaService {
         if (consulta.sinResultados) {
             return new PageImpl<>(List.of(), pageable, 0);
         }
-        Page<ReporteAsistenciaFila> pagina = asistencias.buscarReporte(
+        Page<ReporteAsistenciaRow> pagina = asistencias.buscarReporte(
                 consulta.texto, filtro.cursoId(), filtro.sesionId(), consulta.modalidad,
                 consulta.desde, consulta.hasta, consulta.asistencia, consulta.origen,
                 consulta.restringir, consulta.matriculaIds, pageable);
@@ -78,7 +78,7 @@ public class ReporteAsistenciaService {
         if (consulta.sinResultados) {
             return List.of();
         }
-        List<ReporteAsistenciaFila> filas = asistencias.exportarReporte(
+        List<ReporteAsistenciaRow> filas = asistencias.exportarReporte(
                 consulta.texto, filtro.cursoId(), filtro.sesionId(), consulta.modalidad,
                 consulta.desde, consulta.hasta, consulta.asistencia, consulta.origen,
                 consulta.restringir, consulta.matriculaIds);
@@ -156,13 +156,13 @@ public class ReporteAsistenciaService {
         }
         // El cumplimiento depende del porcentaje de cada alumno, que no es una columna: se calcula
         // para las matrículas en alcance y la consulta se restringe a las que lo cumplen o no.
-        List<MatriculaAlcanceFila> enAlcance = asistencias.matriculasEnAlcance(texto, filtro.cursoId(), modalidad);
+        List<MatriculaAlcanceRow> enAlcance = asistencias.matriculasEnAlcance(texto, filtro.cursoId(), modalidad);
         Map<Long, ReglaCurso> reglas = reglasPorCurso(
-                enAlcance.stream().map(MatriculaAlcanceFila::cursoId).distinct().toList());
+                enAlcance.stream().map(MatriculaAlcanceRow::cursoId).distinct().toList());
         List<Long> elegidas = enAlcance.stream()
                 .filter(m -> cumplimiento.equals(cumplimiento(reglas.get(m.cursoId()),
                         sesionAlumno.porcentajeAsistencia(m.matriculaId()))))
-                .map(MatriculaAlcanceFila::matriculaId)
+                .map(MatriculaAlcanceRow::matriculaId)
                 .toList();
         if (elegidas.isEmpty()) {
             return new Consulta(true, texto, modalidad, asistencia, origen, desde, hasta, true, List.of(-1L));
@@ -170,19 +170,19 @@ public class ReporteAsistenciaService {
         return new Consulta(false, texto, modalidad, asistencia, origen, desde, hasta, true, elegidas);
     }
 
-    private java.util.function.Function<ReporteAsistenciaFila, ReporteAsistenciaResponse> enriquecedor(
-            List<ReporteAsistenciaFila> filas) {
+    private java.util.function.Function<ReporteAsistenciaRow, ReporteAsistenciaResponse> enriquecedor(
+            List<ReporteAsistenciaRow> filas) {
         Map<Long, Integer> porcentajes = new HashMap<>();
         Map<Long, Boolean> calculados = new HashMap<>();
-        for (ReporteAsistenciaFila fila : filas) {
+        for (ReporteAsistenciaRow fila : filas) {
             if (calculados.putIfAbsent(fila.matriculaId(), Boolean.TRUE) == null) {
                 porcentajes.put(fila.matriculaId(), sesionAlumno.porcentajeAsistencia(fila.matriculaId()));
             }
         }
         Map<Long, ReglaCurso> reglas = reglasPorCurso(
-                filas.stream().map(ReporteAsistenciaFila::cursoId).distinct().toList());
+                filas.stream().map(ReporteAsistenciaRow::cursoId).distinct().toList());
         Map<Long, Long> cursoPorMatricula = filas.stream().collect(Collectors.toMap(
-                ReporteAsistenciaFila::matriculaId, ReporteAsistenciaFila::cursoId, (a, b) -> a));
+                ReporteAsistenciaRow::matriculaId, ReporteAsistenciaRow::cursoId, (a, b) -> a));
         return fila -> {
             Integer porcentaje = porcentajes.get(fila.matriculaId());
             ReglaCurso regla = reglas.get(cursoPorMatricula.get(fila.matriculaId()));

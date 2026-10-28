@@ -12,7 +12,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import pe.edu.utp.escuela.app.dto.ConteoMatriculaFila;
+import pe.edu.utp.escuela.app.dto.ConteoMatriculaRow;
 import pe.edu.utp.escuela.app.dto.MatriculaAdministrativaResponse;
 import pe.edu.utp.escuela.app.dto.ReporteMatriculaResponse;
 import pe.edu.utp.escuela.app.entity.Matricula;
@@ -128,19 +128,19 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Long> {
             @Param("desde") Instant desde, @Param("hasta") Instant hasta);
 
     @Query("""
-            select new pe.edu.utp.escuela.app.dto.ConteoMatriculaFila(m.curso.id, count(m.id))
+            select new pe.edu.utp.escuela.app.dto.ConteoMatriculaRow(m.curso.id, count(m.id))
             from Matricula m
             where m.curso.id in :cursoIds and m.estado = 'ACTIVA'
             group by m.curso.id
             """)
-    List<ConteoMatriculaFila> contarActivasPorCurso(@Param("cursoIds") Collection<Long> cursoIds);
+    List<ConteoMatriculaRow> contarActivasPorCurso(@Param("cursoIds") Collection<Long> cursoIds);
 
     default Map<Long, Long> contarActivas(Collection<Long> cursoIds) {
         if (cursoIds.isEmpty()) {
             return Map.of();
         }
         return contarActivasPorCurso(cursoIds).stream()
-                .collect(Collectors.toMap(ConteoMatriculaFila::cursoId, ConteoMatriculaFila::activas));
+                .collect(Collectors.toMap(ConteoMatriculaRow::cursoId, ConteoMatriculaRow::activas));
     }
 
     /**
