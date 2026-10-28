@@ -163,6 +163,10 @@ public class ReporteAcademicoService {
         if (avance.bloqueadoPorRevision() && condicionesPendientes.isEmpty()) {
             condicionesPendientes = List.of("Calificación de un examen con respuesta abierta");
         }
+        if ("CANCELADA".equals(m.getEstado())) {
+            // Una matrícula cancelada ya no persigue el certificado: no hay nada "pendiente" que atender.
+            condicionesPendientes = List.of();
+        }
 
         String situacion = "CANCELADA".equals(m.getEstado()) ? "CANCELADA"
                 : avance.bloqueadoPorRevision() ? "EN_REVISION"

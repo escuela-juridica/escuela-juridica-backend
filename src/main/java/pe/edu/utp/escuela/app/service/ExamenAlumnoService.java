@@ -34,6 +34,7 @@ import pe.edu.utp.escuela.app.entity.OpcionPregunta;
 import pe.edu.utp.escuela.app.entity.Pregunta;
 import pe.edu.utp.escuela.app.entity.ReglaCurso;
 import pe.edu.utp.escuela.app.entity.RespuestaIntento;
+import pe.edu.utp.escuela.app.entity.RevisionRespuesta;
 import pe.edu.utp.escuela.app.exception.BusinessValidationException;
 import pe.edu.utp.escuela.app.exception.ForbiddenException;
 import pe.edu.utp.escuela.app.exception.ResourceNotFoundException;
@@ -44,6 +45,7 @@ import pe.edu.utp.escuela.app.repository.OpcionPreguntaRepository;
 import pe.edu.utp.escuela.app.repository.PreguntaRepository;
 import pe.edu.utp.escuela.app.repository.ReglaCursoRepository;
 import pe.edu.utp.escuela.app.repository.RespuestaIntentoRepository;
+import pe.edu.utp.escuela.app.repository.RevisionRespuestaRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.service.RutaAcademicaService.EstadoExamen;
 import pe.edu.utp.escuela.app.service.RutaAcademicaService.RutaAcademica;
@@ -80,6 +82,7 @@ public class ExamenAlumnoService {
     private final IntentoExamenRepository intentos;
     private final RespuestaIntentoRepository respuestas;
     private final ReglaCursoRepository reglasCurso;
+    private final RevisionRespuestaRepository revisiones;
     private final RutaAcademicaService rutaAcademica;
     private final CurrentUserService actual;
     private final Clock clock;
@@ -317,7 +320,7 @@ public class ExamenAlumnoService {
             // Sin nota definitiva mientras haya una abierta por revisar (la califica HU-030).
             intento.setEstado(IntentoExamen.PENDIENTE_REVISION);
         } else {
-            BigDecimal nota = obtenido.multiply(ESCALA).divide(intento.getPuntajeTotal(), 2, RoundingMode.HALF_UP);
+            BigDecimal nota = calcularNota(obtenido, intento.getPuntajeTotal());
             intento.setEstado(IntentoExamen.CALIFICADO);
             intento.setPuntajeObtenido(obtenido);
             intento.setNota(nota);
@@ -325,6 +328,12 @@ public class ExamenAlumnoService {
             intento.setCalificadoEn(momentoEnvio);
         }
         intentos.save(intento);
+    }
+
+    /** Nota sobre 20 con dos decimales, sin penalización. La usan la corrección automática y la calificación
+     * humana (HU-030) para que ambas den siempre el mismo resultado. */
+    public static BigDecimal calcularNota(BigDecimal obtenido, BigDecimal total) {
+        return obtenido.multiply(ESCALA).divide(total, 2, RoundingMode.HALF_UP);
     }
 
     /** Verdadero/falso y selección única/múltiple: solo puntúa si marca todas las correctas y ninguna incorrecta. */
@@ -355,6 +364,12 @@ public class ExamenAlumnoService {
                 .collect(Collectors.toMap(r -> r.getPregunta().getId(), r -> r));
 
         boolean visibles = !enProgreso && respuestasVisibles(examen, matricula);
+        // Lo que decidió el revisor en las respuestas abiertas (puntaje y observación) es del alumno: se ve
+        // siempre que el intento ya fue calificado, aunque el examen no muestre las alternativas correctas.
+        Map<Long, RevisionRespuesta> revisadas = enProgreso ? Map.of() : revisiones
+                .findByRespuestaIntento_IdInOrderByRevisadoEnDesc(
+                        guardadas.values().stream().map(RespuestaIntento::getId).toList())
+                .stream().collect(Collectors.toMap(r -> r.getRespuestaIntento().getId(), r -> r, (a, b) -> a));
         List<PreguntaIntentoResponse> filas = new ArrayList<>();
         int posicion = 1;
         for (Pregunta pregunta : activas) {
@@ -372,12 +387,18 @@ public class ExamenAlumnoService {
             BigDecimal puntaje = null;
             Boolean correcta = null;
             String estadoRevision = null;
+            String observacion = null;
             if (!enProgreso && respuesta != null) {
                 estadoRevision = respuesta.getEstadoRevision();
                 // El detalle por pregunta (puntaje y acierto) es parte de "mostrar respuestas": mientras
                 // el examen no lo permita, el API tampoco lo entrega.
                 if (visibles) {
                     puntaje = respuesta.getPuntajeDefinitivo();
+                }
+                RevisionRespuesta revision = revisadas.get(respuesta.getId());
+                if (abierta && revision != null) {
+                    puntaje = revision.getPuntajeAsignado();
+                    observacion = revision.getObservacion();
                 }
                 if (visibles && !abierta) {
                     correcta = pregunta.getPuntaje().compareTo(respuesta.getPuntajeAutomatico() == null
@@ -389,7 +410,7 @@ public class ExamenAlumnoService {
                     .toList();
             filas.add(new PreguntaIntentoResponse(pregunta.getId(), pregunta.getTipo(), pregunta.getEnunciado(),
                     pregunta.getPuntaje(), posicion++, opcionesDto, seleccionadas, texto, respondida, puntaje,
-                    correcta, estadoRevision));
+                    correcta, estadoRevision, observacion));
         }
 
         Long restantes = enProgreso && intento.getExpiraEn() != null
