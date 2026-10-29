@@ -107,7 +107,9 @@ Variables relevantes de `application.properties` y perfiles (`local`, `dev`, `pr
 - `security.jwt.expiration-minutes=60`, `security.cookie.name=ESEJUR_SESION`
 - `spring.mail.*` — configuración SMTP
 
-El perfil `prod` es el único libre de secretos en el repo: usa exclusivamente variables de entorno (`DB_URL`, `DB_USER`, `DB_PASSWORD`). Los perfiles `local`/`dev` traen credenciales de desarrollo en texto plano para facilitar el trabajo en equipo — no deben usarse fuera de ese contexto.
+El perfil `prod` es el único libre de secretos en el repo: usa exclusivamente variables de entorno (ver "JAR de producción"). Los perfiles `local`/`dev` traen credenciales de desarrollo en texto plano para facilitar el trabajo en equipo — no deben usarse fuera de ese contexto.
+
+**Perfil por defecto:** desde el IDE o con `spring-boot:run` arranca con `local`; el JAR empaquetado arranca con `prod`. Un `--spring.profiles.active=...` o `SPRING_PROFILES_ACTIVE` explícito tiene prioridad sobre ambos.
 
 ## Cómo ejecutar el proyecto
 
@@ -120,4 +122,30 @@ El perfil `prod` es el único libre de secretos en el repo: usa exclusivamente v
    ```
 3. La API queda en `http://localhost:8080`, con Swagger UI en `http://localhost:8080/swagger-ui.html`. Se espera el frontend corriendo en `http://localhost:4200` (origen CORS configurado).
 
-Para otro perfil: `--spring.profiles.active=dev` (o `prod`, con las variables `DB_URL`/`DB_USER`/`DB_PASSWORD` correspondientes).
+Para otro perfil: `--spring.profiles.active=dev` (o `prod`, con las variables de entorno de la sección siguiente).
+
+## JAR de producción
+
+```bash
+./mvnw clean install            # genera target/escuela-juridica-api-0.0.1-SNAPSHOT.jar (con -DskipTests para omitir las pruebas)
+java -jar target/escuela-juridica-api-0.0.1-SNAPSHOT.jar
+```
+
+El JAR arranca con el perfil `prod` sin indicar nada más y **no incluye** `application-local.properties` ni `application-dev.properties`. Si falta alguna de estas variables de entorno, la aplicación no arranca y lo dice en el log:
+
+| Variable | Qué es |
+|---|---|
+| `DB_URL`, `DB_USER`, `DB_PASSWORD` | Base de datos PostgreSQL (`jdbc:postgresql://host:5432/base`) |
+| `JWT_SECRET`, `JWT_VERIFICATION_SECRET` | Secretos para firmar las sesiones y los enlaces de verificación (cadenas largas y aleatorias) |
+| `MAIL_PASSWORD` | Contraseña de la cuenta SMTP |
+| `FRONTEND_BASE_URL` | URL pública del frontend (para los enlaces de los correos) |
+| `CORS_ALLOWED_ORIGIN` | Origen del frontend permitido por CORS |
+
+Además, **sobrescribe con variables de entorno** lo que `application.properties` trae con valores de desarrollo:
+
+| Variable | Qué es |
+|---|---|
+| `ESEJUR_CULQI_PUBLIC_KEY`, `ESEJUR_CULQI_PRIVATE_KEY` | Llaves de Culqi de producción (`pk_live_` / `sk_live_`) |
+| `ESEJUR_CULQI_WEBHOOK_USER`, `ESEJUR_CULQI_WEBHOOK_PASSWORD` | Credenciales del webhook de Culqi (las mismas que registres en CulqiPanel) |
+
+En producción las cookies de sesión van con `Secure`, así que el sitio debe servirse por HTTPS. Los archivos subidos se guardan en la carpeta `uploads` junto al lugar desde donde se lanza el JAR (`esejur.almacenamiento.directorio`); conviene fijarla a una ruta persistente con `ESEJUR_ALMACENAMIENTO_DIRECTORIO`.

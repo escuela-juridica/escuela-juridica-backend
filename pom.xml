@@ -70,7 +70,6 @@
             <artifactId>pdfbox</artifactId>
             <version>3.0.3</version>
         </dependency>
-        <!-- HU-032: código QR del certificado (solo el codificador; sin dependencias transitivas). -->
         <dependency>
             <groupId>com.google.zxing</groupId>
             <artifactId>core</artifactId>
@@ -133,6 +132,16 @@
                             <version>${project.parent.version}</version>
                         </path>
                     </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>application-local.properties</exclude>
+                        <exclude>application-dev.properties</exclude>
+                    </excludes>
                 </configuration>
             </plugin>
             <plugin>
