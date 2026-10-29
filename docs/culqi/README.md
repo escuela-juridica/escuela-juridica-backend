@@ -3,8 +3,9 @@
 Guía para probar la matrícula pagada con **Culqi real** en un entorno de desarrollo: desde crear las llaves y
 exponer el backend con `cloudflared` hasta comprobar el resultado.
 
-> Estado: probado contra el ambiente de integración de Culqi con tarjeta aprobada y tarjeta rechazada. Quedan sin
-> probar Yape y las billeteras (Plin) con webhook.
+> Estado: probado contra el ambiente de integración de Culqi con tarjeta aprobada y rechazada (la tarjeta se
+> desactivó después del checkout), con Yape aprobado y con la generación del QR de billeteras. Queda sin probar el
+> pago real de un QR (billeteras) y su aviso por webhook.
 
 ## 1. Cómo funciona
 
@@ -15,7 +16,8 @@ es integración (dinero ficticio) y `pk_live_`/`sk_live_` es producción.
 Flujo:
 
 1. El alumno elige un curso de pago. El backend crea una **orden** en Culqi (`POST /orders`).
-2. El navegador abre **Culqi Checkout** con esa orden. Se ofrecen tarjeta, Yape y billeteras (Plin).
+2. El navegador abre **Culqi Checkout** con esa orden. Se ofrecen Yape y billeteras digitales (Plin, BBVA, Scotiabank,
+   Ligo, BanBif, Ya con un solo QR). La tarjeta está desactivada en el checkout; las billeteras aceptan de S/ 6 a S/ 500.
 3. **Tarjeta y Yape:** Culqi entrega un token y el backend lo cobra (`POST /charges`). El resultado se conoce al
    instante y **no usa webhook**.
 4. **Billeteras (Plin):** el pago se confirma después. Culqi avisa por **webhook** y el backend vuelve a consultar

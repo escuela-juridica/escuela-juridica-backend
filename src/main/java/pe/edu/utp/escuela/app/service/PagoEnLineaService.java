@@ -3,6 +3,7 @@ package pe.edu.utp.escuela.app.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +22,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import pe.edu.utp.escuela.app.dto.ConstanciaPagoResponse;
+import pe.edu.utp.escuela.app.dto.InstruccionesPagoResponse;
 import pe.edu.utp.escuela.app.dto.PagoCheckoutResponse;
 import pe.edu.utp.escuela.app.dto.PagoDetalleResponse;
 import pe.edu.utp.escuela.app.dto.PagosCursoResponse;
@@ -40,6 +43,7 @@ import pe.edu.utp.escuela.app.exception.ResourceNotFoundException;
 import pe.edu.utp.escuela.app.integration.CulqiIntegration;
 import pe.edu.utp.escuela.app.integration.CulqiIntegration.CheckoutCulqi;
 import pe.edu.utp.escuela.app.integration.CulqiIntegration.CobroConToken;
+import pe.edu.utp.escuela.app.integration.CulqiIntegration.InstruccionesPago;
 import pe.edu.utp.escuela.app.integration.CulqiIntegration.ResultadoCulqi;
 import pe.edu.utp.escuela.app.integration.CulqiIntegration.SolicitudCobro;
 import pe.edu.utp.escuela.app.mail.HtmlMailMessage;
@@ -76,6 +80,10 @@ public class PagoEnLineaService {
     private static final ZoneId LIMA = ZoneId.of("America/Lima");
     private static final DateTimeFormatter FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter FECHA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final Duration INTERVALO_CONSULTA_ORDEN = Duration.ofSeconds(15);
+
+    private final Map<String, Instant> consultasDeOrden = new ConcurrentHashMap<>();
+    private final Map<String, InstruccionesPago> instruccionesPorPedido = new ConcurrentHashMap<>();
 
     private final PagoRepository pagos;
     private final MatriculaRepository matriculas;
@@ -371,13 +379,35 @@ public class PagoEnLineaService {
             Pago pago = propio(numeroPedido);
             return Pago.PENDIENTE.equals(pago.getEstado()) ? pago.getReferenciaExterna() : null;
         });
-        if (orden != null) {
+        if (orden != null && puedeConsultarOrden(numeroPedido)) {
             ResultadoCulqi r = culqi.consultarOrden(orden);
+            if (r != null && r.instrucciones() != null) {
+                instruccionesPorPedido.put(numeroPedido, r.instrucciones());
+            }
             if (r != null && !Pago.PENDIENTE.equals(r.estado())) {
                 aplicar(numeroPedido, r, "consulta:" + orden + ":" + r.estado());
+                consultasDeOrden.remove(numeroPedido);
+                instruccionesPorPedido.remove(numeroPedido);
             }
+        } else if (orden == null) {
+            consultasDeOrden.remove(numeroPedido);
+            instruccionesPorPedido.remove(numeroPedido);
         }
         return new TransactionTemplate(transacciones, soloLectura()).execute(estado -> mapear(propio(numeroPedido)));
+    }
+
+    /**
+     * La pantalla de resultado consulta cada pocos segundos mientras el pago está pendiente; hacia Culqi se consulta la
+     * orden como máximo una vez cada {@link #INTERVALO_CONSULTA_ORDEN} por pedido, para no saturar su API.
+     */
+    private boolean puedeConsultarOrden(String numeroPedido) {
+        Instant ahora = clock.instant();
+        Instant ultima = consultasDeOrden.get(numeroPedido);
+        if (ultima != null && Duration.between(ultima, ahora).compareTo(INTERVALO_CONSULTA_ORDEN) < 0) {
+            return false;
+        }
+        consultasDeOrden.put(numeroPedido, ahora);
+        return true;
     }
 
     @Transactional(readOnly = true)
@@ -449,7 +479,13 @@ public class PagoEnLineaService {
                 p.getNumeroCuotas(), p.getImporte(), p.getMoneda(), p.getPrecioRegularAplicado(),
                 p.getPrecioPromocionalAplicado(), mensaje(p, m), p.getIniciadoEn(), p.getResultadoEn(),
                 p.esAprobado() ? p.getConstanciaNumero() : null, m.getEstado(), acceso,
-                p.esNoAprobadoFinal() && "PENDIENTE_PAGO".equals(m.getEstado()), correo);
+                p.esNoAprobadoFinal() && "PENDIENTE_PAGO".equals(m.getEstado()), instruccionesDe(p), correo);
+    }
+
+    /** El QR de una orden de billetera, recordado desde la última consulta a Culqi mientras el pago siga pendiente. */
+    private InstruccionesPagoResponse instruccionesDe(Pago p) {
+        InstruccionesPago i = Pago.PENDIENTE.equals(p.getEstado()) ? instruccionesPorPedido.get(p.getNumeroPedido()) : null;
+        return i == null ? null : new InstruccionesPagoResponse(i.qrUrl(), i.enlace(), i.codigo(), i.venceEn());
     }
 
     private static String mensaje(Pago p, Matricula m) {

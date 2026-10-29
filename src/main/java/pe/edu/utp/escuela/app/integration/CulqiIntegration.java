@@ -40,6 +40,14 @@ public interface CulqiIntegration {
      * {@code codigo} es el código de Culqi (por ejemplo {@code venta_exitosa} o {@code insufficient_funds}).
      */
     record ResultadoCulqi(String estado, String cargoId, String ordenId, String medio, String ultimosDigitos,
-            Integer cuotas, String codigo, String mensajeUsuario, String numeroPedido, Instant fecha) {
+            Integer cuotas, String codigo, String mensajeUsuario, String numeroPedido, Instant fecha,
+            InstruccionesPago instrucciones) {
+    }
+
+    /**
+     * Lo que el alumno necesita para pagar una orden de billetera: el QR (imagen), el código de pago y la página de
+     * instrucciones de PagoEfectivo. Solo existe cuando la orden ya generó su QR; {@code venceEn} puede ser nulo.
+     */
+    record InstruccionesPago(String qrUrl, String enlace, String codigo, Instant venceEn) {
     }
 }

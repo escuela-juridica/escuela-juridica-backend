@@ -9,7 +9,9 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -71,7 +73,8 @@ public class CulqiRealIntegration implements CulqiIntegration {
         cuerpo.put("amount", s.montoCentimos());
         cuerpo.put("currency_code", s.moneda());
         cuerpo.put("description", s.descripcion());
-        cuerpo.put("order_number", s.numeroPedido());
+        // Culqi exige un order_number único en toda la cuenta: el sufijo evita choques si la numeración local reinicia.
+        cuerpo.put("order_number", s.numeroPedido() + "-" + UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase(Locale.ROOT));
         cuerpo.put("client_details", cliente);
         cuerpo.put("expiration_date", clock.instant().plus(Duration.ofHours(vigenciaOrdenHoras)).getEpochSecond());
         cuerpo.put("confirm", false);
@@ -106,13 +109,13 @@ public class CulqiRealIntegration implements CulqiIntegration {
         if (r.estado() == 0) {
             // Sin respuesta no sabemos si el cobro se hizo: queda PENDIENTE hasta que Culqi lo comunique.
             return new ResultadoCulqi("PENDIENTE", null, null, medio, null, null, "sin_respuesta",
-                    "Todavía no pudimos confirmar el resultado con Culqi.", c.numeroPedido(), clock.instant());
+                    "Todavía no pudimos confirmar el resultado con Culqi.", c.numeroPedido(), clock.instant(), null);
         }
         JsonNode j = r.cuerpo();
         if (r.exitosa() && "venta_exitosa".equals(texto(j.path("outcome"), "type"))) {
             return new ResultadoCulqi("APROBADO", texto(j, "id"), texto(j, "order_id"), medio, ultimosDigitos(j),
                     entero(j, "installments"), "venta_exitosa", textoOr(j.path("outcome"), "user_message",
-                            "Su compra ha sido exitosa."), c.numeroPedido(), clock.instant());
+                            "Su compra ha sido exitosa."), c.numeroPedido(), clock.instant(), null);
         }
         // Rechazo del emisor (card_error) o error de la operación: Culqi lo informa como objeto "error".
         String tipoError = texto(j, "type");
@@ -120,7 +123,7 @@ public class CulqiRealIntegration implements CulqiIntegration {
         String estado = "card_error".equals(tipoError) || codigoRechazo != null ? "RECHAZADO" : "ERROR";
         String codigo = codigoRechazo != null ? codigoRechazo : texto(j, "code");
         return new ResultadoCulqi(estado, texto(j, "charge_id"), null, medio, null, null, codigo,
-                textoOr(j, "user_message", "La operación no pudo completarse."), c.numeroPedido(), clock.instant());
+                textoOr(j, "user_message", "La operación no pudo completarse."), c.numeroPedido(), clock.instant(), null);
     }
 
     @Override
@@ -137,7 +140,33 @@ public class CulqiRealIntegration implements CulqiIntegration {
             default -> "PENDIENTE";
         };
         return new ResultadoCulqi(estado, null, texto(j, "id"), "BILLETERA", null, null, textoOr(j, "state", "pending"),
-                "Estado de la orden informado por Culqi.", texto(j, "order_number"), clock.instant());
+                "Estado de la orden informado por Culqi.", texto(j, "order_number"), clock.instant(), instrucciones(j));
+    }
+
+    private static InstruccionesPago instrucciones(JsonNode orden) {
+        String qr = urlDePagoEfectivo(texto(orden, "qr"));
+        String enlace = urlDePagoEfectivo(texto(orden, "url_pe"));
+        if (qr == null && enlace == null) {
+            return null;
+        }
+        JsonNode vence = orden.path("expiration_date");
+        return new InstruccionesPago(qr, enlace, texto(orden, "payment_code"),
+                vence.isNumber() ? Instant.ofEpochSecond(vence.longValue()) : null);
+    }
+
+    /** Solo se entregan al alumno direcciones https de PagoEfectivo, nunca una URL cualquiera. */
+    private static String urlDePagoEfectivo(String url) {
+        if (url == null) {
+            return null;
+        }
+        try {
+            URI uri = URI.create(url);
+            String host = uri.getHost();
+            boolean esPagoEfectivo = host != null && (host.equals("pagoefectivo.pe") || host.endsWith(".pagoefectivo.pe"));
+            return "https".equals(uri.getScheme()) && esPagoEfectivo ? url : null;
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     @Override
@@ -152,7 +181,7 @@ public class CulqiRealIntegration implements CulqiIntegration {
         return new ResultadoCulqi(exitosa ? "APROBADO" : "RECHAZADO", texto(j, "id"), texto(j, "order_id"),
                 "ype".equals(texto(j.path("source"), "type")) ? "YAPE" : "TARJETA", ultimosDigitos(j),
                 entero(j, "installments"), texto(j.path("outcome"), "type"),
-                textoOr(j.path("outcome"), "user_message", ""), texto(metadata, "numero_pedido"), clock.instant());
+                textoOr(j.path("outcome"), "user_message", ""), texto(metadata, "numero_pedido"), clock.instant(), null);
     }
 
     // ------------------------------------------------------------------------------------------ HTTP --

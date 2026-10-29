@@ -27,5 +27,6 @@ public record PagoDetalleResponse(
         String estadoMatricula,
         boolean accesoConcedido,
         boolean puedeReintentar,
+        InstruccionesPagoResponse instrucciones,
         String estadoCorreo) {
 }
