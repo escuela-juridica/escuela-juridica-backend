@@ -24,6 +24,9 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfException;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.cors.CorsConfigurationSource;
 import pe.edu.utp.escuela.app.dto.ApiErrorResponse;
@@ -150,10 +153,31 @@ public class SecurityConfig {
             BearerTokenResolver sessionCookieBearerTokenResolver,
             JwtAuthenticationConverter jwtAuthenticationConverter,
             JsonMapper jsonMapper,
-            Clock clock) throws Exception {
+            Clock clock,
+            @Value("${security.cookie.secure}") boolean cookieSegura,
+            @Value("${security.cookie.same-site}") String sameSite,
+            @Value("${security.csrf.cookie-domain:}") String dominioCsrf) throws Exception {
+        // CSRF: la sesión viaja en una cookie, así que cada petición que modifica datos debe repetir en la cabecera
+        // X-XSRF-TOKEN el valor de la cookie XSRF-TOKEN (legible por Angular; un sitio externo no puede leerla).
+        CookieCsrfTokenRepository tokenCsrf = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        tokenCsrf.setCookieCustomizer(cookie -> {
+            cookie.secure(cookieSegura).sameSite(sameSite).path("/");
+            if (!dominioCsrf.isBlank()) {
+                cookie.domain(dominioCsrf);
+            }
+        });
+        CsrfTokenRequestAttributeHandler manejadorCsrf = new CsrfTokenRequestAttributeHandler();
+        // Sin diferir: el token se genera y la cookie se fija en cualquier primera respuesta (incluso un 401),
+        // para que la primera acción que modifica datos ya lo tenga.
+        manejadorCsrf.setCsrfRequestAttributeName(null);
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(tokenCsrf)
+                        .csrfTokenRequestHandler(manejadorCsrf)
+                        // El webhook de Culqi es servidor a servidor: sin cookies ni sesión, protegido por su
+                        // autenticación básica y porque cada resultado se vuelve a consultar a la API de Culqi.
+                        .ignoringRequestMatchers("/api/publico/culqi/webhook"))
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .formLogin(form -> form.disable())
@@ -171,10 +195,14 @@ public class SecurityConfig {
                                 response, jsonMapper, clock, request.getRequestURI(),
                                 HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Debes iniciar sesión")))
                 .exceptionHandling(errors -> errors.accessDeniedHandler(
-                        (request, response, exception) -> writeSecurityError(
-                                response, jsonMapper, clock, request.getRequestURI(),
-                                HttpStatus.FORBIDDEN, "FORBIDDEN",
-                                "No tienes permiso para realizar esta operación")))
+                        (request, response, exception) -> {
+                            boolean tokenCsrf403 = exception instanceof CsrfException;
+                            writeSecurityError(response, jsonMapper, clock, request.getRequestURI(),
+                                    HttpStatus.FORBIDDEN, tokenCsrf403 ? "CSRF_INVALID" : "FORBIDDEN",
+                                    tokenCsrf403
+                                            ? "Tu sesión de seguridad venció. Recarga la página e inténtalo de nuevo."
+                                            : "No tienes permiso para realizar esta operación");
+                        }))
                 .logout(logout -> logout.disable());
         return http.build();
     }

@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -40,7 +41,7 @@ class AntiRobotRegistroHttpTests {
     }
 
     @Test void desafioEvidenciaRegistroYReutilizacion() throws Exception {
-        var inicio = mvc.perform(post("/api/auth/registro/antirobot/desafios"))
+        var inicio = mvc.perform(post("/api/auth/registro/antirobot/desafios").with(csrf()))
                 .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
                 .andExpect(jsonPath("$.respuesta").doesNotExist()).andReturn().getResponse();
         Cookie cookie = inicio.getCookie("HU002_ANTIROBOT");
@@ -50,27 +51,27 @@ class AntiRobotRegistroHttpTests {
         assertTrue(numeros.find());
         int respuesta = Integer.parseInt(numeros.group(1)) + Integer.parseInt(numeros.group(2));
         String solucion = json.writeValueAsString(java.util.Map.of("desafioId", desafio.get("desafioId").asText(), "respuesta", respuesta));
-        mvc.perform(post("/api/auth/registro/antirobot/verificar").contentType("application/json").content(solucion))
+        mvc.perform(post("/api/auth/registro/antirobot/verificar").with(csrf()).contentType("application/json").content(solucion))
                 .andExpect(status().isBadRequest());
-        var verificacion = mvc.perform(post("/api/auth/registro/antirobot/verificar").cookie(cookie)
+        var verificacion = mvc.perform(post("/api/auth/registro/antirobot/verificar").with(csrf()).cookie(cookie)
                 .contentType("application/json").content(solucion)).andExpect(status().isOk()).andReturn().getResponse();
         String prueba = json.readTree(verificacion.getContentAsString()).get("evidencia").asText();
         String registro = json.writeValueAsString(new RegistroRequest("Ana", "Pérez", null, "nativo@example.com",
                 null, null, "Clave123", "Clave123", true, prueba));
-        mvc.perform(post("/api/auth/registro").contentType("application/json").content(registro))
+        mvc.perform(post("/api/auth/registro").with(csrf()).contentType("application/json").content(registro))
                 .andExpect(status().isBadRequest());
         assertEquals(0, usuarios.count());
-        mvc.perform(post("/api/auth/registro").cookie(cookie).contentType("application/json").content(registro))
+        mvc.perform(post("/api/auth/registro").with(csrf()).cookie(cookie).contentType("application/json").content(registro))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.envioAceptado").value(true));
         assertEquals(1, usuarios.count());
         verify(mail, times(1)).sendHtml(any());
-        mvc.perform(post("/api/auth/registro").cookie(cookie).contentType("application/json").content(registro))
+        mvc.perform(post("/api/auth/registro").with(csrf()).cookie(cookie).contentType("application/json").content(registro))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("ANTIROBOT_INVALIDO"));
         assertEquals(1, usuarios.count());
     }
 
     @Test void rechazaCuerpoInvalidoSinCrearCuenta() throws Exception {
-        mvc.perform(post("/api/auth/registro/antirobot/verificar").contentType("application/json")
+        mvc.perform(post("/api/auth/registro/antirobot/verificar").with(csrf()).contentType("application/json")
                 .content("{\"desafioId\":\"inventado\",\"respuesta\":-1}"))
                 .andExpect(status().isBadRequest());
         assertEquals(0, usuarios.count()); verifyNoInteractions(mail);

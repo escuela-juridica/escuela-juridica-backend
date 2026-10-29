@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -165,7 +166,7 @@ class RegistroIntegracionTests {
     }
 
     @Test void contratoHttpDevuelve201SinPasswordNiCodigo() throws Exception {
-        mvc.perform(post("/api/auth/registro").contentType("application/json")
+        mvc.perform(post("/api/auth/registro").with(csrf()).contentType("application/json")
                 .content(json.writeValueAsString(peticion("http@example.com"))))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.envioAceptado").value(true))
                 .andExpect(jsonPath("$.contrasena").doesNotExist())
@@ -174,10 +175,10 @@ class RegistroIntegracionTests {
     }
 
     @Test void contratoHttpDevuelveErroresDeCamposYDuplicados() throws Exception {
-        mvc.perform(post("/api/auth/registro").contentType("application/json").content("{}"))
+        mvc.perform(post("/api/auth/registro").with(csrf()).contentType("application/json").content("{}"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors").isArray());
         service.registrar(peticion("duplicado@example.com"));
-        mvc.perform(post("/api/auth/registro").contentType("application/json")
+        mvc.perform(post("/api/auth/registro").with(csrf()).contentType("application/json")
                 .content(json.writeValueAsString(peticion("DUPLICADO@example.com"))))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("CORREO_DUPLICADO"))
                 .andExpect(jsonPath("$.fieldErrors[0].field").value("correo"));
@@ -186,7 +187,7 @@ class RegistroIntegracionTests {
     @Test void googleCompletaEIniciaSesionUsandoServicesCompartidos() throws Exception {
         String ref = contextoValido("contexto-cookie", "google-cookie", "cookie@example.com");
         String cuerpo = json.writeValueAsString(new RegistroGoogleRequest(ref, "Lucía", "Caminos", null, null, null, true));
-        var respuesta = mvc.perform(post("/api/auth/registro/google")
+        var respuesta = mvc.perform(post("/api/auth/registro/google").with(csrf())
                 .contentType("application/json").content(cuerpo))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.rol").value("alumno"))
                 .andExpect(jsonPath("$.email").value("cookie@example.com"))
