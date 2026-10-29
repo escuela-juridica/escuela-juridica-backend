@@ -4,27 +4,47 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.ResponseCookie;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
-@SpringBootTest
-@ActiveProfiles("test")
 class SecurityComponentsTests {
 
-    @Autowired
     private JwtService jwtService;
-
-    @Autowired
     private SessionCookieService sessionCookieService;
-
-    @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @BeforeEach
+    void setUp() {
+        SecretKey secretKey = new SecretKeySpec(
+                "esejur-clave-entornos-no-productivos-2026-para-pruebas".getBytes(), "HmacSHA256");
+        JwtEncoder jwtEncoder = NimbusJwtEncoder.withSecretKey(secretKey).build();
+        NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withSecretKey(secretKey)
+                .macAlgorithm(MacAlgorithm.HS256)
+                .build();
+        jwtDecoder.setJwtValidator(JwtValidators.createDefaultWithIssuer("esejur-api"));
+
+        Clock clock = Clock.fixed(Instant.now(), ZoneId.of("America/Lima"));
+
+        jwtService = new JwtService(jwtEncoder, jwtDecoder, clock, "esejur-api", 60L);
+        sessionCookieService = new SessionCookieService("ESEJUR_SESION", false, "Lax", 60L);
+        passwordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
+    }
 
     @Test
     void jwtAndSessionCookieShareTheConfiguredSession() {

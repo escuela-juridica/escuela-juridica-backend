@@ -1,0 +1,590 @@
+package pe.edu.utp.escuela.app.service;
+
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import pe.edu.utp.escuela.app.dto.AdvertenciaMatriculaResponse;
+import pe.edu.utp.escuela.app.dto.CancelarMatriculaRequest;
+import pe.edu.utp.escuela.app.dto.CrearMatriculaAdministrativaRequest;
+import pe.edu.utp.escuela.app.dto.HistorialEstadoMatriculaResponse;
+import pe.edu.utp.escuela.app.dto.MatriculaAdministrativaResponse;
+import pe.edu.utp.escuela.app.dto.MatriculaDetalleAdministrativaResponse;
+import pe.edu.utp.escuela.app.dto.MatriculaResponse;
+import pe.edu.utp.escuela.app.dto.PagoMatriculaDetalleResponse;
+import pe.edu.utp.escuela.app.dto.ReenvioMatriculaResponse;
+import pe.edu.utp.escuela.app.dto.ReporteMatriculaResponse;
+import pe.edu.utp.escuela.app.entity.Curso;
+import pe.edu.utp.escuela.app.entity.HistorialEstadoMatricula;
+import pe.edu.utp.escuela.app.entity.Leccion;
+import pe.edu.utp.escuela.app.entity.Matricula;
+import pe.edu.utp.escuela.app.entity.Modulo;
+import pe.edu.utp.escuela.app.entity.Notificacion;
+import pe.edu.utp.escuela.app.entity.Pago;
+import pe.edu.utp.escuela.app.entity.ProgresoLeccion;
+import pe.edu.utp.escuela.app.entity.ReglaCurso;
+import pe.edu.utp.escuela.app.entity.Usuario;
+import pe.edu.utp.escuela.app.exception.BusinessValidationException;
+import pe.edu.utp.escuela.app.exception.DuplicateResourceException;
+import pe.edu.utp.escuela.app.exception.ForbiddenException;
+import pe.edu.utp.escuela.app.exception.MailDeliveryException;
+import pe.edu.utp.escuela.app.exception.ResourceNotFoundException;
+import pe.edu.utp.escuela.app.mail.HtmlMailMessage;
+import pe.edu.utp.escuela.app.mail.MailService;
+import pe.edu.utp.escuela.app.repository.CursoRepository;
+import pe.edu.utp.escuela.app.repository.HistorialEstadoMatriculaRepository;
+import pe.edu.utp.escuela.app.repository.LeccionRepository;
+import pe.edu.utp.escuela.app.repository.MatriculaRepository;
+import pe.edu.utp.escuela.app.repository.ModuloRepository;
+import pe.edu.utp.escuela.app.repository.NotificacionRepository;
+import pe.edu.utp.escuela.app.repository.PagoRepository;
+import pe.edu.utp.escuela.app.repository.ProgresoLeccionRepository;
+import pe.edu.utp.escuela.app.repository.ReglaCursoRepository;
+import pe.edu.utp.escuela.app.repository.UsuarioRepository;
+import pe.edu.utp.escuela.app.repository.UsuarioRolRepository;
+import pe.edu.utp.escuela.app.security.CurrentUserService;
+
+@Service
+@RequiredArgsConstructor
+public class MatriculaService {
+    private static final ZoneId LIMA = ZoneId.of("America/Lima");
+    private final MatriculaRepository matriculas;
+    private final CursoRepository cursos;
+    private final UsuarioRepository usuarios;
+    private final UsuarioRolRepository roles;
+    private final AdminUsuariosService adminUsuarios;
+    private final PagoRepository pagos;
+    private final HistorialEstadoMatriculaRepository historial;
+    private final NotificacionRepository notificaciones;
+    private final ReglaCursoRepository reglas;
+    private final ModuloRepository modulos;
+    private final LeccionRepository lecciones;
+    private final ProgresoLeccionRepository progresoLecciones;
+    private final MailService mailService;
+    private final CurrentUserService actual;
+    private final Clock clock;
+
+    @Transactional
+    public MatriculaResponse matricularGratis(Long cursoId) {
+        procesarVencimientos();
+        Usuario usuario = usuarioActualAlumno();
+        Curso curso = curso(cursoId);
+        if (!"GRATUITO".equals(curso.getTipoVenta())) {
+            throw new BusinessValidationException("Este curso no es gratuito.");
+        }
+        validarSesionesFuturas(curso, true);
+        Matricula matricula = crearActiva(usuario, curso, "GRATUITA", null);
+        return respuesta(matricula, enviarConfirmacion(matricula, "El curso es gratuito; no se realizó ningún cobro."));
+    }
+
+    @Transactional
+    public MatriculaResponse matricularAdministrativamente(CrearMatriculaAdministrativaRequest p) {
+        procesarVencimientos();
+        exigirAdministrador();
+        Usuario alumno = usuarios.findWithPersonaById(p.usuarioId())
+                .orElseThrow(() -> new ResourceNotFoundException("El alumno no existe."));
+        if (!tieneRol(alumno.getId(), "ALUMNO")) {
+            throw new BusinessValidationException("Solo puedes matricular cuentas con rol Alumno.");
+        }
+        Curso curso = curso(p.cursoId());
+        if (!"REGISTRADO_MANUAL".equals(p.condicionEconomica()) && !"EXONERADO".equals(p.condicionEconomica())) {
+            throw new BusinessValidationException("La condición económica no es válida.");
+        }
+        AdvertenciaMatriculaResponse advertencia = advertenciaAdministrativa(curso.getId());
+        if (advertencia.requiereConfirmacion() && !p.confirmoAdvertenciaAcademica()) {
+            throw new BusinessValidationException(advertencia.mensaje());
+        }
+
+        Matricula matricula = crearActiva(alumno, curso, "ADMINISTRADOR", p.motivo());
+        BigDecimal importe = p.importe() == null ? BigDecimal.ZERO : p.importe();
+        if ("EXONERADO".equals(p.condicionEconomica()) && importe.signum() != 0) {
+            throw new BusinessValidationException("Una exoneración debe tener importe cero.");
+        }
+        if ("REGISTRADO_MANUAL".equals(p.condicionEconomica())
+                && (importe.signum() <= 0 || esVacio(p.medio()) || esVacio(p.referencia()))) {
+            throw new BusinessValidationException("El pago manual exige importe, medio y referencia.");
+        }
+        Pago pago = new Pago();
+        pago.setMatricula(matricula);
+        pago.setNumeroPedido("ADM-" + matricula.getId());
+        pago.setOrigen("EXONERADO".equals(p.condicionEconomica()) ? "EXONERADO" : "MANUAL");
+        pago.setEstado(p.condicionEconomica());
+        pago.setImporte(importe);
+        pago.setMedio(limpiar(p.medio()));
+        pago.setPrecioRegularAplicado(curso.getPrecioRegular());
+        pago.setPrecioPromocionalAplicado(curso.getPrecioPromocional());
+        pago.setReferenciaExterna(limpiar(p.referencia()));
+        pago.setMotivo(p.motivo().strip());
+        pago.setResultadoEn(clock.instant());
+        pago.setRegistradoPorUsuarioId(actual.get().userId());
+        pagos.save(pago);
+        String condicion = "EXONERADO".equals(p.condicionEconomica())
+                ? "Matrícula administrativa exonerada; no se registró un cobro."
+                : "Pago registrado manualmente por administración.";
+        return respuesta(matricula, enviarConfirmacion(matricula, condicion));
+    }
+
+    /** Resultado de aplicar un pago APROBADO a la matrícula (HU-047). */
+    public record ActivacionPago(boolean accesoConcedido, String atencion, boolean sobrecupo) {
+    }
+
+    /**
+     * HU-047 — Matrícula PENDIENTE_PAGO de una compra en línea. No concede contenido ni ocupa cupo: solo existe
+     * para conservar los intentos de pago hasta que Culqi apruebe alguno. El curso llega bloqueado por quien llama.
+     */
+    @Transactional
+    public Matricula crearPendientePago(Usuario usuario, Curso curso) {
+        validarSesionesFuturas(curso, true);
+        Matricula m = new Matricula();
+        m.setUsuario(usuario);
+        m.setCurso(curso);
+        m.setEstado("PENDIENTE_PAGO");
+        m.setFormaIngreso("PAGO_EN_LINEA");
+        m.setFechaMatricula(clock.instant());
+        matriculas.saveAndFlush(m);
+        registrarCambio(m, null, "PENDIENTE_PAGO", "Compra iniciada con Culqi.", usuario.getId());
+        return m;
+    }
+
+    /**
+     * HU-047 — Aplica el primer pago APROBADO. Se respeta un cobro iniciado válidamente aunque el cierre, el
+     * estado CERRADO o el cupo hayan cambiado (si se supera el cupo se activa igual y se avisa); pero si el curso
+     * o esa matrícula fueron cancelados, el pago se registra, la matrícula permanece CANCELADA y el caso queda
+     * para atención externa. ESEJUR nunca revierte el resultado bancario.
+     */
+    @Transactional
+    public ActivacionPago activarPorPagoAprobado(Matricula matricula) {
+        Curso curso = cursos.bloquearParaMatricula(matricula.getCurso().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("El curso no existe."));
+        if ("CANCELADA".equals(matricula.getEstado())) {
+            return new ActivacionPago(false, "MATRICULA_CANCELADA", false);
+        }
+        if ("CANCELADO".equals(curso.getEstadoCurso().getCodigo())) {
+            if ("PENDIENTE_PAGO".equals(matricula.getEstado())) {
+                String anterior = matricula.getEstado();
+                matricula.setEstado("CANCELADA");
+                matricula.setCanceladaEn(clock.instant());
+                matricula.setMotivoCancelacion("El curso fue cancelado mientras se procesaba el pago.");
+                registrarCambio(matricula, anterior, "CANCELADA", matricula.getMotivoCancelacion(), null);
+            }
+            return new ActivacionPago(false, "CURSO_CANCELADO", false);
+        }
+        if (!"PENDIENTE_PAGO".equals(matricula.getEstado())) {
+            return new ActivacionPago("ACTIVA".equals(matricula.getEstado()), null, false);
+        }
+        boolean sobrecupo = curso.getCupoMaximo() != null
+                && matriculas.contarActivas(List.of(curso.getId())).getOrDefault(curso.getId(), 0L) >= curso.getCupoMaximo();
+        Instant ahora = clock.instant();
+        matricula.setEstado("ACTIVA");
+        matricula.setFechaActivacion(ahora);
+        matricula.setFechaVencimiento(vencimiento(curso, ahora));
+        matriculas.save(matricula);
+        registrarCambio(matricula, "PENDIENTE_PAGO", "ACTIVA", "Pago aprobado por Culqi.", null);
+        return new ActivacionPago(true, null, sobrecupo);
+    }
+
+    @Transactional(readOnly = true)
+    public AdvertenciaMatriculaResponse consultarAdvertenciaAdministrativa(Long cursoId) {
+        exigirAdministrador();
+        return advertenciaAdministrativa(curso(cursoId).getId());
+    }
+
+    @Transactional
+    public List<MatriculaResponse> misCursos() {
+        procesarVencimientos();
+        Usuario usuario = usuarioActualAlumno();
+        return matriculas.findByUsuario_IdOrderByFechaMatriculaDesc(usuario.getId()).stream()
+                .map(m -> respuesta(m, null)).toList();
+    }
+
+    // ---------------------------------------------------------------- HU-020 --
+
+    @Transactional
+    public Page<MatriculaAdministrativaResponse> listarAdministrativas(
+            String texto, String estado, Pageable pageable) {
+        procesarVencimientos();
+        exigirAdministrador();
+        return matriculas.buscarAdministrativas(normalizar(texto), normalizarEstado(estado), pageable);
+    }
+
+    @Transactional
+    public MatriculaDetalleAdministrativaResponse detalleAdministrativo(Long matriculaId) {
+        procesarVencimientos();
+        exigirAdministrador();
+        Matricula matricula = matriculas.findWithDetalleById(matriculaId)
+                .orElseThrow(() -> new ResourceNotFoundException("La matrícula no existe."));
+
+        List<PagoMatriculaDetalleResponse> pagosRespuesta = pagos
+                .findByMatricula_IdOrderByResultadoEnDesc(matriculaId)
+                .stream()
+                .map(pago -> new PagoMatriculaDetalleResponse(
+                        pago.getId(), pago.getOrigen(), pago.getEstado(), pago.getImporte(), pago.getMoneda(),
+                        pago.getMedio(), pago.getReferenciaExterna(), pago.getMotivo(),
+                        pago.getRegistradoPorUsuarioId(), nombreUsuario(pago.getRegistradoPorUsuarioId()),
+                        pago.getResultadoEn()))
+                .toList();
+        List<HistorialEstadoMatriculaResponse> estadosRespuesta = historial
+                .findByMatricula_IdOrderByRealizadoEnDesc(matriculaId)
+                .stream()
+                .map(cambio -> new HistorialEstadoMatriculaResponse(
+                        cambio.getEstadoAnterior(), cambio.getEstadoNuevo(), cambio.getMotivo(),
+                        cambio.getRealizadoPorUsuarioId(), nombreUsuario(cambio.getRealizadoPorUsuarioId()),
+                        cambio.getRealizadoEn()))
+                .toList();
+
+        return new MatriculaDetalleAdministrativaResponse(
+                matricula.getId(), matricula.getUsuario().getId(), matricula.getUsuario().getPersona().nombreCompleto(),
+                matricula.getUsuario().getCorreo(), matricula.getCurso().getId(), matricula.getCurso().getTitulo(),
+                matricula.getCurso().getModalidad(), matricula.getEstado(), matricula.getFormaIngreso(),
+                matricula.getFechaMatricula(), matricula.getFechaActivacion(), matricula.getFechaVencimiento(),
+                matricula.getFechaFinalizacion(), matricula.getMotivoCancelacion(), matricula.getCreadoPorUsuarioId(),
+                nombreUsuario(matricula.getCreadoPorUsuarioId()), pagosRespuesta, estadosRespuesta);
+    }
+
+    @Transactional
+    public MatriculaResponse cancelar(Long matriculaId, CancelarMatriculaRequest peticion) {
+        procesarVencimientos();
+        exigirAdministrador();
+        Matricula matricula = matriculas.findWithDetalleById(matriculaId)
+                .orElseThrow(() -> new ResourceNotFoundException("La matrícula no existe."));
+        if (!"ACTIVA".equals(matricula.getEstado())) {
+            throw new BusinessValidationException("Solo puedes cancelar una matrícula activa.");
+        }
+
+        String motivo = peticion.motivo().strip();
+        String estadoAnterior = matricula.getEstado();
+        Long administradorId = actual.get().userId();
+        matricula.setEstado("CANCELADA");
+        matricula.setMotivoCancelacion(motivo);
+        matricula.setCanceladaEn(clock.instant());
+        matricula.setCanceladaPorUsuarioId(administradorId);
+        registrarCambio(matricula, estadoAnterior, "CANCELADA", motivo, administradorId);
+        return respuesta(matricula, null);
+    }
+
+    private String nombreUsuario(Long usuarioId) {
+        if (usuarioId == null)
+            return "Autoservicio / sistema";
+        return usuarios.findWithPersonaById(usuarioId)
+                .map(usuario -> usuario.getPersona().nombreCompleto())
+                .orElse("Usuario " + usuarioId);
+    }
+
+    // --- HU-041 ---
+
+    @Transactional
+    public Page<ReporteMatriculaResponse> reportePaginado(
+            String texto, String estado, Long cursoId, String modalidad,
+            LocalDate desde, LocalDate hasta, Pageable pageable) {
+        procesarVencimientos();
+        exigirAdministrador();
+        validarRango(desde, hasta);
+        Page<ReporteMatriculaResponse> pagina = matriculas.buscarReporte(
+                normalizar(texto), normalizarEstado(estado), cursoId,
+                normalizarEstado(modalidad), inicio(desde), finExclusivo(hasta), pageable);
+        Map<Long, String> origenes = origenesReporte(pagina.getContent());
+        return pagina.map(f -> conOrigen(f, origenes.getOrDefault(f.matriculaId(), f.formaIngreso())));
+    }
+
+    @Transactional
+    public List<ReporteMatriculaResponse> reporte(
+            String texto, String estado, Long cursoId, String modalidad,
+            LocalDate desde, LocalDate hasta) {
+        procesarVencimientos();
+        exigirAdministrador();
+        validarRango(desde, hasta);
+        List<ReporteMatriculaResponse> filas = matriculas.exportarReporte(
+                normalizar(texto), normalizarEstado(estado), cursoId,
+                normalizarEstado(modalidad), inicio(desde), finExclusivo(hasta));
+        Map<Long, String> origenes = origenesReporte(filas);
+        return filas.stream()
+                .map(f -> conOrigen(f, origenes.getOrDefault(f.matriculaId(), f.formaIngreso())))
+                .toList();
+    }
+
+    // Metodos auxiliares HU-041
+    private Map<Long, String> origenesReporte(List<ReporteMatriculaResponse> filas) {
+        if (filas.isEmpty())
+            return Map.of();
+        List<Long> ids = filas.stream().map(ReporteMatriculaResponse::matriculaId).toList();
+        Map<Long, List<Pago>> pagosPorMatricula = pagos.findByMatricula_IdIn(ids).stream()
+                .collect(Collectors.groupingBy(p -> p.getMatricula().getId()));
+        return pagosPorMatricula.entrySet().stream().collect(Collectors.toMap(
+                Map.Entry::getKey, entry -> origenReporte(entry.getValue())));
+    }
+
+    /** Forma de ingreso de una matrícula según sus pagos; también la usa el dashboard (HU-046) para no divergir. */
+    static String origenReporte(List<Pago> pagosDeMatricula) {
+        if (pagosDeMatricula.stream().anyMatch(p -> "EXONERADO".equals(p.getOrigen())))
+            return "EXONERADO";
+        if (pagosDeMatricula.stream().anyMatch(p -> "MANUAL".equals(p.getOrigen())))
+            return "REGISTRADO_MANUAL";
+        if (pagosDeMatricula.stream().anyMatch(p -> "APROBADO".equals(p.getEstado())))
+            return "PAGO_EN_LINEA";
+        return pagosDeMatricula.getFirst().getOrigen();
+    }
+
+    private ReporteMatriculaResponse conOrigen(ReporteMatriculaResponse f, String origen) {
+        return new ReporteMatriculaResponse(f.matriculaId(), f.alumno(), f.correo(), f.curso(), f.modalidad(),
+                f.fechaMatricula(), f.fechaActivacion(), f.estadoMatricula(), origen,
+                f.situacionAcademica(), f.estadoCertificado());
+    }
+
+    private static void validarRango(LocalDate desde, LocalDate hasta) {
+        if (desde != null && hasta != null && hasta.isBefore(desde)) {
+            throw new BusinessValidationException("La fecha final no puede ser anterior a la fecha inicial.");
+        }
+    }
+
+    private static Instant inicio(LocalDate fecha) {
+        return fecha == null
+                ? LocalDate.of(1, 1, 1).atStartOfDay(LIMA).toInstant()
+                : fecha.atStartOfDay(LIMA).toInstant();
+    }
+
+    private static Instant finExclusivo(LocalDate fecha) {
+        return fecha == null
+                ? LocalDate.of(9999, 12, 31).plusDays(1).atStartOfDay(LIMA).toInstant()
+                : fecha.plusDays(1).atStartOfDay(LIMA).toInstant();
+    }
+
+    @Transactional
+    public ReenvioMatriculaResponse reenviarConfirmacion(Long matriculaId) {
+        procesarVencimientos();
+        Matricula m = matriculas.findWithDetalleById(matriculaId)
+                .orElseThrow(() -> new ResourceNotFoundException("La matrícula no existe."));
+        if (!actual.get().hasRole("ADMINISTRADOR") && !m.getUsuario().getId().equals(actual.get().userId())) {
+            throw new ForbiddenException();
+        }
+        String estado = enviarConfirmacion(m, m.getFormaIngreso().equals("GRATUITA")
+                ? "El curso es gratuito; no se realizó ningún cobro."
+                : "Confirmación de matrícula administrativa.");
+        return new ReenvioMatriculaResponse("ENVIADO".equals(estado),
+                "ENVIADO".equals(estado) ? "Correo enviado correctamente."
+                        : "No se pudo enviar el correo. Puedes volver a intentarlo.");
+    }
+
+    @Scheduled(fixedDelay = 60_000, initialDelay = 10_000)
+    @Transactional
+    public void procesarVencimientosProgramados() {
+        procesarVencimientos();
+    }
+
+    private void procesarVencimientos() {
+        Instant ahora = clock.instant();
+        List<Matricula> vencidas = matriculas.findByEstadoAndFechaVencimientoLessThanEqual("ACTIVA", ahora);
+        for (Matricula matricula : vencidas) {
+            String anterior = matricula.getEstado();
+            matricula.setEstado("VENCIDA");
+            registrarCambio(matricula, anterior, "VENCIDA", "Vigencia de acceso agotada.", null);
+        }
+    }
+
+    private Matricula crearActiva(Usuario usuario, Curso curso, String forma, String motivo) {
+        Curso cursoBloqueado = cursos.bloquearParaMatricula(curso.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("El curso no existe."));
+        if (matriculas.existsByUsuario_IdAndCurso_Id(usuario.getId(), cursoBloqueado.getId())) {
+            throw new DuplicateResourceException("El alumno ya tiene una matrícula en este curso.");
+        }
+        validarCurso(cursoBloqueado, "GRATUITA".equals(forma));
+        validarCupo(cursoBloqueado);
+        Instant ahora = clock.instant();
+        Matricula m = new Matricula();
+        m.setUsuario(usuario);
+        m.setCurso(cursoBloqueado);
+        m.setEstado("ACTIVA");
+        m.setFormaIngreso(forma);
+        m.setFechaMatricula(ahora);
+        m.setFechaActivacion(ahora);
+        m.setCreadoPorUsuarioId("GRATUITA".equals(forma) ? null : actual.get().userId());
+        m.setFechaVencimiento(vencimiento(cursoBloqueado, ahora));
+        matriculas.saveAndFlush(m);
+        registrarCambio(m, null, "ACTIVA", motivo, m.getCreadoPorUsuarioId());
+        return m;
+    }
+
+    private AdvertenciaMatriculaResponse advertenciaAdministrativa(Long cursoId) {
+        Curso curso = curso(cursoId);
+        ReglaCurso regla = reglas.findByCurso_Id(cursoId).orElse(null);
+        boolean requiere = regla != null && regla.isRequiereAsistencia()
+                && ("EN_VIVO".equals(curso.getModalidad()) || "HIBRIDO".equals(curso.getModalidad()));
+        boolean sinSesionesFuturas = requiere
+                && lecciones.contarSesionesFuturasActivas(cursoId, clock.instant()) == 0;
+        return sinSesionesFuturas
+                ? new AdvertenciaMatriculaResponse(true,
+                        "El curso exige asistencia y no tiene sesiones futuras. El alumno podría no cumplir la condición de certificación automática.")
+                : new AdvertenciaMatriculaResponse(false, "");
+    }
+
+    private void validarSesionesFuturas(Curso curso, boolean autoservicio) {
+        AdvertenciaMatriculaResponse advertencia = advertenciaAdministrativa(curso.getId());
+        if (autoservicio && advertencia.requiereConfirmacion()) {
+            throw new BusinessValidationException(
+                    "No es posible matricularse automáticamente: " + advertencia.mensaje());
+        }
+    }
+
+    private void validarCurso(Curso curso, boolean gratuita) {
+        String estado = curso.getEstadoCurso().getCodigo();
+        if (!("PUBLICADO".equals(estado) || "EN_CURSO".equals(estado))) {
+            throw new BusinessValidationException("El curso no admite nuevas matrículas.");
+        }
+        LocalDate hoy = LocalDate.now(clock.withZone(LIMA));
+        if (gratuita && curso.getFechaCierreMatricula() != null && hoy.isAfter(curso.getFechaCierreMatricula())) {
+            throw new BusinessValidationException("El cierre de matrícula ya finalizó.");
+        }
+    }
+
+    private void validarCupo(Curso curso) {
+        if (curso.getCupoMaximo() != null
+                && matriculas.contarActivas(List.of(curso.getId())).getOrDefault(curso.getId(), 0L) >= curso
+                        .getCupoMaximo()) {
+            throw new BusinessValidationException("El curso ya no tiene cupos disponibles.");
+        }
+    }
+
+    private Instant vencimiento(Curso curso, Instant activacion) {
+        if (curso.getVigenciaAccesoDias() == null)
+            return null;
+        LocalDate base = LocalDate.ofInstant(activacion, LIMA);
+        if (curso.getFechaInicio() != null && curso.getFechaInicio().isAfter(base))
+            base = curso.getFechaInicio();
+        return base.plusDays(curso.getVigenciaAccesoDias() - 1L).atTime(23, 59, 59).atZone(LIMA).toInstant();
+    }
+
+    private Usuario usuarioActualAlumno() {
+        Usuario u = usuarios.findWithPersonaById(actual.get().userId())
+                .orElseThrow(() -> new ResourceNotFoundException("La cuenta no existe."));
+        if (!u.isActivo() || u.getCorreoVerificadoEn() == null || u.isRequiereCambioContrasena()) {
+            throw new BusinessValidationException("Completa la habilitación de tu cuenta para usar matrículas.");
+        }
+        if (!actual.get().hasRole("ALUMNO")) {
+            throw new BusinessValidationException("Tu cuenta no tiene rol Alumno.");
+        }
+        return u;
+    }
+
+    private MatriculaResponse respuesta(Matricula m, String estadoCorreo) {
+        Instant ahora = clock.instant();
+        boolean vigente = m.getFechaVencimiento() == null || !ahora.isAfter(m.getFechaVencimiento());
+        boolean inicio = m.getCurso().getFechaInicio() == null
+                || !LocalDate.now(clock.withZone(LIMA)).isBefore(m.getCurso().getFechaInicio());
+        boolean efectivo = "ACTIVA".equals(m.getEstado()) && vigente && inicio && m.getUsuario().isActivo()
+                && m.getUsuario().getCorreoVerificadoEn() != null && !m.getUsuario().isRequiereCambioContrasena();
+        boolean cursoCancelado = "CANCELADO".equals(m.getCurso().getEstadoCurso().getCodigo());
+        String mensaje = "PENDIENTE_PAGO".equals(m.getEstado()) ? "Tu pago aún no está aprobado."
+                : cursoCancelado && efectivo ? "El curso fue cancelado: solo puedes consultar el contenido que ya tenías."
+                : cursoCancelado && "ACTIVA".equals(m.getEstado()) ? "El curso fue cancelado antes de que hubiera contenido disponible."
+                : efectivo ? "Disponible para continuar."
+                : !inicio ? "El curso aún no inicia."
+                        : !vigente || "VENCIDA".equals(m.getEstado()) ? "El acceso venció."
+                                : "El acceso no está disponible.";
+        List<Modulo> modulosCurso = modulos.findByCursoIdAndActivoTrueOrderByOrdenAsc(m.getCurso().getId());
+        List<Long> idsModulos = modulosCurso.stream().map(Modulo::getId).toList();
+        List<Leccion> obligatorias = idsModulos.isEmpty() ? List.of()
+                : lecciones.buscarActivasDeModulos(idsModulos).stream().filter(Leccion::isEsObligatoria).toList();
+        Map<Long, Boolean> completadas = progresoLecciones.findByMatricula_Id(m.getId()).stream()
+                .collect(Collectors.toMap(p -> p.getLeccion().getId(), ProgresoLeccion::isCompletada, (a, b) -> a));
+        long total = obligatorias.size();
+        long hechas = obligatorias.stream().filter(l -> Boolean.TRUE.equals(completadas.get(l.getId()))).count();
+        int porcentaje = total == 0 ? 0 : (int) Math.round(hechas * 100.0 / total);
+        String siguiente = obligatorias.stream().filter(l -> !Boolean.TRUE.equals(completadas.get(l.getId())))
+                .map(Leccion::getTitulo).findFirst()
+                .orElse(total == 0 ? "Aún no hay lecciones obligatorias" : "Lecciones obligatorias completadas");
+        String estadoCorreoActual = estadoCorreo != null ? estadoCorreo
+                : notificaciones.findTopByTipoOrderByCreadoEnDesc("MAT_" + m.getId() + "_CONF")
+                        .map(Notificacion::getEstadoEnvio).orElse(null);
+        return new MatriculaResponse(m.getId(), m.getCurso().getId(), m.getCurso().getTitulo(),
+                m.getCurso().getUrlAmigable(), m.getCurso().getImagenPortadaUrl(), m.getCurso().getModalidad(),
+                m.getEstado(), m.getFormaIngreso(),
+                m.getFechaMatricula(), m.getFechaActivacion(), m.getFechaVencimiento(), m.getFechaFinalizacion(),
+                m.getCurso().getFechaInicio(), efectivo, mensaje, porcentaje, (int) hechas, (int) total, siguiente,
+                estadoCorreoActual, cursoCancelado);
+    }
+
+    private String enviarConfirmacion(Matricula matricula, String origen) {
+        String tipo = "MAT_" + matricula.getId() + "_CONF";
+        Notificacion n = notificaciones.findTopByTipoOrderByCreadoEnDesc(tipo).orElseGet(() -> {
+            Notificacion nueva = new Notificacion();
+            nueva.setUsuario(matricula.getUsuario());
+            nueva.setTipo(tipo);
+            nueva.setDestinatario(matricula.getUsuario().getCorreo());
+            nueva.setAsunto("Matrícula confirmada: " + matricula.getCurso().getTitulo());
+            return nueva;
+        });
+        n.setIntentosEnvio(n.getIntentosEnvio() + 1);
+        try {
+            String fechaAcceso = matricula.getCurso().getFechaInicio() != null
+                    && matricula.getCurso().getFechaInicio().isAfter(LocalDate.now(clock.withZone(LIMA)))
+                            ? "Desde el " + matricula.getCurso().getFechaInicio()
+                                    .format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                            : "Inmediato, al iniciar sesión con tu cuenta habilitada";
+            mailService.sendHtml(HtmlMailMessage.to(n.getDestinatario(), n.getAsunto(),
+                    "mail/confirmacion-matricula.html", Map.of(
+                            "nombre", matricula.getUsuario().getPersona().getNombres(),
+                            "curso", matricula.getCurso().getTitulo(),
+                            "modalidad", matricula.getCurso().getModalidad(),
+                            "fechaAcceso", fechaAcceso,
+                            "origen", origen)));
+            n.setEstadoEnvio("ENVIADO");
+            n.setEnviadoEn(clock.instant());
+            n.setUltimoError(null);
+        } catch (MailDeliveryException exception) {
+            n.setEstadoEnvio("ERROR");
+            n.setUltimoError(exception.getMessage());
+        }
+        notificaciones.save(n);
+        return n.getEstadoEnvio();
+    }
+
+    private void registrarCambio(Matricula m, String anterior, String nuevo, String motivo, Long actor) {
+        HistorialEstadoMatricula h = new HistorialEstadoMatricula();
+        h.setMatricula(m);
+        h.setEstadoAnterior(anterior);
+        h.setEstadoNuevo(nuevo);
+        h.setMotivo(motivo);
+        h.setRealizadoPorUsuarioId(actor);
+        h.setRealizadoEn(clock.instant());
+        historial.save(h);
+    }
+
+    private boolean tieneRol(Long usuarioId, String codigo) {
+        return adminUsuarios.obtener(usuarioId).roles().stream().anyMatch(rol -> codigo.equals(rol.name()));
+    }
+
+    private Curso curso(Long id) {
+        return cursos.findWithDetalleById(id).orElseThrow(() -> new ResourceNotFoundException("El curso no existe."));
+    }
+
+    private void exigirAdministrador() {
+        if (!actual.get().hasRole("ADMINISTRADOR"))
+            throw new ForbiddenException();
+    }
+
+    private static boolean esVacio(String valor) {
+        return valor == null || valor.isBlank();
+    }
+
+    private static String limpiar(String valor) {
+        return valor == null || valor.isBlank() ? null : valor.strip();
+    }
+
+    private static String normalizar(String valor) {
+        return valor == null ? "" : valor.strip().toLowerCase();
+    }
+
+    private static String normalizarEstado(String valor) {
+        return valor == null ? "" : valor.strip().toUpperCase();
+    }
+}

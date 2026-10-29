@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+  <body style="margin:0;background:#f4f7fb;font-family:Arial,sans-serif;color:#15324b">
+    <div style="max-width:600px;margin:32px auto;background:#fff;border:1px solid #dce4ec;border-radius:12px;overflow:hidden">
+      <div style="padding:24px 30px;background:#103860;color:#fff;font-size:20px;font-weight:700">Escuela Jurídica</div>
+      <div style="padding:28px 30px">
+        <h1 style="font-size:22px;margin:0 0 16px">Tu pago no se completó</h1>
+        <p>Hola {{nombre}}, Culqi no aprobó el pago de <strong>{{curso}}</strong> y tu matrícula no se activó.</p>
+        <div style="padding:16px;background:#f7fafc;border-radius:8px;margin:20px 0;line-height:1.6">
+          <p style="margin:4px 0"><strong>Importe del intento:</strong> {{importe}}</p>
+          <p style="margin:4px 0"><strong>Referencia:</strong> {{referencia}}</p>
+          <p style="margin:4px 0"><strong>Detalle informado por Culqi:</strong> {{motivo}}</p>
+        </div>
+        <p>Puedes volver a intentarlo desde la ficha del curso. Verás el precio vigente y deberás confirmarlo antes de pagar.</p>
+        <p style="margin:24px 0"><a href="{{enlace}}" style="background:#0f766e;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:700">Volver a pagar</a></p>
+        <p style="font-size:12px;color:#667085;margin-top:28px">Este mensaje fue generado automáticamente por Escuela Jurídica.</p>
+      </div>
+    </div>
+  </body>
+</html>
