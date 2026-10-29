@@ -279,6 +279,14 @@ public class PagoEnLineaService {
         pago.setRequiereAtencion(true);
         pago.setDetalleAtencion(descripcion);
         pagos.save(pago);
+        if (AtencionMatriculaPago.SOBRECUPO.equals(tipo)) {
+            // HU-037: varias aprobaciones sobre el último cupo son una sola alerta atendible por curso.
+            var abierta = atenciones.findFirstByTipoAndEstadoAndMatricula_Curso_IdOrderByIdAsc(tipo,
+                    AtencionMatriculaPago.PENDIENTE, pago.getMatricula().getCurso().getId());
+            if (abierta.isPresent()) {
+                return;
+            }
+        }
         AtencionMatriculaPago a = new AtencionMatriculaPago();
         a.setMatricula(pago.getMatricula());
         a.setPago(pago);

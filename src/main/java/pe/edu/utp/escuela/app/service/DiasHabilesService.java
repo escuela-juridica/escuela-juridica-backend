@@ -60,6 +60,20 @@ public class DiasHabilesService {
         return fecha;
     }
 
+    /**
+     * Días hábiles que faltan para {@code limite} contando desde mañana (0 si vence hoy o ya venció).
+     * HU-040 lo usa para resaltar los casos próximos a vencer sin cerrarlos.
+     */
+    public int diasHabilesHasta(LocalDate hoy, LocalDate limite) {
+        int dias = 0;
+        for (LocalDate fecha = hoy.plusDays(1); !fecha.isAfter(limite); fecha = fecha.plusDays(1)) {
+            if (esHabil(fecha)) {
+                dias++;
+            }
+        }
+        return dias;
+    }
+
     /** Domingo de Pascua (algoritmo gregoriano anónimo). */
     static LocalDate pascua(int anio) {
         int a = anio % 19;

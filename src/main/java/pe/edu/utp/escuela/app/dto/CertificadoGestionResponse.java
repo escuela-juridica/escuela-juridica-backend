@@ -8,6 +8,7 @@ import java.time.Instant;
  */
 public record CertificadoGestionResponse(
         Long matriculaId,
+        Long certificadoId,
         String alumno,
         String correo,
         Long cursoId,

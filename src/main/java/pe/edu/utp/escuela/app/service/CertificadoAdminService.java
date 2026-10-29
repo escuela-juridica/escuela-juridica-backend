@@ -10,27 +10,43 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.edu.utp.escuela.app.dto.AnularCertificadoRequest;
+import pe.edu.utp.escuela.app.dto.CertificadoDetalleResponse;
+import pe.edu.utp.escuela.app.dto.CertificadoDetalleResponse.Cambio;
+import pe.edu.utp.escuela.app.dto.CertificadoDetalleResponse.FirmanteDisponible;
+import pe.edu.utp.escuela.app.dto.CertificadoDetalleResponse.FirmanteImpreso;
+import pe.edu.utp.escuela.app.dto.CorregirCertificadoRequest;
 import pe.edu.utp.escuela.app.dto.CertificadoGestionResponse;
 import pe.edu.utp.escuela.app.dto.EmisionManualSituacionResponse;
 import pe.edu.utp.escuela.app.dto.EmisionManualSituacionResponse.CertificadoResumen;
 import pe.edu.utp.escuela.app.dto.EmitirCertificadoManualRequest;
 import pe.edu.utp.escuela.app.entity.Certificado;
+import pe.edu.utp.escuela.app.entity.CertificadoFirmante;
 import pe.edu.utp.escuela.app.entity.ExcepcionAcademica;
+import pe.edu.utp.escuela.app.entity.Firmante;
 import pe.edu.utp.escuela.app.entity.HistorialCertificado;
 import pe.edu.utp.escuela.app.entity.LogroCertificacion;
 import pe.edu.utp.escuela.app.entity.Matricula;
+import pe.edu.utp.escuela.app.exception.BusinessException;
 import pe.edu.utp.escuela.app.exception.BusinessValidationException;
 import pe.edu.utp.escuela.app.exception.ForbiddenException;
 import pe.edu.utp.escuela.app.exception.ResourceNotFoundException;
+import pe.edu.utp.escuela.app.export.CertificadoPdfExport;
+import pe.edu.utp.escuela.app.repository.CertificadoFirmanteRepository;
 import pe.edu.utp.escuela.app.repository.CertificadoRepository;
 import pe.edu.utp.escuela.app.repository.ExcepcionAcademicaRepository;
+import pe.edu.utp.escuela.app.repository.FirmanteRepository;
 import pe.edu.utp.escuela.app.repository.HistorialCertificadoRepository;
 import pe.edu.utp.escuela.app.repository.LogroCertificacionRepository;
 import pe.edu.utp.escuela.app.repository.MatriculaRepository;
+import pe.edu.utp.escuela.app.repository.UsuarioRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.service.AvanceAcademicoService.AvanceAcademico;
 
@@ -53,8 +69,17 @@ public class CertificadoAdminService {
     private final ExcepcionAcademicaRepository excepciones;
     private final AvanceAcademicoService avanceAcademico;
     private final CertificacionService certificacion;
+    private final CertificadoFirmanteRepository certificadoFirmantes;
+    private final FirmanteRepository firmantes;
+    private final UsuarioRepository usuarios;
+    private final ArchivoAlmacenamientoService archivos;
+    private final CertificadoPdfExport pdf;
+    private final ImagenCertificadoService imagenes;
     private final CurrentUserService actual;
     private final Clock clock;
+
+    @Value("${application.frontend-base-url}")
+    private String frontendBaseUrl;
 
     // ---------------------------------------------------------------------------------------- listado --
 
@@ -74,7 +99,8 @@ public class CertificadoAdminService {
     }
 
     private CertificadoGestionResponse fila(Matricula m, Certificado c) {
-        return new CertificadoGestionResponse(m.getId(), m.getUsuario().getPersona().nombreCompleto(),
+        return new CertificadoGestionResponse(m.getId(), c == null ? null : c.getId(),
+                m.getUsuario().getPersona().nombreCompleto(),
                 m.getUsuario().getCorreo(), m.getCurso().getId(), m.getCurso().getTitulo(), m.getEstado(),
                 c == null ? "SIN_CERTIFICADO" : c.getEstado(), c == null ? null : c.getCodigo(),
                 c == null ? null : c.getNivel(), c == null ? null : c.getTipoEmision(),
@@ -148,6 +174,179 @@ public class CertificadoAdminService {
         e.setRealizadoPorUsuarioId(administrador);
         e.setRealizadoEn(ahora);
         excepciones.save(e);
+    }
+
+    // -------------------------------------------------------------------------- HU-036 corregir y anular --
+
+    @Transactional(readOnly = true)
+    public CertificadoDetalleResponse detalle(Long certificadoId) {
+        exigirAdministrador();
+        return detalleDe(certificado(certificadoId));
+    }
+
+    /**
+     * Corrige datos documentales (nombres, título, horas, entidad, firmantes) de un certificado VIGENTE. Conserva el
+     * código y el estado, regenera el PDF (la versión anterior deja de descargarse) y guarda en el historial los datos
+     * reemplazados con motivo, responsable y fecha. La nota y el nivel congelados no se tocan.
+     */
+    @Transactional
+    public CertificadoDetalleResponse corregir(Long certificadoId, CorregirCertificadoRequest p) {
+        exigirAdministrador();
+        Certificado c = certificado(certificadoId);
+        exigirVigente(c, "corregir");
+        if (p.nivel() != null && !p.nivel().strip().equalsIgnoreCase(c.getNivel())) {
+            throw new BusinessValidationException("El nivel está congelado: no se puede cambiar al corregir.");
+        }
+        if (p.nota() != null && (c.getNotaImpresa() == null || p.nota().compareTo(c.getNotaImpresa()) != 0)) {
+            throw new BusinessValidationException("La nota está congelada: no se puede cambiar al corregir.");
+        }
+        String nombres = p.nombres().strip();
+        String titulo = p.titulo().strip();
+        String entidadNueva = p.entidad() == null || p.entidad().isBlank() ? null : p.entidad().strip();
+        boolean refrendado = "REFRENDADO".equals(c.getNivel());
+        if (refrendado && entidadNueva == null) {
+            throw new BusinessValidationException("Un certificado refrendado debe indicar la entidad que lo refrenda.");
+        }
+        if (!refrendado && entidadNueva != null) {
+            throw new BusinessValidationException("Un certificado de nivel Normal no lleva entidad.");
+        }
+
+        List<CertificadoFirmante> actuales = certificadoFirmantes.findByCertificado_IdOrderByOrdenAsc(c.getId());
+        List<Long> idsNuevos = p.firmanteIds().stream().distinct().toList();
+        if (idsNuevos.size() != p.firmanteIds().size()) {
+            throw new BusinessValidationException("No repitas el mismo firmante.");
+        }
+        Map<Long, CertificadoFirmante> impresos = actuales.stream()
+                .collect(Collectors.toMap(f -> f.getFirmante().getId(), Function.identity()));
+        List<CertificadoFirmante> nuevos = new java.util.ArrayList<>();
+        int orden = 1;
+        for (Long id : idsNuevos) {
+            CertificadoFirmante existente = impresos.get(id);
+            CertificadoFirmante f = new CertificadoFirmante();
+            f.setCertificado(c);
+            f.setOrden(orden++);
+            if (existente != null) {
+                // Un firmante que ya estaba impreso conserva lo congelado al emitir.
+                f.setFirmante(existente.getFirmante());
+                f.setNombreImpreso(existente.getNombreImpreso());
+                f.setCargoImpreso(existente.getCargoImpreso());
+                f.setImagenFirmaUrl(existente.getImagenFirmaUrl());
+            } else {
+                Firmante origen = firmantes.findById(id)
+                        .filter(Firmante::isActivo)
+                        .orElseThrow(() -> new BusinessValidationException("Algún firmante elegido no está disponible."));
+                f.setFirmante(origen);
+                f.setNombreImpreso(origen.getPersona().nombreCompleto());
+                f.setCargoImpreso(origen.getCargoFirma());
+                f.setImagenFirmaUrl(origen.getImagenFirmaUrl());
+            }
+            nuevos.add(f);
+        }
+
+        String antes = instantanea(c, actuales);
+        String despues = instantanea(nombres, titulo, p.horas(), entidadNueva, nuevos);
+        if (antes.equals(despues)) {
+            throw new BusinessValidationException("No hay cambios que registrar: los datos son iguales a los vigentes.");
+        }
+
+        c.setNombresImpresos(nombres);
+        c.setTituloCursoImpreso(titulo);
+        c.setHorasImpresas(p.horas());
+        c.setEntidadImpresa(entidadNueva);
+        certificados.save(c);
+        certificadoFirmantes.deleteAll(actuales);
+        certificadoFirmantes.flush();
+        certificadoFirmantes.saveAll(nuevos);
+
+        String verificacion = frontendBaseUrl + "/verificar-certificado?codigo=" + c.getCodigo();
+        var entidadCurso = c.getLogro().getMatricula().getCurso().getEntidadCertificadora();
+        // La referencia queda en el certificado: así el PDF regenerado es el que se descarga.
+        c.setArchivoPdfUrl(archivos.guardarBytes("certificados", c.getCodigo() + ".pdf",
+                pdf.generar(c, nuevos, verificacion, imagenes::cargar, entidadCurso == null ? null : entidadCurso.getLogoUrl())));
+        certificados.save(c);
+
+        guardarCambio(c, HistorialCertificado.CORRECCION, antes, despues, p.motivo().strip());
+        return detalleDe(c);
+    }
+
+    /**
+     * Anula de forma irreversible un certificado VIGENTE: retira el PDF, conserva el certificado, su historial y la
+     * finalización, y deja el código activo para que la verificación pública informe «anulado». Un certificado
+     * anulado nunca vuelve a ser VIGENTE.
+     */
+    @Transactional
+    public CertificadoDetalleResponse anular(Long certificadoId, AnularCertificadoRequest p) {
+        exigirAdministrador();
+        Certificado c = certificado(certificadoId);
+        exigirVigente(c, "anular");
+        Instant ahora = clock.instant();
+        c.setEstado(Certificado.ANULADO);
+        c.setAnuladoEn(ahora);
+        c.setMotivoAnulacion(p.motivo().strip());
+        certificados.save(c);
+        archivos.eliminar(c.getArchivoPdfUrl());
+        guardarCambio(c, HistorialCertificado.ANULACION, "Vigente", "Anulado el " + ahora, p.motivo().strip());
+        return detalleDe(c);
+    }
+
+    private void exigirVigente(Certificado c, String accion) {
+        if (Certificado.ANULADO.equals(c.getEstado())) {
+            throw new BusinessException(HttpStatus.CONFLICT, "CERTIFICADO_ANULADO",
+                    "Un certificado anulado no se puede " + accion + ": la anulación es irreversible.");
+        }
+    }
+
+    private void guardarCambio(Certificado c, String accion, String antes, String despues, String motivo) {
+        HistorialCertificado h = new HistorialCertificado();
+        h.setCertificado(c);
+        h.setAccion(accion);
+        h.setDatosAnteriores(antes);
+        h.setDatosNuevos(despues);
+        h.setMotivo(motivo);
+        h.setRealizadoPorUsuarioId(actual.get().userId());
+        h.setRealizadoEn(clock.instant());
+        historial.save(h);
+    }
+
+    private static String instantanea(Certificado c, List<CertificadoFirmante> firmantesImpresos) {
+        return instantanea(c.getNombresImpresos(), c.getTituloCursoImpreso(), c.getHorasImpresas(), c.getEntidadImpresa(),
+                firmantesImpresos);
+    }
+
+    private static String instantanea(String nombres, String titulo, java.math.BigDecimal horas, String entidad,
+            List<CertificadoFirmante> firmantesImpresos) {
+        return "Nombres: " + nombres + "\nTítulo: " + titulo + "\nHoras: " + horas.stripTrailingZeros().toPlainString()
+                + "\nEntidad: " + (entidad == null ? "—" : entidad) + "\nFirmantes: "
+                + firmantesImpresos.stream().map(f -> f.getNombreImpreso() + " (" + f.getCargoImpreso() + ")")
+                        .collect(Collectors.joining("; "));
+    }
+
+    private CertificadoDetalleResponse detalleDe(Certificado c) {
+        Matricula m = c.getLogro().getMatricula();
+        List<CertificadoFirmante> impresos = certificadoFirmantes.findByCertificado_IdOrderByOrdenAsc(c.getId());
+        List<FirmanteImpreso> firmantesImpresos = impresos.stream()
+                .map(f -> new FirmanteImpreso(f.getFirmante().getId(), f.getNombreImpreso(), f.getCargoImpreso())).toList();
+        Map<Long, FirmanteDisponible> disponibles = new java.util.LinkedHashMap<>();
+        firmantes.findByActivoTrueOrderByIdAsc(PageRequest.of(0, 100)).forEach(f -> disponibles.put(f.getId(),
+                new FirmanteDisponible(f.getId(), f.getPersona().nombreCompleto(), f.getCargoFirma())));
+        impresos.forEach(f -> disponibles.putIfAbsent(f.getFirmante().getId(),
+                new FirmanteDisponible(f.getFirmante().getId(), f.getNombreImpreso(), f.getCargoImpreso())));
+        List<Cambio> cambios = historial.findByCertificado_IdOrderByRealizadoEnDescIdDesc(c.getId()).stream()
+                .map(h -> new Cambio(h.getId(), h.getAccion(), h.getDatosAnteriores(), h.getDatosNuevos(), h.getMotivo(),
+                        usuarios.findWithPersonaById(h.getRealizadoPorUsuarioId())
+                                .map(u -> u.getPersona().nombreCompleto()).orElse("—"),
+                        h.getRealizadoEn()))
+                .toList();
+        return new CertificadoDetalleResponse(c.getId(), c.getCodigo(), c.getEstado(), c.getTipoEmision(), c.getNivel(),
+                c.getNotaImpresa(), m.getUsuario().getPersona().nombreCompleto(), m.getUsuario().getCorreo(),
+                m.getCurso().getId(), c.getNombresImpresos(), c.getTituloCursoImpreso(), c.getTipoCursoImpreso(),
+                c.getHorasImpresas(), c.getEntidadImpresa(), c.getEmitidoEn(), c.getAnuladoEn(),
+                c.getMotivoAnulacion(), Certificado.VIGENTE.equals(c.getEstado()), firmantesImpresos,
+                List.copyOf(disponibles.values()), cambios);
+    }
+
+    private Certificado certificado(Long id) {
+        return certificados.findById(id).orElseThrow(() -> new ResourceNotFoundException("El certificado no existe."));
     }
 
     // ---------------------------------------------------------------------------------------- situación --

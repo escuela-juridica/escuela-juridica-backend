@@ -167,6 +167,23 @@ public class ArchivoAlmacenamientoService {
         return b.length > 3 && (b[0] & 0xFF) == 0xFF && (b[1] & 0xFF) == 0xD8 && (b[2] & 0xFF) == 0xFF;
     }
 
+    /** Retira un archivo generado por el sistema (p. ej. el PDF de un certificado anulado). Si ya no existe, no hace nada. */
+    public void eliminar(String referencia) {
+        String prefijo = "/uploads/";
+        if (referencia == null || !referencia.startsWith(prefijo)) {
+            return;
+        }
+        Path destino = raiz.resolve(referencia.substring(prefijo.length())).normalize();
+        if (!destino.startsWith(raiz)) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(destino);
+        } catch (IOException e) {
+            throw new BusinessValidationException("No pudimos retirar el archivo.");
+        }
+    }
+
     public Resource cargar(String referencia) {
         String prefijo = "/uploads/";
         if (referencia == null || !referencia.startsWith(prefijo)) {

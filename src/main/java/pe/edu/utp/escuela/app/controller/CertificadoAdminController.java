@@ -13,7 +13,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import pe.edu.utp.escuela.app.dto.AnularCertificadoRequest;
+import pe.edu.utp.escuela.app.dto.CertificadoDetalleResponse;
 import pe.edu.utp.escuela.app.dto.CertificadoGestionResponse;
+import pe.edu.utp.escuela.app.dto.CorregirCertificadoRequest;
 import pe.edu.utp.escuela.app.dto.EmisionManualSituacionResponse;
 import pe.edu.utp.escuela.app.dto.EmitirCertificadoManualRequest;
 import pe.edu.utp.escuela.app.dto.PageResponse;
@@ -50,5 +53,29 @@ public class CertificadoAdminController {
     public EmisionManualSituacionResponse emitir(@PathVariable Long matriculaId,
             @Valid @RequestBody EmitirCertificadoManualRequest peticion) {
         return service.emitir(matriculaId, peticion);
+    }
+
+    @GetMapping("/{certificadoId}")
+    @Operation(summary = "HU-036 · Datos, firmantes e historial de un certificado",
+            description = "Incluye el motivo de una anulación, que es privado de la administración.")
+    public CertificadoDetalleResponse detalle(@PathVariable Long certificadoId) {
+        return service.detalle(certificadoId);
+    }
+
+    @PostMapping("/{certificadoId}/corregir")
+    @Operation(summary = "HU-036 · Corregir datos documentales con motivo",
+            description = "Conserva el código y el estado VIGENTE, regenera el PDF y guarda la versión anterior en el "
+                    + "historial. La nota y el nivel congelados no se pueden cambiar.")
+    public CertificadoDetalleResponse corregir(@PathVariable Long certificadoId,
+            @Valid @RequestBody CorregirCertificadoRequest peticion) {
+        return service.corregir(certificadoId, peticion);
+    }
+
+    @PostMapping("/{certificadoId}/anular")
+    @Operation(summary = "HU-036 · Anular un certificado de forma irreversible",
+            description = "Exige motivo y confirmación. Retira el PDF; la verificación pública informa que está anulado.")
+    public CertificadoDetalleResponse anular(@PathVariable Long certificadoId,
+            @Valid @RequestBody AnularCertificadoRequest peticion) {
+        return service.anular(certificadoId, peticion);
     }
 }
