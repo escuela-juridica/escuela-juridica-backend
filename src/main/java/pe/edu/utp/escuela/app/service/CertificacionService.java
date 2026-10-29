@@ -249,7 +249,9 @@ public class CertificacionService {
 
         Instant ahora = clock.instant();
         // La finalización se registra una vez y se conserva: vencer o cancelar después no la deshace.
-        if (logro.getFechaFinalizacion() == null && condicionesActivas && avance.cumpleTodo()) {
+        // HU-038: cancelar un curso no crea finalizaciones; solo conserva las que ya existían.
+        boolean cursoCancelado = "CANCELADO".equals(curso.getEstadoCurso().getCodigo());
+        if (logro.getFechaFinalizacion() == null && condicionesActivas && avance.cumpleTodo() && !cursoCancelado) {
             logro.setFechaFinalizacion(ahora);
             matricula.setFechaFinalizacion(ahora);
             matriculas.save(matricula);

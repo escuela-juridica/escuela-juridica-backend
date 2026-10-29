@@ -112,4 +112,11 @@ public class Curso extends RegistroAuditable {
 
     @Column(name = "cerrado_en")
     private Instant cerradoEn;
+
+    /** HU-038 — Cancelación excepcional completa: momento y motivo obligatorio. */
+    @Column(name = "cancelado_en")
+    private Instant canceladoEn;
+
+    @Column(name = "motivo_cancelacion", columnDefinition = "text")
+    private String motivoCancelacion;
 }

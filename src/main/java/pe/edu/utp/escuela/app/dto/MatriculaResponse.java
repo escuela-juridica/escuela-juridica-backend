@@ -9,5 +9,6 @@ public record MatriculaResponse(
         String estado, String formaIngreso, Instant fechaMatricula, Instant fechaActivacion,
         Instant fechaVencimiento, Instant fechaFinalizacion, LocalDate fechaInicio,
         boolean accesoEfectivo, String mensajeAcceso, int porcentajeProgreso,
-        int leccionesCompletadas, int totalLecciones, String siguienteLeccion, String estadoNotificacion) {
+        int leccionesCompletadas, int totalLecciones, String siguienteLeccion, String estadoNotificacion,
+        boolean cursoCancelado) {
 }

@@ -109,6 +109,10 @@ public class PagoEnLineaService {
         if (!"PAGADO".equals(curso.getTipoVenta())) {
             throw new BusinessValidationException("Este curso es gratuito: no requiere pago.");
         }
+        if ("CANCELADO".equals(curso.getEstadoCurso().getCodigo())) {
+            // HU-038: ni nuevos checkouts ni la reanudación de uno que quedó en proceso.
+            throw new BusinessValidationException("Este curso fue cancelado: ya no admite pagos.");
+        }
         Optional<Matricula> existente = matriculas.findByUsuario_IdAndCurso_Id(usuario.getId(), curso.getId());
         if (existente.isPresent()) {
             Matricula m = existente.get();
@@ -169,6 +173,10 @@ public class PagoEnLineaService {
             Pago pago = propio(numeroPedido);
             if (!Pago.PENDIENTE.equals(pago.getEstado())) {
                 return null; // Ya tiene resultado: la petición repetida solo devuelve el estado actual.
+            }
+            if ("CANCELADO".equals(pago.getMatricula().getCurso().getEstadoCurso().getCodigo())) {
+                // HU-038: un checkout abierto antes de cancelar el curso ya no cobra.
+                throw new BusinessValidationException("Este curso fue cancelado: ya no se puede completar el pago.");
             }
             Usuario usuario = pago.getMatricula().getUsuario();
             Persona p = usuario.getPersona();

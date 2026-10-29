@@ -518,13 +518,15 @@ public class ExamenAlumnoService {
         if (efectivo) {
             return cursoCancelado;
         }
-        if (cursoCancelado && !cancelada && cuentaHabilitada) {
+        // HU-038: solo conserva la consulta quien ya tenía contenido disponible al cancelar el curso.
+        if (AccesoPorCancelacion.permiteLectura(m, cuentaHabilitada, LIMA)) {
             return true;
         }
         String mensaje = cancelada
                 ? "Tu matrícula fue cancelada" + (m.getMotivoCancelacion() == null || m.getMotivoCancelacion().isBlank()
                         ? "." : ": " + m.getMotivoCancelacion())
                 : !cuentaHabilitada ? "Completa la habilitación de tu cuenta para continuar."
+                        : cursoCancelado ? AccesoPorCancelacion.MENSAJE_SIN_CONTENIDO
                         : !inicio ? "El curso aún no inicia."
                                 : !vigente || "VENCIDA".equals(m.getEstado()) ? "El acceso venció."
                                         : "El acceso no está disponible.";

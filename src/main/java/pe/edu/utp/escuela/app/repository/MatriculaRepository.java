@@ -36,6 +36,40 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Long> {
     @EntityGraph(attributePaths = { "usuario" })
     List<Matricula> findByEstadoAndCurso_Id(String estado, Long cursoId);
 
+    long countByCurso_IdAndEstado(Long cursoId, String estado);
+
+    /** HU-046 — Matrícula que llegó a ACTIVA (tiene fecha de activación), con lo mínimo que grafica el dashboard. */
+    interface ActivacionRow {
+        Long getId();
+
+        Instant getFecha();
+
+        Long getCursoId();
+
+        String getCurso();
+
+        String getForma();
+    }
+
+    /**
+     * HU-046 — Universo único de los gráficos de matrículas: cada matrícula que llegó a ACTIVA dentro del rango
+     * (fecha de activación), sin importar su estado actual, filtrada por curso y modalidad. Una fila por matrícula:
+     * nada se cuenta dos veces.
+     */
+    @Query("""
+            select m.id as id, m.fechaActivacion as fecha, c.id as cursoId, c.titulo as curso, m.formaIngreso as forma
+            from Matricula m join m.curso c
+            where m.fechaActivacion is not null
+              and m.fechaActivacion >= :desde and m.fechaActivacion < :hasta
+              and (:cursoId is null or c.id = :cursoId)
+              and (:modalidad = '' or c.modalidad = :modalidad)
+            """)
+    List<ActivacionRow> activacionesParaDashboard(@Param("cursoId") Long cursoId, @Param("modalidad") String modalidad,
+            @Param("desde") Instant desde, @Param("hasta") Instant hasta);
+
+    /** HU-038: matrículas de un curso de un conjunto de alumnos (para completar la lista de afectados). */
+    List<Matricula> findByCurso_IdAndUsuario_IdIn(Long cursoId, java.util.Collection<Long> usuarioIds);
+
     @EntityGraph(attributePaths = { "curso", "curso.estadoCurso", "usuario", "usuario.persona" })
     List<Matricula> findByEstadoAndFechaVencimientoLessThanEqual(String estado, Instant instante);
 

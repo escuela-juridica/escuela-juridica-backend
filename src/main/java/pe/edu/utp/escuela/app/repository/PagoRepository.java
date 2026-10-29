@@ -36,6 +36,9 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
 
     boolean existsByMatricula_IdAndEstado(Long matriculaId, String estado);
 
+    /** HU-038: pagos en línea todavía sin resultado de un curso. */
+    long countByMatricula_Curso_IdAndEstado(Long cursoId, String estado);
+
     Optional<Pago> findFirstByMatricula_IdAndEstado(Long matriculaId, String estado);
 
     /**
@@ -84,6 +87,29 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
             + " and p.estado in ('APROBADO', 'REGISTRADO_MANUAL') and p.importe > 0")
     long contarConfirmados(@Param("texto") String texto, @Param("cursoId") Long cursoId,
             @Param("estado") String estado, @Param("medio") String medio, @Param("origen") String origen,
+            @Param("desde") Instant desde, @Param("hasta") Instant hasta);
+
+    /** HU-046 — Un pago confirmado con lo mínimo que grafica el dashboard. */
+    interface ConfirmadoRow {
+        Instant getFecha();
+
+        BigDecimal getImporte();
+    }
+
+    /**
+     * HU-046 — Pagos confirmados: igual que el total del reporte de pagos (APROBADO y REGISTRADO_MANUAL con monto
+     * mayor que cero, fecha del resultado). PENDIENTE, RECHAZADO, ERROR, EXPIRADO y EXONERADO no entran. Cada pago es
+     * una sola fila, así que una confirmación repetida de Culqi (HU-047) no suma dos veces.
+     */
+    @Query("""
+            select p.resultadoEn as fecha, p.importe as importe
+            from Pago p join p.matricula m join m.curso c
+            where p.estado in ('APROBADO', 'REGISTRADO_MANUAL') and p.importe > 0
+              and p.resultadoEn >= :desde and p.resultadoEn < :hasta
+              and (:cursoId is null or c.id = :cursoId)
+              and (:modalidad = '' or c.modalidad = :modalidad)
+            """)
+    List<ConfirmadoRow> confirmadosParaDashboard(@Param("cursoId") Long cursoId, @Param("modalidad") String modalidad,
             @Param("desde") Instant desde, @Param("hasta") Instant hasta);
 
     /** HU-037 — Pagos de un curso con una incidencia todavía sin atender (para el detalle del sobrecupo). */

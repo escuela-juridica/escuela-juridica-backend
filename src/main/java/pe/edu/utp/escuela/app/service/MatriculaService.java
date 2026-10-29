@@ -324,7 +324,8 @@ public class MatriculaService {
                 Map.Entry::getKey, entry -> origenReporte(entry.getValue())));
     }
 
-    private String origenReporte(List<Pago> pagosDeMatricula) {
+    /** Forma de ingreso de una matrícula según sus pagos; también la usa el dashboard (HU-046) para no divergir. */
+    static String origenReporte(List<Pago> pagosDeMatricula) {
         if (pagosDeMatricula.stream().anyMatch(p -> "EXONERADO".equals(p.getOrigen())))
             return "EXONERADO";
         if (pagosDeMatricula.stream().anyMatch(p -> "MANUAL".equals(p.getOrigen())))
@@ -481,7 +482,10 @@ public class MatriculaService {
                 || !LocalDate.now(clock.withZone(LIMA)).isBefore(m.getCurso().getFechaInicio());
         boolean efectivo = "ACTIVA".equals(m.getEstado()) && vigente && inicio && m.getUsuario().isActivo()
                 && m.getUsuario().getCorreoVerificadoEn() != null && !m.getUsuario().isRequiereCambioContrasena();
+        boolean cursoCancelado = "CANCELADO".equals(m.getCurso().getEstadoCurso().getCodigo());
         String mensaje = "PENDIENTE_PAGO".equals(m.getEstado()) ? "Tu pago aún no está aprobado."
+                : cursoCancelado && efectivo ? "El curso fue cancelado: solo puedes consultar el contenido que ya tenías."
+                : cursoCancelado && "ACTIVA".equals(m.getEstado()) ? "El curso fue cancelado antes de que hubiera contenido disponible."
                 : efectivo ? "Disponible para continuar."
                 : !inicio ? "El curso aún no inicia."
                         : !vigente || "VENCIDA".equals(m.getEstado()) ? "El acceso venció."
@@ -506,7 +510,7 @@ public class MatriculaService {
                 m.getEstado(), m.getFormaIngreso(),
                 m.getFechaMatricula(), m.getFechaActivacion(), m.getFechaVencimiento(), m.getFechaFinalizacion(),
                 m.getCurso().getFechaInicio(), efectivo, mensaje, porcentaje, (int) hechas, (int) total, siguiente,
-                estadoCorreoActual);
+                estadoCorreoActual, cursoCancelado);
     }
 
     private String enviarConfirmacion(Matricula matricula, String origen) {

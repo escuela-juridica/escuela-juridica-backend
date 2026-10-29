@@ -28,6 +28,11 @@ public interface LeccionRepository extends JpaRepository<Leccion, Long> {
             + "and l.activo = true and l.estado <> 'CANCELADA' and l.fechaHoraInicio > :desde")
     long contarSesionesFuturasActivas(@Param("cursoId") Long cursoId, @Param("desde") Instant desde);
 
+    /** HU-038: las sesiones en vivo que todavía no comenzaron y se cancelan junto con el curso. */
+    @Query("select l from Leccion l where l.modulo.curso.id = :cursoId and l.tipo = 'EN_VIVO' "
+            + "and l.activo = true and l.estado <> 'CANCELADA' and l.fechaHoraInicio > :desde")
+    List<Leccion> buscarSesionesFuturasActivas(@Param("cursoId") Long cursoId, @Param("desde") Instant desde);
+
     void deleteAllByModulo_IdIn(Collection<Long> moduloIds);
 
     // ---------------------------------------------------------------- HU-026 --

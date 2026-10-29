@@ -137,6 +137,25 @@ public class AdministrarSesionesService {
         avisarCambio(l, "Tu sesión fue cancelada", p.motivo());
     }
 
+    /**
+     * HU-038 — Cancela de una vez las sesiones en vivo futuras de un curso que se cancela por completo. Cada una
+     * queda visible como CANCELADA con su historial, y no envía avisos individuales: el curso comunica un solo
+     * correo consolidado. Devuelve cuántas sesiones se cancelaron. Lo invoca el servicio de cancelación del curso,
+     * que ya verificó que quien llama es administrador.
+     */
+    @Transactional
+    public int cancelarSesionesFuturasDeCurso(Long cursoId, String motivo) {
+        List<Leccion> futuras = lecciones.buscarSesionesFuturasActivas(cursoId, clock.instant());
+        for (Leccion l : futuras) {
+            guardarHistorial(l, "CANCELACION", l.getFechaHoraInicio(), l.getFechaHoraFin(),
+                    l.getEnlaceReunion(), null, null, null, motivo);
+            l.setEstado("CANCELADA");
+            l.setMotivoCancelacion(motivo);
+            lecciones.save(l);
+        }
+        return futuras.size();
+    }
+
     @Transactional
     public void corregirEnlace(Long leccionId, CorregirEnlaceSesionRequest p) {
         exigirAdministrador();

@@ -2151,6 +2151,18 @@ JOIN usuario u ON u.correo=v.correo
 JOIN curso c ON c.url_amigable=v.slug
 JOIN usuario a ON a.correo='admin@escuelajuridica.edu.pe';
 
+-- Toda matricula administrativa conserva su pago (manual o exoneracion): estas tres son exoneraciones
+-- de demostracion, para que dashboard y reportes cuenten cada matricula con una forma de ingreso.
+INSERT INTO pago
+    (matricula_id,numero_pedido,origen,estado,precio_regular_aplicado,importe,motivo,constancia_numero,
+     resultado_en,registrado_por_usuario_id)
+SELECT m.matricula_id,'ADM-'||m.matricula_id,'EXONERADO','EXONERADO',c.precio_regular,0,
+       'Matricula administrativa de demostracion academica.','CONST-ADM-'||m.matricula_id,
+       m.fecha_matricula,m.creado_por_usuario_id
+FROM matricula m JOIN curso c ON c.curso_id=m.curso_id
+WHERE m.forma_ingreso='ADMINISTRADOR'
+  AND NOT EXISTS (SELECT 1 FROM pago p WHERE p.matricula_id=m.matricula_id);
+
 INSERT INTO historial_estado_matricula (matricula_id,estado_nuevo,realizado_por_usuario_id)
 SELECT m.matricula_id,m.estado,m.creado_por_usuario_id FROM matricula m
 WHERE m.matricula_id NOT IN (SELECT h.matricula_id FROM historial_estado_matricula h);

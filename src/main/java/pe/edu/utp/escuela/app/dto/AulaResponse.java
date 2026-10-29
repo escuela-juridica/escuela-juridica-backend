@@ -15,7 +15,9 @@ public record AulaResponse(
         AvanceCertificadoResponse avanceCertificado,
         List<ExamenAulaResponse> examenesFinales,
         String imagenPortadaUrl,
-        java.math.BigDecimal horasAcademicas) {
+        java.math.BigDecimal horasAcademicas,
+        boolean cursoCancelado,
+        String motivoCancelacionCurso) {
 
     public AulaResponse {
         modulos = List.copyOf(modulos);

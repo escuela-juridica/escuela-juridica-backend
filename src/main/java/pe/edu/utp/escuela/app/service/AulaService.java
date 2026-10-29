@@ -118,7 +118,8 @@ public class AulaService {
         return new AulaResponse(matricula.getId(), matricula.getCurso().getId(), matricula.getCurso().getTitulo(),
                 matricula.getCurso().getModalidad(), avance.porcentaje(), modulosRespuesta, ultimaLeccionIdValida,
                 avance.comoRespuesta(), ruta.examenesFinales(),
-                matricula.getCurso().getImagenPortadaUrl(), matricula.getCurso().getHorasAcademicas());
+                matricula.getCurso().getImagenPortadaUrl(), matricula.getCurso().getHorasAcademicas(),
+                AccesoPorCancelacion.cursoCancelado(matricula), matricula.getCurso().getMotivoCancelacion());
     }
 
     private String estadoSesion(Leccion leccion, Instant ahora) {
@@ -176,9 +177,8 @@ public class AulaService {
             return;
         }
 
-        boolean cursoCancelado = "CANCELADO".equals(m.getCurso().getEstadoCurso().getCodigo());
-        boolean accesoLecturaPorCancelacion = cursoCancelado && !cancelada && cuentaHabilitada;
-        if (accesoLecturaPorCancelacion) {
+        // HU-038: solo conserva la consulta quien ya tenía contenido disponible al cancelar el curso.
+        if (AccesoPorCancelacion.permiteLectura(m, cuentaHabilitada, LIMA)) {
             return;
         }
 
@@ -186,6 +186,7 @@ public class AulaService {
                 ? "Tu matrícula fue cancelada" + (esVacio(m.getMotivoCancelacion()) ? "."
                         : ": " + m.getMotivoCancelacion())
                 : !cuentaHabilitada ? "Completa la habilitación de tu cuenta para continuar."
+                        : AccesoPorCancelacion.cursoCancelado(m) ? AccesoPorCancelacion.MENSAJE_SIN_CONTENIDO
                         : !inicio ? "El curso aún no inicia."
                                 : !vigente || "VENCIDA".equals(m.getEstado()) ? "El acceso venció."
                                         : "El acceso no está disponible.";

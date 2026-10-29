@@ -12,4 +12,12 @@ public interface LogroCertificacionRepository extends JpaRepository<LogroCertifi
 
     /** HU-032: logros todavía no emitidos, que el job revisa para emitir o pedir datos. */
     List<LogroCertificacion> findByEstadoIn(Collection<String> estados);
+
+    /** HU-038: logros de un conjunto de matrículas, para saber quién ya había finalizado. */
+    List<LogroCertificacion> findByMatricula_IdIn(Collection<Long> matriculaIds);
+
+    /** HU-038: alumnos con acceso que ya cumplieron las condiciones del curso (fecha de finalización registrada). */
+    @org.springframework.data.jpa.repository.Query("select count(l) from LogroCertificacion l where l.matricula.curso.id = :cursoId "
+            + "and l.matricula.estado = 'ACTIVA' and l.fechaFinalizacion is not null")
+    long contarFinalizadosActivos(@org.springframework.data.repository.query.Param("cursoId") Long cursoId);
 }

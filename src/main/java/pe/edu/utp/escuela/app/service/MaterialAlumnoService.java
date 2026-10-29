@@ -133,9 +133,8 @@ public class MaterialAlumnoService {
             return;
         }
 
-        boolean cursoCancelado = "CANCELADO".equals(m.getCurso().getEstadoCurso().getCodigo());
-        boolean accesoLecturaPorCancelacion = cursoCancelado && !cancelada && cuentaHabilitada;
-        if (accesoLecturaPorCancelacion) {
+        // HU-038: solo conserva la consulta quien ya tenía contenido disponible al cancelar el curso.
+        if (AccesoPorCancelacion.permiteLectura(m, cuentaHabilitada, LIMA)) {
             return;
         }
 
