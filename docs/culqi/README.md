@@ -16,8 +16,10 @@ es integración (dinero ficticio) y `pk_live_`/`sk_live_` es producción.
 Flujo:
 
 1. El alumno elige un curso de pago. El backend crea una **orden** en Culqi (`POST /orders`).
-2. El navegador abre **Culqi Checkout** con esa orden. Se ofrecen Yape y billeteras digitales (Plin, BBVA, Scotiabank,
-   Ligo, BanBif, Ya con un solo QR). La tarjeta está desactivada en el checkout; las billeteras aceptan de S/ 6 a S/ 500.
+2. El navegador abre **Culqi Checkout** con esa orden. Se ofrecen tarjeta y Yape en todos los cursos. Las billeteras
+   digitales (Plin, BBVA, Scotiabank, Ligo, BanBif, Ya, con un solo QR por PagoEfectivo) están
+   **desactivadas** con `BILLETERAS_HABILITADAS = false` en `curso-formato.util.ts`, porque en integración el simulador
+   de Culqi no marca la orden como pagada en su API. Aceptan de S/ 6 a S/ 500.
 3. **Tarjeta y Yape:** Culqi entrega un token y el backend lo cobra (`POST /charges`). El resultado se conoce al
    instante y **no usa webhook**.
 4. **Billeteras (Plin):** el pago se confirma después. Culqi avisa por **webhook** y el backend vuelve a consultar
