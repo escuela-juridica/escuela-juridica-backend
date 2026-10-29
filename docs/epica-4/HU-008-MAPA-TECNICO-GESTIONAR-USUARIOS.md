@@ -10,10 +10,10 @@
 > nuevo — documenta exactamente lo que existía, con el código real embebido al final, para que el
 > equipo lo reconstruya aprendiendo de esa referencia en vez de adivinar el diseño desde cero.
 >
-> **Importante — no todo se retiró.** `AdminUsuariosServicio.obtener(Long)` **se mantiene en el
-> backend** porque `MatriculaServicio.tieneRol(...)` (HU-019, matricular administrativamente) lo
+> **Importante — no todo se retiró.** `AdminUsuariosService.obtener(Long)` **se mantiene en el
+> backend** porque `MatriculaService.tieneRol(...)` (HU-019, matricular administrativamente) lo
 > usa para validar que el alumno elegido tenga el rol ALUMNO. De la misma forma,
-> `AdminUsuariosApiService.listar(...)` y los tipos `UsuarioAdminRespuesta` / `RolUsuarioAdmin` /
+> `AdminUsuariosApiService.listar(...)` y los tipos `UsuarioAdminResponse` / `RolUsuarioAdmin` /
 > `CondicionCuentaAdmin` / `PageResponse` **se mantienen en el frontend** porque
 > `matriculas-listado.ts` (HU-019) los usa para poblar el combo de alumnos al registrar una
 > matrícula manual. Todo lo demás de esos archivos (y los dos controladores/componentes completos)
@@ -32,23 +32,23 @@ ingreso y la envía por correo junto con el código de verificación.
 
 Todo esto ya existe y se reutiliza, no se recrea:
 
-- Entidades y repositorios: `Usuario`/`UsuarioRepositorio`, `Persona`/`PersonaRepositorio`,
-  `Rol`/`RolRepositorio`, `UsuarioRol`/`UsuarioRolRepositorio`,
-  `CodigoVerificacionCorreo`/`CodigoVerificacionRepositorio`,
-  `Notificacion`/`NotificacionRepositorio`.
+- Entidades y repositorios: `Usuario`/`UsuarioRepository`, `Persona`/`PersonaRepository`,
+  `Rol`/`RolRepository`, `UsuarioRol`/`UsuarioRolRepository`,
+  `CodigoVerificacionCorreo`/`CodigoVerificacionRepository`,
+  `Notificacion`/`NotificacionRepository`.
 - `PasswordEncoder`, `MailService` + `HtmlMailMessage` (envío de correo con plantilla),
   `TextNormalizer` (`trimToNull`, `requireText`, `normalizeEmail`), `CurrentUserService` (usuario
   autenticado + sus roles).
 - Plantillas de correo ya existentes: `mail/bienvenida-administrativa.html`,
   `mail/contrasena-restablecida.html`, `mail/verification-code.html`.
 - DTOs exclusivos de esta historia, **intactos en el código** (no se tocaron, no hace falta
-  recrearlos): `CrearUsuarioAdminPeticion`, `CrearUsuarioAdminRespuesta`, `UsuarioAdminRespuesta`,
-  `ConcederRolPeticion`, `CambiarActivoPeticion`, `ResetearContrasenaRespuesta`,
+  recrearlos): `CrearUsuarioAdminRequest`, `CrearUsuarioAdminResponse`, `UsuarioAdminResponse`,
+  `ConcederRolRequest`, `CambiarActivoRequest`, `ResetearContrasenaResponse`,
   `RolUsuarioAdmin` (enum `ALUMNO`/`ADMINISTRADOR`, con `codigo()` → `"ROLE_" + name()` y
-  `desdeCodigo(String)`), `UsuarioRolFila` (proyección de `usuario_rol`), `CondicionCuentaAdmin`
+  `desdeCodigo(String)`), `UsuarioRolRow` (proyección de `usuario_rol`), `CondicionCuentaAdmin`
   (enum `NINGUNA`/`PENDIENTE_VERIFICACION`/`CAMBIO_PENDIENTE`/`AMBAS_PENDIENTES`, con el método
   `de(correoVerificado, requiereCambioContrasena)`).
-- `ActualizarPerfilPeticion` y `PageResponse<T>` también existen, pero son **compartidos con otras
+- `ActualizarPerfilRequest` y `PageResponse<T>` también existen, pero son **compartidos con otras
   historias** (HU-005 "Mi perfil", y paginación general) — no son exclusivos de HU-008, no los
   documentes ni los toques como si lo fueran.
 - Frontend: `shared/ui/modal/modal` (el listado abre crear/editar en modales, no en rutas
@@ -65,11 +65,11 @@ Ninguna dentro de la épica; esta historia es independiente. Pero **dos piezas p
 consumidas por HU-019** (matricular administrativamente, fuera de esta épica) y deben seguir
 existiendo con la misma firma cuando el equipo reconstruya el resto:
 
-- Backend: `AdminUsuariosServicio.obtener(Long usuarioId)` — lo llama
-  `MatriculaServicio.tieneRol(usuarioId, "ROLE_ALUMNO")` antes de matricular a alguien
+- Backend: `AdminUsuariosService.obtener(Long usuarioId)` — lo llama
+  `MatriculaService.tieneRol(usuarioId, "ROLE_ALUMNO")` antes de matricular a alguien
   manualmente.
 - Frontend: `AdminUsuariosApiService.listar(texto, rol, activo, page, size)` y los tipos
-  `UsuarioAdminRespuesta`/`RolUsuarioAdmin`/`CondicionCuentaAdmin`/`PageResponse` — los usa
+  `UsuarioAdminResponse`/`RolUsuarioAdmin`/`CondicionCuentaAdmin`/`PageResponse` — los usa
   `matriculas-listado.ts` para el combo "Alumno" del formulario de matrícula manual.
 
 No rompas esos dos contratos mientras reconstruyes el resto de la historia.
@@ -95,9 +95,9 @@ Todos exigen rol `ADMINISTRADOR` (403 si no lo tiene) y devuelven 404 si la cuen
 
 ### Archivos y responsabilidades
 
-- `controller/AdminUsuariosControlador.java`: expone los 9 endpoints de la tabla, sin lógica de
-  negocio — delega todo a `AdminUsuariosServicio`.
-- `service/AdminUsuariosServicio.java`: concentra toda la lógica de negocio (ver reglas abajo).
+- `controller/AdminUsuariosController.java`: expone los 9 endpoints de la tabla, sin lógica de
+  negocio — delega todo a `AdminUsuariosService`.
+- `service/AdminUsuariosService.java`: concentra toda la lógica de negocio (ver reglas abajo).
   Hoy solo sobrevive `obtener(Long)` en el código (ver nota de integración); el resto se reconstruye
   siguiendo este mapa.
 
@@ -157,7 +157,7 @@ Todos exigen rol `ADMINISTRADOR` (403 si no lo tiene) y devuelven 404 si la cuen
    crear la cuenta; no se puede volver a consultar después.
 8. **Actualizar datos personales (`actualizarDatosPersonales`)**: pedido explícitamente por el
    dueño del proyecto tras confirmar que la historia sí contempla editar los datos personales desde
-   este panel, no solo roles y habilitación. Reutiliza el mismo DTO (`ActualizarPerfilPeticion`) y
+   este panel, no solo roles y habilitación. Reutiliza el mismo DTO (`ActualizarPerfilRequest`) y
    las mismas reglas que HU-005 ("Mi perfil"), aplicadas aquí sobre una cuenta ajena: si el
    documento cambia y ya está en uso por otra persona, `DuplicateResourceException`.
 9. **Listar (`listar`)**: paginado server-side desde el primer momento
@@ -217,7 +217,7 @@ Todos exigen rol `ADMINISTRADOR` (403 si no lo tiene) y devuelven 404 si la cuen
   admin (`inject(HttpClient)`, `API_URL`). **Hoy solo sobrevive `listar(...)` en el código** (ver
   nota de integración); el resto se reconstruye siguiendo este mapa.
 - `usuario-admin.model.ts`: tipos que reflejan los DTOs del backend, nombres de campo idénticos.
-  **Hoy solo sobreviven `RolUsuarioAdmin`, `CondicionCuentaAdmin`, `UsuarioAdminRespuesta` y
+  **Hoy solo sobreviven `RolUsuarioAdmin`, `CondicionCuentaAdmin`, `UsuarioAdminResponse` y
   `PageResponse<T>`**.
 - `usuario-admin-etiquetas.ts`: funciones puras de presentación (`etiquetaCondicion`,
   `etiquetaEstadoCuenta`, `claseEstadoCuenta`) — se reconstruye junto con el resto, no depende de
@@ -225,7 +225,7 @@ Todos exigen rol `ADMINISTRADOR` (403 si no lo tiene) y devuelven 404 si la cuen
 
 ## Pruebas mínimas
 
-Basadas en los tests reales que existían en `AdminUsuariosServicioTests` (ya retirados; esto es lo
+Basadas en los tests reales que existían en `AdminUsuariosServiceTests` (ya retirados; esto es lo
 que debe seguir cumpliéndose cuando el equipo reconstruya el servicio):
 
 - Cualquier operación sin rol ADMINISTRADOR lanza `ForbiddenException`.
@@ -275,7 +275,7 @@ Un administrador puede buscar, crear, ver, editar, habilitar/deshabilitar y gest
 cualquier cuenta desde el panel, con paginación server-side desde el primer momento. Crear una
 cuenta nunca pide contraseña manualmente. Ningún flujo permite dejar el sistema sin al menos un
 administrador activo, ni que un administrador se quite a sí mismo su propio rol o se desactive a sí
-mismo. `MatriculaServicio.tieneRol(...)` (HU-019) y `matriculas-listado.ts` (HU-019) siguen
+mismo. `MatriculaService.tieneRol(...)` (HU-019) y `matriculas-listado.ts` (HU-019) siguen
 funcionando sin cambios, apoyados en las piezas mínimas que se mantuvieron de esta historia.
 
 ## Implementación guiada para copiar y adaptar
@@ -285,9 +285,9 @@ retirarse — se copia tal cual, no hay que inventar nada.
 
 ### 1. Orden sugerido para reconstruir
 
-1. Backend: completar `AdminUsuariosServicio.java` (ya existe con solo `obtener`) con el resto de
+1. Backend: completar `AdminUsuariosService.java` (ya existe con solo `obtener`) con el resto de
    métodos del punto 2 de abajo.
-2. Backend: `controller/AdminUsuariosControlador.java` (se recrea completo, no existe).
+2. Backend: `controller/AdminUsuariosController.java` (se recrea completo, no existe).
 3. Frontend: completar `usuario-admin.model.ts` y `admin-usuarios-api.service.ts` (ya existen
    recortados) con el resto de tipos/métodos del punto 4 de abajo.
 4. Frontend: recrear `usuario-admin-etiquetas.ts` (no existe).
@@ -295,7 +295,7 @@ retirarse — se copia tal cual, no hay que inventar nada.
    (ts/html/scss) — reemplazar el placeholder `.pantalla-pendiente` de cada uno por el contenido
    real de abajo.
 
-### 2. `AdminUsuariosServicio.java` completo (código real original)
+### 2. `AdminUsuariosService.java` completo (código real original)
 
 ```java
 package pe.edu.utp.escuela.app.service;
@@ -315,17 +315,17 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.edu.utp.escuela.app.dto.ActualizarPerfilPeticion;
-import pe.edu.utp.escuela.app.dto.CambiarActivoPeticion;
-import pe.edu.utp.escuela.app.dto.ConcederRolPeticion;
+import pe.edu.utp.escuela.app.dto.ActualizarPerfilRequest;
+import pe.edu.utp.escuela.app.dto.CambiarActivoRequest;
+import pe.edu.utp.escuela.app.dto.ConcederRolRequest;
 import pe.edu.utp.escuela.app.dto.CondicionCuentaAdmin;
-import pe.edu.utp.escuela.app.dto.CrearUsuarioAdminPeticion;
-import pe.edu.utp.escuela.app.dto.CrearUsuarioAdminRespuesta;
+import pe.edu.utp.escuela.app.dto.CrearUsuarioAdminRequest;
+import pe.edu.utp.escuela.app.dto.CrearUsuarioAdminResponse;
 import pe.edu.utp.escuela.app.dto.PageResponse;
-import pe.edu.utp.escuela.app.dto.ResetearContrasenaRespuesta;
+import pe.edu.utp.escuela.app.dto.ResetearContrasenaResponse;
 import pe.edu.utp.escuela.app.dto.RolUsuarioAdmin;
-import pe.edu.utp.escuela.app.dto.UsuarioAdminRespuesta;
-import pe.edu.utp.escuela.app.dto.UsuarioRolFila;
+import pe.edu.utp.escuela.app.dto.UsuarioAdminResponse;
+import pe.edu.utp.escuela.app.dto.UsuarioRolRow;
 import pe.edu.utp.escuela.app.entity.CodigoVerificacionCorreo;
 import pe.edu.utp.escuela.app.entity.Notificacion;
 import pe.edu.utp.escuela.app.entity.Persona;
@@ -339,26 +339,26 @@ import pe.edu.utp.escuela.app.exception.OperationNotAllowedException;
 import pe.edu.utp.escuela.app.exception.ResourceNotFoundException;
 import pe.edu.utp.escuela.app.mail.HtmlMailMessage;
 import pe.edu.utp.escuela.app.mail.MailService;
-import pe.edu.utp.escuela.app.repository.CodigoVerificacionRepositorio;
-import pe.edu.utp.escuela.app.repository.NotificacionRepositorio;
-import pe.edu.utp.escuela.app.repository.PersonaRepositorio;
-import pe.edu.utp.escuela.app.repository.RolRepositorio;
-import pe.edu.utp.escuela.app.repository.UsuarioRepositorio;
-import pe.edu.utp.escuela.app.repository.UsuarioRolRepositorio;
+import pe.edu.utp.escuela.app.repository.CodigoVerificacionRepository;
+import pe.edu.utp.escuela.app.repository.NotificacionRepository;
+import pe.edu.utp.escuela.app.repository.PersonaRepository;
+import pe.edu.utp.escuela.app.repository.RolRepository;
+import pe.edu.utp.escuela.app.repository.UsuarioRepository;
+import pe.edu.utp.escuela.app.repository.UsuarioRolRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.util.TextNormalizer;
 
 /** HU-008 — Gestionar usuarios administrativamente. */
 @Service
 @RequiredArgsConstructor
-public class AdminUsuariosServicio {
+public class AdminUsuariosService {
 
-    private final UsuarioRepositorio usuarios;
-    private final PersonaRepositorio personas;
-    private final RolRepositorio roles;
-    private final UsuarioRolRepositorio usuarioRoles;
-    private final CodigoVerificacionRepositorio codigos;
-    private final NotificacionRepositorio notificaciones;
+    private final UsuarioRepository usuarios;
+    private final PersonaRepository personas;
+    private final RolRepository roles;
+    private final UsuarioRolRepository usuarioRoles;
+    private final CodigoVerificacionRepository codigos;
+    private final NotificacionRepository notificaciones;
     private final PasswordEncoder encoder;
     private final MailService mailService;
     private final TextNormalizer textos;
@@ -367,7 +367,7 @@ public class AdminUsuariosServicio {
     private final SecureRandom random = new SecureRandom();
 
     @Transactional(readOnly = true)
-    public PageResponse<UsuarioAdminRespuesta> listar(
+    public PageResponse<UsuarioAdminResponse> listar(
             String texto, Boolean activo, RolUsuarioAdmin rol, Pageable pageable) {
         exigirAdministrador();
         String termino = texto == null ? "" : texto.strip().toLowerCase(Locale.ROOT);
@@ -375,18 +375,18 @@ public class AdminUsuariosServicio {
         Page<Usuario> pagina = usuarios.buscarAdministrativos(termino, activo, rolCodigo, pageable);
 
         List<Long> ids = pagina.getContent().stream().map(Usuario::getId).toList();
-        Map<Long, List<UsuarioRolFila>> rolesPorUsuario = ids.isEmpty() ? Map.of()
+        Map<Long, List<UsuarioRolRow>> rolesPorUsuario = ids.isEmpty() ? Map.of()
                 : usuarioRoles.buscarPorUsuarios(ids).stream()
-                        .collect(Collectors.groupingBy(UsuarioRolFila::usuarioId));
+                        .collect(Collectors.groupingBy(UsuarioRolRow::usuarioId));
 
-        List<UsuarioAdminRespuesta> items = pagina.getContent().stream()
+        List<UsuarioAdminResponse> items = pagina.getContent().stream()
                 .map(usuario -> mapear(usuario, rolesPorUsuario.getOrDefault(usuario.getId(), List.of()), null))
                 .toList();
         return PageResponse.from(items, pagina);
     }
 
     @Transactional(readOnly = true)
-    public UsuarioAdminRespuesta obtener(Long usuarioId) {
+    public UsuarioAdminResponse obtener(Long usuarioId) {
         exigirAdministrador();
         return detalleDe(buscarOLanzar(usuarioId));
     }
@@ -398,7 +398,7 @@ public class AdminUsuariosServicio {
      * una cuenta ajena.
      */
     @Transactional
-    public UsuarioAdminRespuesta actualizarDatosPersonales(Long usuarioId, ActualizarPerfilPeticion p) {
+    public UsuarioAdminResponse actualizarDatosPersonales(Long usuarioId, ActualizarPerfilRequest p) {
         exigirAdministrador();
         Usuario usuario = buscarOLanzar(usuarioId);
         Persona persona = usuario.getPersona();
@@ -419,7 +419,7 @@ public class AdminUsuariosServicio {
     }
 
     @Transactional
-    public CrearUsuarioAdminRespuesta crear(CrearUsuarioAdminPeticion p) {
+    public CrearUsuarioAdminResponse crear(CrearUsuarioAdminRequest p) {
         exigirAdministrador();
         String correo = textos.normalizeEmail(p.correo());
         List<RolUsuarioAdmin> rolesSolicitados = p.roles().stream().distinct().toList();
@@ -431,7 +431,7 @@ public class AdminUsuariosServicio {
             for (RolUsuarioAdmin rol : rolesSolicitados) {
                 concederRolSiFalta(usuario, rol);
             }
-            return new CrearUsuarioAdminRespuesta(detalleDe(usuario), true, null);
+            return new CrearUsuarioAdminResponse(detalleDe(usuario), true, null);
         }
 
         String documento = textos.trimToNull(p.documentoIdentidad());
@@ -466,7 +466,7 @@ public class AdminUsuariosServicio {
         String codigo = generarCodigo(usuario);
         enviarBienvenida(usuario, contrasenaTemporal, codigo);
 
-        return new CrearUsuarioAdminRespuesta(detalleDe(usuario), false, contrasenaTemporal);
+        return new CrearUsuarioAdminResponse(detalleDe(usuario), false, contrasenaTemporal);
     }
 
     /** Ya no se pregunta ni se infiere "cuál se guardó primero": con un solo rol, ese es el
@@ -499,7 +499,7 @@ public class AdminUsuariosServicio {
     }
 
     @Transactional
-    public UsuarioAdminRespuesta concederRol(Long usuarioId, ConcederRolPeticion p) {
+    public UsuarioAdminResponse concederRol(Long usuarioId, ConcederRolRequest p) {
         exigirAdministrador();
         Usuario usuario = buscarOLanzar(usuarioId);
         concederRolSiFalta(usuario, p.rol());
@@ -514,13 +514,13 @@ public class AdminUsuariosServicio {
      * administrador activo, y nunca puedes dejar una cuenta sin ningún rol.
      */
     @Transactional
-    public UsuarioAdminRespuesta revocarRol(Long usuarioId, RolUsuarioAdmin rolSolicitado) {
+    public UsuarioAdminResponse revocarRol(Long usuarioId, RolUsuarioAdmin rolSolicitado) {
         exigirAdministrador();
         Usuario usuario = buscarOLanzar(usuarioId);
         Rol rol = rolPorCodigo(rolSolicitado);
-        List<UsuarioRolFila> filas = usuarioRoles.buscarPorUsuario(usuarioId);
+        List<UsuarioRolRow> filas = usuarioRoles.buscarPorUsuario(usuarioId);
 
-        UsuarioRolFila fila = filas.stream()
+        UsuarioRolRow fila = filas.stream()
                 .filter(f -> f.rolCodigo().equals(rol.getCodigo()))
                 .findFirst()
                 .orElse(null);
@@ -543,7 +543,7 @@ public class AdminUsuariosServicio {
         usuarioRoles.deleteById(new UsuarioRol.Clave(usuarioId, rol.getId()));
 
         if (fila.principal()) {
-            UsuarioRolFila restante = filas.stream()
+            UsuarioRolRow restante = filas.stream()
                     .filter(f -> !f.rolCodigo().equals(rol.getCodigo()))
                     .findFirst()
                     .orElseThrow();
@@ -558,7 +558,7 @@ public class AdminUsuariosServicio {
     }
 
     @Transactional
-    public UsuarioAdminRespuesta cambiarActivo(Long usuarioId, CambiarActivoPeticion p) {
+    public UsuarioAdminResponse cambiarActivo(Long usuarioId, CambiarActivoRequest p) {
         exigirAdministrador();
         Usuario usuario = buscarOLanzar(usuarioId);
 
@@ -602,14 +602,14 @@ public class AdminUsuariosServicio {
      * existía forma de que el administrador restableciera el acceso de alguien). La respuesta la
      * trae una sola vez, igual que al crear la cuenta; también se envía por correo. */
     @Transactional
-    public ResetearContrasenaRespuesta resetearContrasena(Long usuarioId) {
+    public ResetearContrasenaResponse resetearContrasena(Long usuarioId) {
         exigirAdministrador();
         Usuario usuario = buscarOLanzar(usuarioId);
         String contrasenaTemporal = generarContrasenaTemporal();
         usuario.setContrasenaHash(encoder.encode(contrasenaTemporal));
         usuario.setRequiereCambioContrasena(true);
         enviarContrasenaRestablecida(usuario, contrasenaTemporal);
-        return new ResetearContrasenaRespuesta(detalleDe(usuario), contrasenaTemporal);
+        return new ResetearContrasenaResponse(detalleDe(usuario), contrasenaTemporal);
     }
 
     private void exigirAdministrador() {
@@ -714,32 +714,32 @@ public class AdminUsuariosServicio {
         notificaciones.saveAndFlush(notificacion);
     }
 
-    private UsuarioAdminRespuesta detalleDe(Usuario usuario) {
-        List<UsuarioRolFila> filas = usuarioRoles.buscarPorUsuario(usuario.getId());
+    private UsuarioAdminResponse detalleDe(Usuario usuario) {
+        List<UsuarioRolRow> filas = usuarioRoles.buscarPorUsuario(usuario.getId());
         String concedidoPorNombre = filas.stream()
                 .filter(f -> f.rolCodigo().equals(RolUsuarioAdmin.ADMINISTRADOR.codigo()))
                 .findFirst()
-                .map(UsuarioRolFila::asignadoPorUsuarioId)
+                .map(UsuarioRolRow::asignadoPorUsuarioId)
                 .flatMap(usuarios::findWithPersonaById)
                 .map(u -> u.getPersona().nombreCompleto())
                 .orElse(null);
         return mapear(usuario, filas, concedidoPorNombre);
     }
 
-    private UsuarioAdminRespuesta mapear(Usuario usuario, List<UsuarioRolFila> filas, String concedidoPorNombre) {
+    private UsuarioAdminResponse mapear(Usuario usuario, List<UsuarioRolRow> filas, String concedidoPorNombre) {
         Persona persona = usuario.getPersona();
         List<RolUsuarioAdmin> rolesDeUsuario = filas.stream()
                 .map(f -> RolUsuarioAdmin.desdeCodigo(f.rolCodigo()))
                 .toList();
         RolUsuarioAdmin principal = filas.stream()
-                .filter(UsuarioRolFila::principal)
+                .filter(UsuarioRolRow::principal)
                 .findFirst()
                 .map(f -> RolUsuarioAdmin.desdeCodigo(f.rolCodigo()))
                 .orElse(null);
         CondicionCuentaAdmin condicion = CondicionCuentaAdmin.de(
                 usuario.getCorreoVerificadoEn() != null, usuario.isRequiereCambioContrasena());
 
-        return new UsuarioAdminRespuesta(
+        return new UsuarioAdminResponse(
                 usuario.getId(),
                 persona.getNombres(),
                 persona.getApellidoPaterno(),
@@ -759,7 +759,7 @@ public class AdminUsuariosServicio {
 }
 ```
 
-### 3. `AdminUsuariosControlador.java` completo (código real original)
+### 3. `AdminUsuariosController.java` completo (código real original)
 
 ```java
 package pe.edu.utp.escuela.app.controller;
@@ -774,30 +774,30 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import pe.edu.utp.escuela.app.dto.ActualizarPerfilPeticion;
-import pe.edu.utp.escuela.app.dto.CambiarActivoPeticion;
-import pe.edu.utp.escuela.app.dto.ConcederRolPeticion;
-import pe.edu.utp.escuela.app.dto.CrearUsuarioAdminPeticion;
-import pe.edu.utp.escuela.app.dto.CrearUsuarioAdminRespuesta;
+import pe.edu.utp.escuela.app.dto.ActualizarPerfilRequest;
+import pe.edu.utp.escuela.app.dto.CambiarActivoRequest;
+import pe.edu.utp.escuela.app.dto.ConcederRolRequest;
+import pe.edu.utp.escuela.app.dto.CrearUsuarioAdminRequest;
+import pe.edu.utp.escuela.app.dto.CrearUsuarioAdminResponse;
 import pe.edu.utp.escuela.app.dto.PageResponse;
-import pe.edu.utp.escuela.app.dto.ResetearContrasenaRespuesta;
+import pe.edu.utp.escuela.app.dto.ResetearContrasenaResponse;
 import pe.edu.utp.escuela.app.dto.RolUsuarioAdmin;
-import pe.edu.utp.escuela.app.dto.UsuarioAdminRespuesta;
-import pe.edu.utp.escuela.app.service.AdminUsuariosServicio;
+import pe.edu.utp.escuela.app.dto.UsuarioAdminResponse;
+import pe.edu.utp.escuela.app.service.AdminUsuariosService;
 
 @RestController
 @RequestMapping("/api/admin/usuarios")
 @RequiredArgsConstructor
 @Tag(name = "HU-008 Gestionar usuarios", description = "Búsqueda, alta, roles y habilitación de cuentas, para administradores")
-public class AdminUsuariosControlador {
+public class AdminUsuariosController {
 
-    private final AdminUsuariosServicio servicio;
+    private final AdminUsuariosService servicio;
 
     @GetMapping
     @Operation(summary = "Listar usuarios (búsqueda y filtros opcionales, paginado)")
     @ApiResponse(responseCode = "200", description = "Página de usuarios")
     @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
-    public ResponseEntity<PageResponse<UsuarioAdminRespuesta>> listar(
+    public ResponseEntity<PageResponse<UsuarioAdminResponse>> listar(
             @RequestParam(defaultValue = "") String texto,
             @RequestParam(required = false) Boolean activo,
             @RequestParam(required = false) RolUsuarioAdmin rol,
@@ -813,7 +813,7 @@ public class AdminUsuariosControlador {
     @ApiResponse(responseCode = "200", description = "Detalle del usuario")
     @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
     @ApiResponse(responseCode = "404", description = "La cuenta ya no existe")
-    public ResponseEntity<UsuarioAdminRespuesta> obtener(@PathVariable Long usuarioId) {
+    public ResponseEntity<UsuarioAdminResponse> obtener(@PathVariable Long usuarioId) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(servicio.obtener(usuarioId));
     }
 
@@ -824,8 +824,8 @@ public class AdminUsuariosControlador {
     @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
     @ApiResponse(responseCode = "404", description = "La cuenta ya no existe")
     @ApiResponse(responseCode = "409", description = "El documento de identidad ya está en uso")
-    public ResponseEntity<UsuarioAdminRespuesta> actualizarDatosPersonales(
-            @PathVariable Long usuarioId, @Valid @RequestBody ActualizarPerfilPeticion p) {
+    public ResponseEntity<UsuarioAdminResponse> actualizarDatosPersonales(
+            @PathVariable Long usuarioId, @Valid @RequestBody ActualizarPerfilRequest p) {
         return ResponseEntity.ok(servicio.actualizarDatosPersonales(usuarioId, p));
     }
 
@@ -837,7 +837,7 @@ public class AdminUsuariosControlador {
     @ApiResponse(responseCode = "400", description = "Datos inválidos")
     @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
     @ApiResponse(responseCode = "409", description = "El documento de identidad ya está en uso")
-    public ResponseEntity<CrearUsuarioAdminRespuesta> crear(@Valid @RequestBody CrearUsuarioAdminPeticion p) {
+    public ResponseEntity<CrearUsuarioAdminResponse> crear(@Valid @RequestBody CrearUsuarioAdminRequest p) {
         return ResponseEntity.ok(servicio.crear(p));
     }
 
@@ -847,8 +847,8 @@ public class AdminUsuariosControlador {
     @ApiResponse(responseCode = "200", description = "Rol concedido (o ya existente, sin cambios)")
     @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
     @ApiResponse(responseCode = "404", description = "La cuenta ya no existe")
-    public ResponseEntity<UsuarioAdminRespuesta> concederRol(
-            @PathVariable Long usuarioId, @Valid @RequestBody ConcederRolPeticion p) {
+    public ResponseEntity<UsuarioAdminResponse> concederRol(
+            @PathVariable Long usuarioId, @Valid @RequestBody ConcederRolRequest p) {
         return ResponseEntity.ok(servicio.concederRol(usuarioId, p));
     }
 
@@ -860,7 +860,7 @@ public class AdminUsuariosControlador {
     @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
     @ApiResponse(responseCode = "404", description = "La cuenta ya no existe")
     @ApiResponse(responseCode = "409", description = "No puedes dejar la cuenta sin roles, ni retirarte tu propio rol de administrador, ni al último administrador")
-    public ResponseEntity<UsuarioAdminRespuesta> revocarRol(
+    public ResponseEntity<UsuarioAdminResponse> revocarRol(
             @PathVariable Long usuarioId, @PathVariable RolUsuarioAdmin rol) {
         return ResponseEntity.ok(servicio.revocarRol(usuarioId, rol));
     }
@@ -871,8 +871,8 @@ public class AdminUsuariosControlador {
     @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
     @ApiResponse(responseCode = "404", description = "La cuenta ya no existe")
     @ApiResponse(responseCode = "409", description = "No puedes desactivar tu propia cuenta ni al último administrador")
-    public ResponseEntity<UsuarioAdminRespuesta> cambiarActivo(
-            @PathVariable Long usuarioId, @Valid @RequestBody CambiarActivoPeticion p) {
+    public ResponseEntity<UsuarioAdminResponse> cambiarActivo(
+            @PathVariable Long usuarioId, @Valid @RequestBody CambiarActivoRequest p) {
         return ResponseEntity.ok(servicio.cambiarActivo(usuarioId, p));
     }
 
@@ -883,7 +883,7 @@ public class AdminUsuariosControlador {
     @ApiResponse(responseCode = "200", description = "Contraseña restablecida")
     @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
     @ApiResponse(responseCode = "404", description = "La cuenta ya no existe")
-    public ResponseEntity<ResetearContrasenaRespuesta> resetearContrasena(@PathVariable Long usuarioId) {
+    public ResponseEntity<ResetearContrasenaResponse> resetearContrasena(@PathVariable Long usuarioId) {
         return ResponseEntity.ok(servicio.resetearContrasena(usuarioId));
     }
 
@@ -914,7 +914,7 @@ export type CondicionCuentaAdmin =
   | 'CAMBIO_PENDIENTE'
   | 'AMBAS_PENDIENTES';
 
-export interface UsuarioAdminRespuesta {
+export interface UsuarioAdminResponse {
   usuarioId: number;
   nombres: string;
   apellidoPaterno: string;
@@ -943,7 +943,7 @@ export interface PageResponse<T> {
   last: boolean;
 }
 
-export interface CrearUsuarioAdminPeticion {
+export interface CrearUsuarioAdminRequest {
   nombres: string;
   apellidoPaterno: string;
   apellidoMaterno: string | null;
@@ -955,29 +955,29 @@ export interface CrearUsuarioAdminPeticion {
   roles: RolUsuarioAdmin[];
 }
 
-export interface CrearUsuarioAdminRespuesta {
-  usuario: UsuarioAdminRespuesta;
+export interface CrearUsuarioAdminResponse {
+  usuario: UsuarioAdminResponse;
   /** true si el correo ya existía: se conservó la cuenta y no se generó contraseña temporal. */
   reutilizada: boolean;
   contrasenaTemporal: string | null;
 }
 
-export interface ConcederRolPeticion {
+export interface ConcederRolRequest {
   rol: RolUsuarioAdmin;
 }
 
-export interface CambiarActivoPeticion {
+export interface CambiarActivoRequest {
   activo: boolean;
   motivo: string | null;
 }
 
-export interface ResetearContrasenaRespuesta {
-  usuario: UsuarioAdminRespuesta;
+export interface ResetearContrasenaResponse {
+  usuario: UsuarioAdminResponse;
   /** Solo viene en esta respuesta puntual; no se puede volver a consultar después. */
   contrasenaTemporal: string;
 }
 
-export interface ActualizarDatosPersonalesPeticion {
+export interface ActualizarDatosPersonalesRequest {
   nombres: string;
   apellidoPaterno: string;
   apellidoMaterno: string | null;
@@ -995,15 +995,15 @@ import { Observable } from 'rxjs';
 
 import { API_URL } from '../../../core/api/api.config';
 import {
-  ActualizarDatosPersonalesPeticion,
-  CambiarActivoPeticion,
-  ConcederRolPeticion,
-  CrearUsuarioAdminPeticion,
-  CrearUsuarioAdminRespuesta,
+  ActualizarDatosPersonalesRequest,
+  CambiarActivoRequest,
+  ConcederRolRequest,
+  CrearUsuarioAdminRequest,
+  CrearUsuarioAdminResponse,
   PageResponse,
-  ResetearContrasenaRespuesta,
+  ResetearContrasenaResponse,
   RolUsuarioAdmin,
-  UsuarioAdminRespuesta,
+  UsuarioAdminResponse,
 } from './usuario-admin.model';
 
 /** HU-008 — Gestionar usuarios administrativamente. Consume `/api/admin/usuarios`, respaldado por
@@ -1019,7 +1019,7 @@ export class AdminUsuariosApiService {
     activo: boolean | 'TODOS',
     page: number,
     size: number,
-  ): Observable<PageResponse<UsuarioAdminRespuesta>> {
+  ): Observable<PageResponse<UsuarioAdminResponse>> {
     let params = new HttpParams().set('page', page).set('size', size);
     if (texto.trim()) {
       params = params.set('texto', texto.trim());
@@ -1030,43 +1030,43 @@ export class AdminUsuariosApiService {
     if (activo !== 'TODOS') {
       params = params.set('activo', activo);
     }
-    return this.http.get<PageResponse<UsuarioAdminRespuesta>>(this.url, { params });
+    return this.http.get<PageResponse<UsuarioAdminResponse>>(this.url, { params });
   }
 
-  obtener(usuarioId: number): Observable<UsuarioAdminRespuesta> {
-    return this.http.get<UsuarioAdminRespuesta>(`${this.url}/${usuarioId}`);
+  obtener(usuarioId: number): Observable<UsuarioAdminResponse> {
+    return this.http.get<UsuarioAdminResponse>(`${this.url}/${usuarioId}`);
   }
 
   actualizarDatosPersonales(
     usuarioId: number,
-    peticion: ActualizarDatosPersonalesPeticion,
-  ): Observable<UsuarioAdminRespuesta> {
-    return this.http.put<UsuarioAdminRespuesta>(`${this.url}/${usuarioId}/datos-personales`, peticion);
+    peticion: ActualizarDatosPersonalesRequest,
+  ): Observable<UsuarioAdminResponse> {
+    return this.http.put<UsuarioAdminResponse>(`${this.url}/${usuarioId}/datos-personales`, peticion);
   }
 
-  crear(peticion: CrearUsuarioAdminPeticion): Observable<CrearUsuarioAdminRespuesta> {
-    return this.http.post<CrearUsuarioAdminRespuesta>(this.url, peticion);
+  crear(peticion: CrearUsuarioAdminRequest): Observable<CrearUsuarioAdminResponse> {
+    return this.http.post<CrearUsuarioAdminResponse>(this.url, peticion);
   }
 
-  concederRol(usuarioId: number, peticion: ConcederRolPeticion): Observable<UsuarioAdminRespuesta> {
-    return this.http.post<UsuarioAdminRespuesta>(`${this.url}/${usuarioId}/roles`, peticion);
+  concederRol(usuarioId: number, peticion: ConcederRolRequest): Observable<UsuarioAdminResponse> {
+    return this.http.post<UsuarioAdminResponse>(`${this.url}/${usuarioId}/roles`, peticion);
   }
 
   /** Desviación deliberada de HU-008 (que dice que un rol no se retira), pedida explícitamente. */
-  revocarRol(usuarioId: number, rol: RolUsuarioAdmin): Observable<UsuarioAdminRespuesta> {
-    return this.http.delete<UsuarioAdminRespuesta>(`${this.url}/${usuarioId}/roles/${rol}`);
+  revocarRol(usuarioId: number, rol: RolUsuarioAdmin): Observable<UsuarioAdminResponse> {
+    return this.http.delete<UsuarioAdminResponse>(`${this.url}/${usuarioId}/roles/${rol}`);
   }
 
-  cambiarActivo(usuarioId: number, peticion: CambiarActivoPeticion): Observable<UsuarioAdminRespuesta> {
-    return this.http.patch<UsuarioAdminRespuesta>(`${this.url}/${usuarioId}/activo`, peticion);
+  cambiarActivo(usuarioId: number, peticion: CambiarActivoRequest): Observable<UsuarioAdminResponse> {
+    return this.http.patch<UsuarioAdminResponse>(`${this.url}/${usuarioId}/activo`, peticion);
   }
 
   reenviarHabilitacion(usuarioId: number): Observable<void> {
     return this.http.post<void>(`${this.url}/${usuarioId}/reenviar-habilitacion`, {});
   }
 
-  resetearContrasena(usuarioId: number): Observable<ResetearContrasenaRespuesta> {
-    return this.http.post<ResetearContrasenaRespuesta>(`${this.url}/${usuarioId}/resetear-contrasena`, {});
+  resetearContrasena(usuarioId: number): Observable<ResetearContrasenaResponse> {
+    return this.http.post<ResetearContrasenaResponse>(`${this.url}/${usuarioId}/resetear-contrasena`, {});
   }
 }
 ```
@@ -1074,7 +1074,7 @@ export class AdminUsuariosApiService {
 ### 6. `usuario-admin-etiquetas.ts` completo (código real original)
 
 ```ts
-import { CondicionCuentaAdmin, UsuarioAdminRespuesta } from './usuario-admin.model';
+import { CondicionCuentaAdmin, UsuarioAdminResponse } from './usuario-admin.model';
 
 export function etiquetaCondicion(condicion: CondicionCuentaAdmin): string {
   switch (condicion) {
@@ -1092,7 +1092,7 @@ export function etiquetaCondicion(condicion: CondicionCuentaAdmin): string {
 /** Un solo rótulo por fila: "Habilitada" / "Deshabilitada" / "Contraseña temporal" /
  * "Correo sin verificar". Si faltan las dos, prioriza la contraseña porque es lo primero que la
  * persona debe resolver al entrar con la clave temporal. */
-export function etiquetaEstadoCuenta(usuario: Pick<UsuarioAdminRespuesta, 'activo' | 'condicion'>): string {
+export function etiquetaEstadoCuenta(usuario: Pick<UsuarioAdminResponse, 'activo' | 'condicion'>): string {
   if (!usuario.activo) {
     return 'Deshabilitada';
   }
@@ -1106,7 +1106,7 @@ export function etiquetaEstadoCuenta(usuario: Pick<UsuarioAdminRespuesta, 'activ
 }
 
 /** Clase de color para acompañar `etiquetaEstadoCuenta`. */
-export function claseEstadoCuenta(usuario: Pick<UsuarioAdminRespuesta, 'activo' | 'condicion'>): string {
+export function claseEstadoCuenta(usuario: Pick<UsuarioAdminResponse, 'activo' | 'condicion'>): string {
   if (!usuario.activo) {
     return 'badge--disp-cerrado';
   }
@@ -1128,7 +1128,7 @@ import { Modal } from '../../../../shared/ui/modal/modal';
 import { AdminUsuariosApiService } from '../admin-usuarios-api.service';
 import { UsuarioCrear } from '../usuario-crear/usuario-crear';
 import { UsuarioDetalle } from '../usuario-detalle/usuario-detalle';
-import { CrearUsuarioAdminRespuesta, RolUsuarioAdmin, UsuarioAdminRespuesta } from '../usuario-admin.model';
+import { CrearUsuarioAdminResponse, RolUsuarioAdmin, UsuarioAdminResponse } from '../usuario-admin.model';
 import { claseEstadoCuenta, etiquetaEstadoCuenta } from '../usuario-admin-etiquetas';
 
 /** HU-008 — Gestionar usuarios administrativamente. Listado paginado contra la API real; crear
@@ -1149,7 +1149,7 @@ export class UsuariosListado implements OnInit {
   protected readonly filtroRol = signal<RolUsuarioAdmin | 'TODOS'>('TODOS');
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
-  protected readonly usuarios = signal<UsuarioAdminRespuesta[]>([]);
+  protected readonly usuarios = signal<UsuarioAdminResponse[]>([]);
   protected readonly pagina = signal(0);
   protected readonly totalPaginas = signal(0);
 
@@ -1203,7 +1203,7 @@ export class UsuariosListado implements OnInit {
 
   /** Una cuenta creada u editada puede no estar en la página actual; recargar es más simple y
    * correcto que intentar insertarla a mano en la lista paginada. */
-  protected alCrear(respuesta: CrearUsuarioAdminRespuesta): void {
+  protected alCrear(respuesta: CrearUsuarioAdminResponse): void {
     this.cargar();
     this.modalAbierto.set(respuesta.usuario.usuarioId);
   }
@@ -1493,7 +1493,7 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 import { finalize } from 'rxjs';
 
 import { AdminUsuariosApiService } from '../admin-usuarios-api.service';
-import { CrearUsuarioAdminRespuesta, RolUsuarioAdmin } from '../usuario-admin.model';
+import { CrearUsuarioAdminResponse, RolUsuarioAdmin } from '../usuario-admin.model';
 import {
   documentoOpcionalValidator,
   nombrePropioValidator,
@@ -1521,12 +1521,12 @@ export class UsuarioCrear {
   private readonly detector = inject(ChangeDetectorRef);
 
   readonly cerrar = output<void>();
-  readonly creado = output<CrearUsuarioAdminRespuesta>();
+  readonly creado = output<CrearUsuarioAdminResponse>();
 
   protected readonly intentoGuardar = signal(false);
   protected readonly guardando = signal(false);
   protected readonly errorCrear = signal<string | null>(null);
-  protected readonly resultado = signal<CrearUsuarioAdminRespuesta | null>(null);
+  protected readonly resultado = signal<CrearUsuarioAdminResponse | null>(null);
 
   protected readonly todosLosRoles: RolUsuarioAdmin[] = ['ALUMNO', 'ADMINISTRADOR'];
   protected readonly rolesSeleccionados = signal<RolUsuarioAdmin[]>(['ALUMNO']);
@@ -1867,7 +1867,7 @@ import {
 } from '../../../cuenta/mi-perfil/mi-perfil.validators';
 import { AdminUsuariosApiService } from '../admin-usuarios-api.service';
 import { claseEstadoCuenta, etiquetaEstadoCuenta } from '../usuario-admin-etiquetas';
-import { RolUsuarioAdmin, UsuarioAdminRespuesta } from '../usuario-admin.model';
+import { RolUsuarioAdmin, UsuarioAdminResponse } from '../usuario-admin.model';
 
 interface ErrorApiAdmin {
   code?: string;
@@ -1890,14 +1890,14 @@ export class UsuarioDetalle implements OnChanges {
   @Input({ required: true }) usuarioId!: number;
   readonly cerrar = output<void>();
   /** Avisa al listado para refrescar esa fila sin recargar todo. */
-  readonly actualizado = output<UsuarioAdminRespuesta>();
+  readonly actualizado = output<UsuarioAdminResponse>();
 
   private readonly api = inject(AdminUsuariosApiService);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly destroyRef = inject(DestroyRef);
   private readonly detector = inject(ChangeDetectorRef);
 
-  protected readonly usuario = signal<UsuarioAdminRespuesta | null | undefined>(undefined);
+  protected readonly usuario = signal<UsuarioAdminResponse | null | undefined>(undefined);
   protected readonly cambiandoEstado = signal(false);
   protected readonly concediendoRol = signal<RolUsuarioAdmin | null>(null);
   protected readonly reenviando = signal(false);

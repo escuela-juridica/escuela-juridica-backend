@@ -1,7 +1,7 @@
 # HU-027 — Mapa técnico para administrar cambios en sesiones en vivo
 
 > Estado de integración: la sesión que se reprograma/cancela es la misma `Leccion` con `tipo=EN_VIVO`
-> que ya programa `ContenidoServicio.actualizarSesion` (HU-012, en producción). Esta historia no
+> que ya programa `ContenidoService.actualizarSesion` (HU-012, en producción). Esta historia no
 > reemplaza ese método — lo complementa con reprogramar-con-motivo, cancelar, y las correcciones
 > posteriores a una sesión ya realizada. Dos piezas nuevas: la tabla `historial_sesion` (existe en el
 > SQL, sin entidad Java todavía) y la reutilización de `MaterialLeccion` para la grabación (no se crea
@@ -22,13 +22,13 @@ asistencia puntual dejando registro del ajuste.
 ## Punto de partida
 
 - `Leccion.estado`, `fechaHoraInicio/Fin`, `enlaceReunion`, `motivoCancelacion` ya existen.
-- `ContenidoServicio.actualizarSesion` ya valida curso no `VIRTUAL` y fechas dentro del rango del
+- `ContenidoService.actualizarSesion` ya valida curso no `VIRTUAL` y fechas dentro del rango del
   curso — esta historia reutiliza esas mismas validaciones, no las repite distinto.
 - La tabla `historial_sesion` existe en el script SQL, sin entidad Java: se crea aquí.
 - `Asistencia` (entidad nueva de HU-026) ya trae `motivoCorreccion` — ese campo es exactamente para
   la corrección posterior que pide esta historia; si HU-026 todavía no se integró, coordinar con ese
   equipo antes de tocar la misma tabla.
-- El patrón de notificación y de `HistorialEstadoMatricula` de `MatriculaServicio` es la plantilla a
+- El patrón de notificación y de `HistorialEstadoMatricula` de `MatriculaService` es la plantilla a
   copiar para el aviso y el historial de esta historia.
 
 ## Dependencias
@@ -56,12 +56,12 @@ material de esa lección.
 ### Archivos y responsabilidades
 
 - `entity/HistorialSesion.java` (nueva).
-- `repository/HistorialSesionRepositorio.java` (nuevo).
-- `dto/ReprogramarSesionPeticion.java`, `dto/CancelarSesionPeticion.java`,
-  `dto/CorregirEnlaceSesionPeticion.java`, `dto/CorregirAsistenciaPeticion.java`,
-  `dto/HistorialSesionRespuesta.java`.
-- `service/AdministrarSesionesServicio.java` (nuevo).
-- `controller/ContenidoControlador.java`: se amplían los endpoints de sesión (ya existe el controlador
+- `repository/HistorialSesionRepository.java` (nuevo).
+- `dto/ReprogramarSesionRequest.java`, `dto/CancelarSesionRequest.java`,
+  `dto/CorregirEnlaceSesionRequest.java`, `dto/CorregirAsistenciaRequest.java`,
+  `dto/HistorialSesionResponse.java`.
+- `service/AdministrarSesionesService.java` (nuevo).
+- `controller/ContenidoController.java`: se amplían los endpoints de sesión (ya existe el controlador
   admin de contenido desde HU-011/HU-012; no se crea uno paralelo).
 
 ### La entidad que falta
@@ -107,14 +107,14 @@ public class HistorialSesion {
 ```
 
 ```java
-public interface HistorialSesionRepositorio extends JpaRepository<HistorialSesion, Long> {
+public interface HistorialSesionRepository extends JpaRepository<HistorialSesion, Long> {
     List<HistorialSesion> findByLeccion_IdOrderByRealizadoEnDesc(Long leccionId);
 }
 ```
 
 ### Reglas en orden — reprogramar
 
-1. Exigir administrador (`exigirAdministrador()`, mismo helper que ya usa `ContenidoServicio`).
+1. Exigir administrador (`exigirAdministrador()`, mismo helper que ya usa `ContenidoService`).
 2. Cargar la lección; si `fechaHoraFin` ya pasó, `BusinessValidationException` ("No puedes reprogramar
    una sesión ya realizada.").
 3. Si `estado = CANCELADA`, mismo rechazo (una sesión cancelada no se reprograma, se reemplaza por una
@@ -219,19 +219,19 @@ demuestra pidiendo ampliarla antes de poder guardar.
 
 ### 1. Archivos que se crean en orden
 
-1. `entity/HistorialSesion.java` + `repository/HistorialSesionRepositorio.java`.
-2. `dto/ReprogramarSesionPeticion.java`, `dto/ReprogramarSesionResultado.java`,
-   `dto/CancelarSesionPeticion.java`, `dto/CorregirEnlaceSesionPeticion.java`,
-   `dto/CorregirAsistenciaPeticion.java`, `dto/HistorialSesionRespuesta.java`.
-3. `service/AdministrarSesionesServicio.java`.
-4. Métodos nuevos en `controller/ContenidoControlador.java`.
+1. `entity/HistorialSesion.java` + `repository/HistorialSesionRepository.java`.
+2. `dto/ReprogramarSesionRequest.java`, `dto/ReprogramarSesionResultado.java`,
+   `dto/CancelarSesionRequest.java`, `dto/CorregirEnlaceSesionRequest.java`,
+   `dto/CorregirAsistenciaRequest.java`, `dto/HistorialSesionResponse.java`.
+3. `service/AdministrarSesionesService.java`.
+4. Métodos nuevos en `controller/ContenidoController.java`.
 5. Angular: `features/admin/cursos/sesiones-admin-api.service.ts` + modales en la pestaña de contenido
    del editor de curso.
 
 ### 2. DTOs
 
 ```java
-public record ReprogramarSesionPeticion(Instant nuevaFechaHoraInicio, Instant nuevaFechaHoraFin, String motivo) {}
+public record ReprogramarSesionRequest(Instant nuevaFechaHoraInicio, Instant nuevaFechaHoraFin, String motivo) {}
 
 public record ReprogramarSesionResultado(
         boolean aplicado,
@@ -239,17 +239,17 @@ public record ReprogramarSesionResultado(
         LocalDate fechaFinCursoSugerida // = nuevaFechaHoraFin en fecha, solo informativo
 ) {}
 
-public record CancelarSesionPeticion(String motivo) {}
-public record CorregirEnlaceSesionPeticion(String enlaceReunion) {}
-public record CorregirAsistenciaPeticion(String nuevoEstado, String motivoCorreccion) {}
+public record CancelarSesionRequest(String motivo) {}
+public record CorregirEnlaceSesionRequest(String enlaceReunion) {}
+public record CorregirAsistenciaRequest(String nuevoEstado, String motivoCorreccion) {}
 
-public record HistorialSesionRespuesta(
+public record HistorialSesionResponse(
         String accion, Instant inicioAnterior, Instant finAnterior, Instant inicioNuevo, Instant finNuevo,
         String motivo, Long realizadoPorUsuarioId, Instant realizadoEn
 ) {}
 ```
 
-### 3. `AdministrarSesionesServicio`
+### 3. `AdministrarSesionesService`
 
 ```java
 package pe.edu.utp.escuela.app.service;
@@ -271,21 +271,21 @@ import pe.edu.utp.escuela.app.security.CurrentUserService;
 
 @Service
 @RequiredArgsConstructor
-public class AdministrarSesionesServicio {
+public class AdministrarSesionesService {
     private static final ZoneId LIMA = ZoneId.of("America/Lima");
 
-    private final LeccionRepositorio lecciones;
-    private final CursoRepositorio cursos;
-    private final MatriculaRepositorio matriculas;
-    private final AsistenciaRepositorio asistencias;
-    private final HistorialSesionRepositorio historial;
-    private final NotificacionRepositorio notificaciones;
+    private final LeccionRepository lecciones;
+    private final CursoRepository cursos;
+    private final MatriculaRepository matriculas;
+    private final AsistenciaRepository asistencias;
+    private final HistorialSesionRepository historial;
+    private final NotificacionRepository notificaciones;
     private final MailService mailService;
     private final CurrentUserService actual;
     private final Clock clock;
 
     @Transactional
-    public ReprogramarSesionResultado reprogramar(Long leccionId, ReprogramarSesionPeticion p) {
+    public ReprogramarSesionResultado reprogramar(Long leccionId, ReprogramarSesionRequest p) {
         exigirAdministrador();
         Leccion l = leccionSesionEditable(leccionId);
 
@@ -331,7 +331,7 @@ public class AdministrarSesionesServicio {
     }
 
     @Transactional
-    public void cancelar(Long leccionId, CancelarSesionPeticion p) {
+    public void cancelar(Long leccionId, CancelarSesionRequest p) {
         exigirAdministrador();
         Leccion l = leccionSesionEditable(leccionId);
         if (p.motivo() == null || p.motivo().isBlank()) {
@@ -349,7 +349,7 @@ public class AdministrarSesionesServicio {
     }
 
     @Transactional
-    public void corregirEnlace(Long leccionId, CorregirEnlaceSesionPeticion p) {
+    public void corregirEnlace(Long leccionId, CorregirEnlaceSesionRequest p) {
         exigirAdministrador();
         Leccion l = lecciones.findById(leccionId)
                 .orElseThrow(() -> new BusinessValidationException("La sesión no existe."));
@@ -361,7 +361,7 @@ public class AdministrarSesionesServicio {
     }
 
     @Transactional
-    public void corregirAsistencia(Long asistenciaId, CorregirAsistenciaPeticion p) {
+    public void corregirAsistencia(Long asistenciaId, CorregirAsistenciaRequest p) {
         exigirAdministrador();
         Asistencia a = asistencias.findById(asistenciaId)
                 .orElseThrow(() -> new BusinessValidationException("La asistencia no existe."));
@@ -376,9 +376,9 @@ public class AdministrarSesionesServicio {
     }
 
     @Transactional(readOnly = true)
-    public List<HistorialSesionRespuesta> historial(Long leccionId) {
+    public List<HistorialSesionResponse> historial(Long leccionId) {
         return historial.findByLeccion_IdOrderByRealizadoEnDesc(leccionId).stream()
-                .map(h -> new HistorialSesionRespuesta(h.getAccion(), h.getInicioAnterior(),
+                .map(h -> new HistorialSesionResponse(h.getAccion(), h.getInicioAnterior(),
                         h.getFinAnterior(), h.getInicioNuevo(), h.getFinNuevo(), h.getMotivo(),
                         h.getRealizadoPorUsuarioId(), h.getRealizadoEn()))
                 .toList();
@@ -453,44 +453,44 @@ public class AdministrarSesionesServicio {
 > deduplicar — a diferencia del recordatorio, acá cada reprogramación/cancelación es un evento nuevo
 > que sí debe generar un correo cada vez.
 
-### 4. Controlador: métodos nuevos sobre `ContenidoControlador`
+### 4. Controlador: métodos nuevos sobre `ContenidoController`
 
 ```java
-// agregar al ContenidoControlador ya existente (HU-011/HU-012)
-private final AdministrarSesionesServicio administrarSesionesServicio;
+// agregar al ContenidoController ya existente (HU-011/HU-012)
+private final AdministrarSesionesService administrarSesionesService;
 
 @PatchMapping("/lecciones/{id}/sesion/reprogramar")
-public ReprogramarSesionResultado reprogramar(@PathVariable Long id, @RequestBody ReprogramarSesionPeticion p) {
-    return administrarSesionesServicio.reprogramar(id, p);
+public ReprogramarSesionResultado reprogramar(@PathVariable Long id, @RequestBody ReprogramarSesionRequest p) {
+    return administrarSesionesService.reprogramar(id, p);
 }
 
 @PatchMapping("/cursos/{cursoId}/fecha-fin")
 public void ampliarFinDeCurso(@PathVariable Long cursoId, @RequestParam LocalDate nuevaFechaFin) {
-    administrarSesionesServicio.ampliarFinDeCurso(cursoId, nuevaFechaFin);
+    administrarSesionesService.ampliarFinDeCurso(cursoId, nuevaFechaFin);
 }
 
 @PatchMapping("/lecciones/{id}/sesion/cancelar")
-public void cancelar(@PathVariable Long id, @RequestBody CancelarSesionPeticion p) {
-    administrarSesionesServicio.cancelar(id, p);
+public void cancelar(@PathVariable Long id, @RequestBody CancelarSesionRequest p) {
+    administrarSesionesService.cancelar(id, p);
 }
 
 @PatchMapping("/lecciones/{id}/sesion/enlace")
-public void corregirEnlace(@PathVariable Long id, @RequestBody CorregirEnlaceSesionPeticion p) {
-    administrarSesionesServicio.corregirEnlace(id, p);
+public void corregirEnlace(@PathVariable Long id, @RequestBody CorregirEnlaceSesionRequest p) {
+    administrarSesionesService.corregirEnlace(id, p);
 }
 
 @PatchMapping("/asistencias/{id}")
-public void corregirAsistencia(@PathVariable Long id, @RequestBody CorregirAsistenciaPeticion p) {
-    administrarSesionesServicio.corregirAsistencia(id, p);
+public void corregirAsistencia(@PathVariable Long id, @RequestBody CorregirAsistenciaRequest p) {
+    administrarSesionesService.corregirAsistencia(id, p);
 }
 
 @GetMapping("/lecciones/{id}/sesion/historial")
-public List<HistorialSesionRespuesta> historial(@PathVariable Long id) {
-    return administrarSesionesServicio.historial(id);
+public List<HistorialSesionResponse> historial(@PathVariable Long id) {
+    return administrarSesionesService.historial(id);
 }
 ```
 
-Estos quedan bajo el mismo `@RequestMapping("/api/admin")` que ya tiene `ContenidoControlador` — no
+Estos quedan bajo el mismo `@RequestMapping("/api/admin")` que ya tiene `ContenidoController` — no
 hace falta repetir el prefijo en cada ruta de arriba.
 
 ### 5. Comprobación incremental

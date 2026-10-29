@@ -1,0 +1,95 @@
+name: Deploy backend
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Código
+        uses: actions/checkout@v4
+
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Compilar y probar
+        run: ./mvnw -B clean package
+
+      - name: Nombre de la imagen (en minúsculas)
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/esejurce-backend" >> "$GITHUB_ENV"
+
+      - name: Entrar a GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Construir y subir la imagen
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+
+      - name: Desplegar en el VPS (Podman)
+        uses: appleboy/ssh-action@v1
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          IMAGE: ${{ env.IMAGE }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          port: ${{ secrets.VPS_PORT }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: GHCR_TOKEN,GHCR_USER,IMAGE
+          script_stop: true
+          script: |
+            export REGISTRY_AUTH_FILE="$HOME/.config/containers/auth.json"
+            mkdir -p "$HOME/.config/containers"
+
+            echo "$GHCR_TOKEN" | podman login ghcr.io -u "$GHCR_USER" --password-stdin
+            podman pull "$IMAGE:latest"
+            podman rm -f esejurce || true
+
+            podman run -d \
+              --name esejurce \
+              --restart unless-stopped \
+              --network host \
+              --env-file /etc/esejurce/app.env \
+              -v /opt/esejurce/files:/opt/esejurce/files:Z \
+              "$IMAGE:latest"
+
+            podman image prune -f > /dev/null
+
+            for intento in $(seq 1 40); do
+              if curl -fsS http://127.0.0.1:8080/api/health > /dev/null 2>&1; then
+                echo "Backend arriba tras $((intento * 3)) s"
+                podman logout ghcr.io > /dev/null 2>&1 || true
+                exit 0
+              fi
+              sleep 3
+            done
+
+            echo "El backend no respondió en 2 minutos. Últimas líneas del log:"
+            podman logs --tail 80 esejurce
+            podman logout ghcr.io > /dev/null 2>&1 || true
+            exit 1

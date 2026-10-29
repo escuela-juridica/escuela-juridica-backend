@@ -6,16 +6,16 @@
 > filtrable con exportación a PDF/Excel/CSV, con screenshots reales confirmados). Se retiró
 > deliberadamente para convertirla en ejercicio de programación del equipo — esta guía documenta
 > exactamente cómo estaba construida, con el código real, para que se reconstruya igual o mejor.
-> **Importante:** `MatriculaServicio` y `MatriculaControlador` son archivos **compartidos** con
+> **Importante:** `MatriculaService` y `MatriculaController` son archivos **compartidos** con
 > HU-017 (matrícula gratuita), HU-019 (matricular administrativamente), HU-020 (controlar
 > matrículas y pagos) y HU-021 (mis cursos) — que siguen funcionando exactamente igual, no se tocó
 > nada de esos. Lo único que se retiró son los dos métodos del servicio exclusivos de esta
 > historia (`reportePaginado`, `reporte`) y sus helpers privados exclusivos, los tres endpoints de
-> reporte del controlador, y el campo `exportador`.
+> reporte del controlador, y el campo `export`.
 >
-> La clase `export/ReporteMatriculaExportador.java` es 100% exclusiva de HU-041 (no la usa nada
-> más) y se retiró completa — su código íntegro está más abajo. El DTO `ReporteMatriculaRespuesta`
-> y las dos consultas del repositorio que lo producen (`MatriculaRepositorio.buscarReporte`,
+> La clase `export/ReporteMatriculaExport.java` es 100% exclusiva de HU-041 (no la usa nada
+> más) y se retiró completa — su código íntegro está más abajo. El DTO `ReporteMatriculaResponse`
+> y las dos consultas del repositorio que lo producen (`MatriculaRepository.buscarReporte`,
 > `.exportarReporte`) **no se tocaron**: siguen existiendo tal cual, listas para reutilizarse.
 >
 > En el frontend, el componente `reporte-matriculas` es 100% exclusivo de esta historia y se vació
@@ -34,7 +34,7 @@ separado, y puede descargar exactamente lo mismo que está viendo en PDF, Excel 
 ## Punto de partida — ya existe, se reutiliza tal cual
 
 - Entidades `Matricula`, `Pago`, `Curso` — no se tocan.
-- DTO `dto/ReporteMatriculaRespuesta.java` — ya existe, no hace falta recrearlo:
+- DTO `dto/ReporteMatriculaResponse.java` — ya existe, no hace falta recrearlo:
 
   ```java
   package pe.edu.utp.escuela.app.dto;
@@ -42,19 +42,19 @@ separado, y puede descargar exactamente lo mismo que está viendo en PDF, Excel 
   import java.time.Instant;
 
   /** Una fila por matricula; separa acceso, origen y situacion academica para HU-041. */
-  public record ReporteMatriculaRespuesta(
+  public record ReporteMatriculaResponse(
           Long matriculaId, String alumno, String correo, String curso, String modalidad,
           Instant fechaMatricula, Instant fechaActivacion, String estadoMatricula, String formaIngreso,
           String situacionAcademica, String estadoCertificado) {}
   ```
 
-- `MatriculaRepositorio.buscarReporte(texto, estado, cursoId, modalidad, desde, hasta, pageable)` y
+- `MatriculaRepository.buscarReporte(texto, estado, cursoId, modalidad, desde, hasta, pageable)` y
   `.exportarReporte(texto, estado, cursoId, modalidad, desde, hasta)` — ya existen, con la misma
   consulta JPQL (una paginada, otra en lista completa para exportar), incluyendo el `left join` al
   certificado para resolver `estadoCertificado`. No se recrean, solo se llaman desde el servicio.
-- `PagoRepositorio.findByMatricula_IdIn(ids)` — ya existe, se usa para recalcular el origen real
+- `PagoRepository.findByMatricula_IdIn(ids)` — ya existe, se usa para recalcular el origen real
   (ver regla no obvia más abajo).
-- En `MatriculaServicio` (que se queda, no se borra) ya están disponibles como helpers privados:
+- En `MatriculaService` (que se queda, no se borra) ya están disponibles como helpers privados:
   `procesarVencimientos()`, `exigirAdministrador()`. Reutilízalos, no los reescribas.
 - En Angular, `MatriculaApiService` (`features/matriculas/matricula-api.service.ts`) ya existe y ya
   tiene `matricularGratis`, `misCursos`, `crearAdministrativa`, `advertenciaAcademica` y
@@ -80,11 +80,11 @@ separado, y puede descargar exactamente lo mismo que está viendo en PDF, Excel 
 ## 🔑 Punto de oro — con quién coordinar
 
 Puedes arrancar ya, sin esperar a nadie. Solo dos avisos puntuales, no bloqueos, con **Joel y Juan**
-(HU-020, controlar matrículas y pagos — comparten `MatriculaServicio`, `MatriculaControlador` y
+(HU-020, controlar matrículas y pagos — comparten `MatriculaService`, `MatriculaController` y
 `matricula-api.service.ts` con ustedes):
 
 1. **`normalizar(String)` / `normalizarEstado(String)`** — ninguno de los dos existe hoy en
-   `MatriculaServicio`; los necesitas tú (`reportePaginado`/`reporte`) y también HU-020
+   `MatriculaService`; los necesitas tú (`reportePaginado`/`reporte`) y también HU-020
    (`listarAdministrativas`). **El que los cree primero avisa en el grupo** — el segundo los
    reutiliza, no los vuelve a crear (si los duplica, no compila).
 2. **Bloques separados en los archivos compartidos** — agrega tus métodos/endpoints en un bloque
@@ -111,13 +111,13 @@ filtrado").
 
 ### Archivos y responsabilidades
 
-- `service/MatriculaServicio.java` (ya existe, se amplía): agregar `reportePaginado` y `reporte`,
+- `service/MatriculaService.java` (ya existe, se amplía): agregar `reportePaginado` y `reporte`,
   más los helpers privados exclusivos `origenesReporte`, `origenReporte`, `conOrigen`,
   `validarRango`, `inicio`, `finExclusivo`, y los helpers de normalización `normalizar(String)` /
   `normalizarEstado(String)` (si ya existieran por otra historia, reutilízalos; hoy no existen).
-- `controller/MatriculaControlador.java` (ya existe, se amplía): agregar los tres endpoints y el
-  campo `exportador` (inyectado por constructor, vía `@RequiredArgsConstructor`).
-- `export/ReporteMatriculaExportador.java` (se recrea completo, no existe): genera los tres
+- `controller/MatriculaController.java` (ya existe, se amplía): agregar los tres endpoints y el
+  campo `export` (inyectado por constructor, vía `@RequiredArgsConstructor`).
+- `export/ReporteMatriculaExport.java` (se recrea completo, no existe): genera los tres
   formatos a partir de la misma lista de filas que ya filtró el servicio.
 
 ### Reglas en orden
@@ -228,46 +228,46 @@ retirarse — se copia tal cual, no hay que inventar nada.
 
 ### 1. Orden sugerido para reconstruir
 
-1. Backend: completar `MatriculaServicio.java` (ya existe) con `reportePaginado`/`reporte` y sus
+1. Backend: completar `MatriculaService.java` (ya existe) con `reportePaginado`/`reporte` y sus
    helpers del punto 2 de abajo.
-2. Backend: `export/ReporteMatriculaExportador.java` (se recrea completo, no existe) — punto 3.
-3. Backend: completar `MatriculaControlador.java` (ya existe) con los 3 endpoints y el campo
-   `exportador` — punto 4.
+2. Backend: `export/ReporteMatriculaExport.java` (se recrea completo, no existe) — punto 3.
+3. Backend: completar `MatriculaController.java` (ya existe) con los 3 endpoints y el campo
+   `export` — punto 4.
 4. Frontend: completar `matricula-api.service.ts` (ya existe) con los métodos del punto 5.
 5. Frontend: `reporte-matriculas` (ts/html/scss) — reemplazar el placeholder `.pantalla-pendiente`
    por el contenido real del punto 6.
 
-### 2. `MatriculaServicio.java` — métodos y helpers a agregar (ya existe la clase)
+### 2. `MatriculaService.java` — métodos y helpers a agregar (ya existe la clase)
 
 ```java
 @Transactional
-public Page<ReporteMatriculaRespuesta> reportePaginado(
+public Page<ReporteMatriculaResponse> reportePaginado(
         String texto, String estado, Long cursoId, String modalidad,
         LocalDate desde, LocalDate hasta, Pageable pageable) {
     procesarVencimientos();
     exigirAdministrador();
     validarRango(desde, hasta);
-    Page<ReporteMatriculaRespuesta> pagina = matriculas.buscarReporte(normalizar(texto), normalizarEstado(estado), cursoId,
+    Page<ReporteMatriculaResponse> pagina = matriculas.buscarReporte(normalizar(texto), normalizarEstado(estado), cursoId,
             normalizarEstado(modalidad), inicio(desde), finExclusivo(hasta), pageable);
     Map<Long, String> origenes = origenesReporte(pagina.getContent());
     return pagina.map(f -> conOrigen(f, origenes.getOrDefault(f.matriculaId(), f.formaIngreso())));
 }
 
 @Transactional
-public List<ReporteMatriculaRespuesta> reporte(
+public List<ReporteMatriculaResponse> reporte(
         String texto, String estado, Long cursoId, String modalidad, LocalDate desde, LocalDate hasta) {
     procesarVencimientos();
     exigirAdministrador();
     validarRango(desde, hasta);
-    List<ReporteMatriculaRespuesta> filas = matriculas.exportarReporte(normalizar(texto), normalizarEstado(estado), cursoId,
+    List<ReporteMatriculaResponse> filas = matriculas.exportarReporte(normalizar(texto), normalizarEstado(estado), cursoId,
             normalizarEstado(modalidad), inicio(desde), finExclusivo(hasta));
     Map<Long, String> origenes = origenesReporte(filas);
     return filas.stream().map(f -> conOrigen(f, origenes.getOrDefault(f.matriculaId(), f.formaIngreso()))).toList();
 }
 
-private Map<Long, String> origenesReporte(List<ReporteMatriculaRespuesta> filas) {
+private Map<Long, String> origenesReporte(List<ReporteMatriculaResponse> filas) {
     if (filas.isEmpty()) return Map.of();
-    List<Long> ids = filas.stream().map(ReporteMatriculaRespuesta::matriculaId).toList();
+    List<Long> ids = filas.stream().map(ReporteMatriculaResponse::matriculaId).toList();
     Map<Long, List<Pago>> pagosPorMatricula = pagos.findByMatricula_IdIn(ids).stream()
             .collect(Collectors.groupingBy(p -> p.getMatricula().getId()));
     return pagosPorMatricula.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
@@ -283,8 +283,8 @@ private String origenReporte(List<Pago> pagosDeMatricula) {
     return pagosDeMatricula.getFirst().getOrigen();
 }
 
-private ReporteMatriculaRespuesta conOrigen(ReporteMatriculaRespuesta f, String origen) {
-    return new ReporteMatriculaRespuesta(f.matriculaId(), f.alumno(), f.correo(), f.curso(), f.modalidad(),
+private ReporteMatriculaResponse conOrigen(ReporteMatriculaResponse f, String origen) {
+    return new ReporteMatriculaResponse(f.matriculaId(), f.alumno(), f.correo(), f.curso(), f.modalidad(),
             f.fechaMatricula(), f.fechaActivacion(), f.estadoMatricula(), origen,
             f.situacionAcademica(), f.estadoCertificado());
 }
@@ -319,9 +319,9 @@ private static Instant finExclusivo(LocalDate fecha) {
 ```
 
 Recuerda agregar los imports correspondientes: `org.springframework.data.domain.Page`,
-`org.springframework.data.domain.Pageable`, `pe.edu.utp.escuela.app.dto.ReporteMatriculaRespuesta`.
+`org.springframework.data.domain.Pageable`, `pe.edu.utp.escuela.app.dto.ReporteMatriculaResponse`.
 
-### 3. `export/ReporteMatriculaExportador.java` completo (código real original, se recrea)
+### 3. `export/ReporteMatriculaExport.java` completo (código real original, se recrea)
 
 ```java
 package pe.edu.utp.escuela.app.export;
@@ -356,7 +356,7 @@ import org.apache.poi.xssf.usermodel.XSSFColor;
 import org.apache.poi.xssf.usermodel.XSSFFont;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
-import pe.edu.utp.escuela.app.dto.ReporteMatriculaRespuesta;
+import pe.edu.utp.escuela.app.dto.ReporteMatriculaResponse;
 
 /**
  * Genera los archivos del reporte de matriculas (HU-041) en CSV, Excel y PDF, con la misma
@@ -364,7 +364,7 @@ import pe.edu.utp.escuela.app.dto.ReporteMatriculaRespuesta;
  * reporte-matriculas.ts del frontend) para que el archivo descargado se vea igual de cuidado.
  */
 @Component
-public class ReporteMatriculaExportador {
+public class ReporteMatriculaExport {
 
     private static final String[] ENCABEZADOS = {
             "Alumno", "Correo", "Curso", "Modalidad", "Fecha matricula", "Fecha activacion",
@@ -392,9 +392,9 @@ public class ReporteMatriculaExportador {
 
     // --------------------------------------------------------------------------------- CSV --
 
-    public byte[] csv(List<ReporteMatriculaRespuesta> filas) {
+    public byte[] csv(List<ReporteMatriculaResponse> filas) {
         StringBuilder csv = new StringBuilder(String.join(";", ENCABEZADOS)).append('\n');
-        for (ReporteMatriculaRespuesta fila : filas) {
+        for (ReporteMatriculaResponse fila : filas) {
             csv.append(valorCsv(fila.alumno())).append(';').append(valorCsv(fila.correo())).append(';')
                     .append(valorCsv(fila.curso())).append(';').append(valorCsv(fila.modalidad())).append(';')
                     .append(formatoFecha(fila.fechaMatricula())).append(';').append(formatoFecha(fila.fechaActivacion())).append(';')
@@ -412,7 +412,7 @@ public class ReporteMatriculaExportador {
 
     // ------------------------------------------------------------------------------- Excel --
 
-    public byte[] excel(List<ReporteMatriculaRespuesta> filas, String textoFiltro, String estadoFiltro) {
+    public byte[] excel(List<ReporteMatriculaResponse> filas, String textoFiltro, String estadoFiltro) {
         try (XSSFWorkbook libro = new XSSFWorkbook(); ByteArrayOutputStream salida = new ByteArrayOutputStream()) {
             Sheet hoja = libro.createSheet("Matriculas");
             Map<String, CellStyle> cacheEstilos = new HashMap<>();
@@ -440,7 +440,7 @@ public class ReporteMatriculaExportador {
             }
 
             int numeroFila = filaEncabezadoIdx + 1;
-            for (ReporteMatriculaRespuesta fila : filas) {
+            for (ReporteMatriculaResponse fila : filas) {
                 boolean par = (numeroFila - filaEncabezadoIdx) % 2 == 0;
                 Row filaDatos = hoja.createRow(numeroFila++);
                 filaDatos.setHeightInPoints(17f);
@@ -547,7 +547,7 @@ public class ReporteMatriculaExportador {
 
     // --------------------------------------------------------------------------------- PDF --
 
-    public byte[] pdf(List<ReporteMatriculaRespuesta> filas, String textoFiltro, String estadoFiltro) {
+    public byte[] pdf(List<ReporteMatriculaResponse> filas, String textoFiltro, String estadoFiltro) {
         float[] anchos = { 90, 105, 105, 52, 62, 62, 55, 72, 68, 65 };
         float margen = 25f;
         float altoFila = 17f;
@@ -569,7 +569,7 @@ public class ReporteMatriculaExportador {
             dibujarPie(flujo, margen, tamano.getWidth(), numeroPagina, fuenteNormal);
 
             int indiceFila = 0;
-            for (ReporteMatriculaRespuesta fila : filas) {
+            for (ReporteMatriculaResponse fila : filas) {
                 if (y - altoFila < margen) {
                     flujo.close();
                     numeroPagina++;
@@ -638,7 +638,7 @@ public class ReporteMatriculaExportador {
         return y - altoEncabezado;
     }
 
-    private float dibujarFila(PDPageContentStream flujo, ReporteMatriculaRespuesta fila, float[] anchos,
+    private float dibujarFila(PDPageContentStream flujo, ReporteMatriculaResponse fila, float[] anchos,
             float margen, float y, float altoFila, float anchoTotal, boolean par,
             PDType1Font fuenteNormal, PDType1Font fuenteNegrita) throws IOException {
         float yInferior = y - altoFila;
@@ -752,14 +752,14 @@ public class ReporteMatriculaExportador {
 }
 ```
 
-### 4. `MatriculaControlador.java` — endpoints y campo a agregar (ya existe la clase)
+### 4. `MatriculaController.java` — endpoints y campo a agregar (ya existe la clase)
 
 ```java
 // Campo, inyectado por constructor junto al resto (Lombok @RequiredArgsConstructor):
-private final ReporteMatriculaExportador exportador;
+private final ReporteMatriculaExport exportador;
 
 @GetMapping("/admin/reportes/matriculas")
-public ResponseEntity<PageResponse<ReporteMatriculaRespuesta>> reporte(
+public ResponseEntity<PageResponse<ReporteMatriculaResponse>> reporte(
         @RequestParam(defaultValue = "") String texto,
         @RequestParam(defaultValue = "") String estado,
         @RequestParam(required = false) Long cursoId,
@@ -769,7 +769,7 @@ public ResponseEntity<PageResponse<ReporteMatriculaRespuesta>> reporte(
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int size) {
     int tamano = Math.min(Math.max(size, 1), 50);
-    Page<ReporteMatriculaRespuesta> pagina = servicio.reportePaginado(texto, estado, cursoId,
+    Page<ReporteMatriculaResponse> pagina = servicio.reportePaginado(texto, estado, cursoId,
             modalidad, fechaDesde, fechaHasta, PageRequest.of(Math.max(page, 0), tamano));
     return ResponseEntity.ok(PageResponse.from(pagina));
 }
@@ -819,8 +819,8 @@ Imports que hacen falta en el controlador: `java.time.LocalDate`,
 `org.springframework.data.domain.Page`, `org.springframework.data.domain.PageRequest`,
 `org.springframework.format.annotation.DateTimeFormat`, `org.springframework.http.HttpHeaders`,
 `org.springframework.http.MediaType`, `pe.edu.utp.escuela.app.dto.PageResponse`,
-`pe.edu.utp.escuela.app.dto.ReporteMatriculaRespuesta`,
-`pe.edu.utp.escuela.app.export.ReporteMatriculaExportador`.
+`pe.edu.utp.escuela.app.dto.ReporteMatriculaResponse`,
+`pe.edu.utp.escuela.app.export.ReporteMatriculaExport`.
 
 ### 5. Frontend — métodos a agregar en `matricula-api.service.ts` (ya existe la clase)
 
@@ -858,7 +858,7 @@ import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatriculaApiService, ReporteMatricula, FiltrosReporteMatricula } from '../../../matriculas/matricula-api.service';
 import { CursoAdminApiService } from '../../cursos/curso-admin-api.service';
-import { CursoResumenRespuesta } from '../../cursos/curso-admin.model';
+import { CursoResumenResponse } from '../../cursos/curso-admin.model';
 
 @Component({
   selector: 'app-reporte-matriculas',
@@ -872,7 +872,7 @@ export class ReporteMatriculas {
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly filas = signal<ReporteMatricula[]>([]);
-  protected readonly cursos = signal<CursoResumenRespuesta[]>([]);
+  protected readonly cursos = signal<CursoResumenResponse[]>([]);
   protected readonly cargando = signal(true);
   protected readonly error = signal<string | null>(null);
   protected texto = '';

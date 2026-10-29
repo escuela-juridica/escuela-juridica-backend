@@ -1,0 +1,416 @@
+package pe.edu.utp.escuela.app.service;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.when;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import pe.edu.utp.escuela.app.dto.ActualizarSesionRequest;
+import pe.edu.utp.escuela.app.dto.CrearLeccionRequest;
+import pe.edu.utp.escuela.app.dto.CrearModuloRequest;
+import pe.edu.utp.escuela.app.dto.LeccionResponse;
+import pe.edu.utp.escuela.app.dto.ModuloResponse;
+import pe.edu.utp.escuela.app.dto.OrdenRequest;
+import pe.edu.utp.escuela.app.dto.TipoLeccion;
+import pe.edu.utp.escuela.app.entity.Curso;
+import pe.edu.utp.escuela.app.entity.EstadoCurso;
+import pe.edu.utp.escuela.app.entity.Leccion;
+import pe.edu.utp.escuela.app.entity.Modulo;
+import pe.edu.utp.escuela.app.exception.BusinessValidationException;
+import pe.edu.utp.escuela.app.exception.ForbiddenException;
+import pe.edu.utp.escuela.app.repository.CursoRepository;
+import pe.edu.utp.escuela.app.repository.ExamenRepository;
+import pe.edu.utp.escuela.app.repository.LeccionRepository;
+import pe.edu.utp.escuela.app.repository.MaterialLeccionRepository;
+import pe.edu.utp.escuela.app.repository.ModuloRepository;
+import pe.edu.utp.escuela.app.repository.OpcionPreguntaRepository;
+import pe.edu.utp.escuela.app.repository.PreguntaRepository;
+import pe.edu.utp.escuela.app.repository.RecursoRepository;
+import pe.edu.utp.escuela.app.repository.TipoMaterialRepository;
+import pe.edu.utp.escuela.app.security.CurrentUserService;
+import pe.edu.utp.escuela.app.security.CurrentUserService.CurrentUser;
+import pe.edu.utp.escuela.app.util.TextNormalizer;
+
+/** HU-011 (organizar módulos/lecciones/materiales) y HU-012 (programar sesiones en vivo), ambas
+ * implementadas por {@link ContenidoService}. */
+@ExtendWith(MockitoExtension.class)
+class ContenidoServiceTests {
+
+    @Mock private CursoRepository cursos;
+    @Mock private ModuloRepository modulos;
+    @Mock private LeccionRepository lecciones;
+    @Mock private MaterialLeccionRepository materiales;
+    @Mock private RecursoRepository recursos;
+    @Mock private TipoMaterialRepository tiposMaterial;
+    @Mock private ExamenRepository examenes;
+    @Mock private PreguntaRepository preguntas;
+    @Mock private OpcionPreguntaRepository opciones;
+    @Mock private ArchivoAlmacenamientoService almacenamiento;
+    @Mock private CurrentUserService currentUserService;
+
+    private ContenidoService service;
+
+    @BeforeEach
+    void setUp() {
+        Clock clock = Clock.fixed(Instant.parse("2026-09-15T12:00:00Z"), ZoneId.of("America/Lima"));
+        service = new ContenidoService(cursos, modulos, lecciones, materiales, recursos, tiposMaterial,
+                examenes, preguntas, opciones, almacenamiento, currentUserService, new TextNormalizer(), clock);
+    }
+
+    private void comoAdministrador() {
+        when(currentUserService.get())
+                .thenReturn(new CurrentUser(1L, "admin@escuelajuridica.edu.pe", Set.of("ADMINISTRADOR")));
+    }
+
+    private Curso cursoEnEstado(String codigo) {
+        EstadoCurso estado = new EstadoCurso();
+        estado.setCodigo(codigo);
+        Curso curso = new Curso();
+        curso.setId(100L);
+        curso.setTitulo("Curso de prueba");
+        curso.setModalidad("EN_VIVO");
+        curso.setFechaInicio(java.time.LocalDate.of(2026, 9, 1));
+        curso.setFechaFin(java.time.LocalDate.of(2026, 10, 1));
+        curso.setEstadoCurso(estado);
+        return curso;
+    }
+
+    private Modulo moduloDe(Curso curso) {
+        Modulo modulo = new Modulo();
+        modulo.setId(10L);
+        modulo.setCurso(curso);
+        modulo.setTitulo("Módulo 1");
+        modulo.setOrden(1);
+        modulo.setActivo(true);
+        return modulo;
+    }
+
+    private Leccion leccionEnVivoDe(Modulo modulo) {
+        Leccion leccion = new Leccion();
+        leccion.setId(20L);
+        leccion.setModulo(modulo);
+        leccion.setTitulo("Sesión en vivo");
+        leccion.setOrden(1);
+        leccion.setTipo(TipoLeccion.EN_VIVO.name());
+        leccion.setEstado("PROGRAMADA");
+        leccion.setEsObligatoria(true);
+        leccion.setActivo(true);
+        return leccion;
+    }
+
+    // ---------------------------------------------------------------- Módulos (HU-011) --
+
+    @Test
+    void crearModuloConTituloValidoLoCreaOrdenadoComoSiguiente() {
+        comoAdministrador();
+        Curso curso = cursoEnEstado("BORRADOR");
+        when(cursos.findById(100L)).thenReturn(Optional.of(curso));
+        when(modulos.countByCurso_Id(100L)).thenReturn(2L);
+
+        ModuloResponse respuesta = service.crearModulo(100L, new CrearModuloRequest("Módulo 3", null));
+
+        assertEquals("Módulo 3", respuesta.titulo());
+        assertEquals(3, respuesta.orden());
+        assertTrue(respuesta.activo());
+    }
+
+    @Test
+    void crearModuloConTituloVacioLanzaValidacion() {
+        comoAdministrador();
+        when(cursos.findById(100L)).thenReturn(Optional.of(cursoEnEstado("BORRADOR")));
+
+        assertThrows(BusinessValidationException.class,
+                () -> service.crearModulo(100L, new CrearModuloRequest("   ", null)));
+    }
+
+    @Test
+    void crearModuloSinRolAdministradorLanzaForbidden() {
+        when(currentUserService.get())
+                .thenReturn(new CurrentUser(2L, "alumno@example.com", Set.of("ALUMNO")));
+
+        assertThrows(ForbiddenException.class,
+                () -> service.crearModulo(100L, new CrearModuloRequest("Módulo", null)));
+    }
+
+    @Test
+    void cambiarActivoModuloDesactivaCuandoElCursoNoHaIniciado() {
+        comoAdministrador();
+        Curso curso = cursoEnEstado("PUBLICADO");
+        Modulo modulo = moduloDe(curso);
+        when(modulos.findById(10L)).thenReturn(Optional.of(modulo));
+        when(lecciones.findByModulo_IdOrderByOrdenAsc(10L)).thenReturn(List.of());
+
+        ModuloResponse respuesta = service.cambiarActivoModulo(10L, false);
+
+        assertFalse(respuesta.activo());
+    }
+
+    @Test
+    void cambiarActivoModuloARetirarConCursoYaIniciadoLanzaValidacion() {
+        // HU-011 Escenario 3 (conservación histórica): un módulo en uso no se retira tras iniciar.
+        comoAdministrador();
+        Curso curso = cursoEnEstado("EN_CURSO");
+        Modulo modulo = moduloDe(curso);
+        when(modulos.findById(10L)).thenReturn(Optional.of(modulo));
+
+        assertThrows(BusinessValidationException.class, () -> service.cambiarActivoModulo(10L, false));
+    }
+
+    @Test
+    void reactivarModuloConCursoIniciadoNoEstaRestringido() {
+        comoAdministrador();
+        Curso curso = cursoEnEstado("EN_CURSO");
+        Modulo modulo = moduloDe(curso);
+        modulo.setActivo(false);
+        when(modulos.findById(10L)).thenReturn(Optional.of(modulo));
+        when(lecciones.findByModulo_IdOrderByOrdenAsc(10L)).thenReturn(List.of());
+
+        ModuloResponse respuesta = service.cambiarActivoModulo(10L, true);
+
+        assertTrue(respuesta.activo());
+    }
+
+    @Test
+    void reordenarModulosConListaCompletaConservaSecuenciaUnica() {
+        // HU-011 Escenario 1 (estructura ordenada).
+        comoAdministrador();
+        Curso curso = cursoEnEstado("BORRADOR");
+        when(cursos.findById(100L)).thenReturn(Optional.of(curso));
+        Modulo m1 = moduloDe(curso);
+        Modulo m2 = moduloDe(curso);
+        m2.setId(11L);
+        m2.setOrden(2);
+        when(modulos.findByCurso_IdOrderByOrdenAsc(100L)).thenReturn(List.of(m1, m2));
+
+        List<ModuloResponse> resultado = service.reordenarModulos(100L, new OrdenRequest(List.of(11L, 10L)));
+
+        assertEquals(1, m2.getOrden());
+        assertEquals(2, m1.getOrden());
+        assertEquals(2, resultado.size());
+    }
+
+    @Test
+    void reordenarModulosConListaIncompletaLanzaValidacion() {
+        comoAdministrador();
+        when(cursos.findById(100L)).thenReturn(Optional.of(cursoEnEstado("BORRADOR")));
+        Modulo m1 = moduloDe(cursoEnEstado("BORRADOR"));
+        Modulo m2 = moduloDe(cursoEnEstado("BORRADOR"));
+        m2.setId(11L);
+        when(modulos.findByCurso_IdOrderByOrdenAsc(100L)).thenReturn(List.of(m1, m2));
+
+        assertThrows(BusinessValidationException.class,
+                () -> service.reordenarModulos(100L, new OrdenRequest(List.of(10L))));
+    }
+
+    // ---------------------------------------------------------------- Lecciones (HU-011) --
+
+    @Test
+    void crearLeccionGrabadaSoloPideLosDatosDeSuTipo() {
+        // HU-011 Escenario 2 (tipos de lección): una lección GRABADA no exige datos de sesión.
+        comoAdministrador();
+        Curso curso = cursoEnEstado("BORRADOR");
+        Modulo modulo = moduloDe(curso);
+        when(modulos.findById(10L)).thenReturn(Optional.of(modulo));
+        when(lecciones.countByModulo_Id(10L)).thenReturn(0L);
+
+        LeccionResponse respuesta = service.crearLeccion(10L,
+                new CrearLeccionRequest("Introducción", null, TipoLeccion.GRABADA, true, false));
+
+        assertEquals("GRABADA", respuesta.tipo());
+        assertEquals(1, respuesta.orden());
+    }
+
+    @Test
+    void crearLeccionEnVivoNaceSinProgramar() {
+        comoAdministrador();
+        Curso curso = cursoEnEstado("BORRADOR");
+        Modulo modulo = moduloDe(curso);
+        when(modulos.findById(10L)).thenReturn(Optional.of(modulo));
+        when(lecciones.countByModulo_Id(10L)).thenReturn(0L);
+
+        LeccionResponse respuesta = service.crearLeccion(10L,
+                new CrearLeccionRequest("Sesión en vivo", null, TipoLeccion.EN_VIVO, true, false));
+
+        assertEquals("EN_VIVO", respuesta.tipo());
+        assertEquals(null, respuesta.fechaHoraInicio());
+    }
+
+    @Test
+    void crearLeccionObligatoriaConCursoYaIniciadoLanzaValidacion() {
+        comoAdministrador();
+        Curso curso = cursoEnEstado("EN_CURSO");
+        Modulo modulo = moduloDe(curso);
+        when(modulos.findById(10L)).thenReturn(Optional.of(modulo));
+
+        assertThrows(BusinessValidationException.class, () -> service.crearLeccion(10L,
+                new CrearLeccionRequest("Nueva lección", null, TipoLeccion.GRABADA, true, false)));
+    }
+
+    @Test
+    void crearLeccionComplementariaConCursoYaIniciadoSiEstaPermitido() {
+        comoAdministrador();
+        Curso curso = cursoEnEstado("EN_CURSO");
+        Modulo modulo = moduloDe(curso);
+        when(modulos.findById(10L)).thenReturn(Optional.of(modulo));
+        when(lecciones.countByModulo_Id(10L)).thenReturn(1L);
+
+        LeccionResponse respuesta = service.crearLeccion(10L,
+                new CrearLeccionRequest("Material extra", null, TipoLeccion.GRABADA, false, false));
+
+        assertFalse(respuesta.esObligatoria());
+    }
+
+    @Test
+    void unaLeccionEnVivoNoPuedeMarcarseComoVistaPrevia() {
+        comoAdministrador();
+        Curso curso = cursoEnEstado("BORRADOR");
+        Modulo modulo = moduloDe(curso);
+        when(modulos.findById(10L)).thenReturn(Optional.of(modulo));
+
+        assertThrows(BusinessValidationException.class, () -> service.crearLeccion(10L,
+                new CrearLeccionRequest("Sesión", null, TipoLeccion.EN_VIVO, true, true)));
+    }
+
+    @Test
+    void cambiarActivoLeccionARetirarConCursoIniciadoLanzaValidacion() {
+        comoAdministrador();
+        Curso curso = cursoEnEstado("EN_CURSO");
+        Leccion leccion = leccionEnVivoDe(moduloDe(curso));
+        when(lecciones.findById(20L)).thenReturn(Optional.of(leccion));
+
+        assertThrows(BusinessValidationException.class, () -> service.cambiarActivoLeccion(20L, false));
+    }
+
+    // ---------------------------------------------------------------- Sesiones (HU-012) --
+
+    @Test
+    void actualizarSesionConDatosValidosQuedaProgramada() {
+        // HU-012 Escenario 1 (programación válida).
+        comoAdministrador();
+        Curso curso = cursoEnEstado("PUBLICADO");
+        Leccion leccion = leccionEnVivoDe(moduloDe(curso));
+        when(lecciones.findById(20L)).thenReturn(Optional.of(leccion));
+        when(materiales.findByLeccion_IdOrderByOrdenAsc(20L)).thenReturn(List.of());
+
+        Instant inicio = Instant.parse("2026-09-20T18:00:00Z");
+        Instant fin = Instant.parse("2026-09-20T20:00:00Z");
+        LeccionResponse respuesta = service.actualizarSesion(20L,
+                new ActualizarSesionRequest(inicio, fin, "https://meet.example.com/sesion"));
+
+        assertEquals(inicio, respuesta.fechaHoraInicio());
+        assertEquals(fin, respuesta.fechaHoraFin());
+        assertEquals("https://meet.example.com/sesion", respuesta.enlaceReunion());
+    }
+
+    @Test
+    void actualizarSesionReprogramaConservaLaNuevaProgramacion() {
+        // HU-012 Escenario 2 (reprogramación).
+        comoAdministrador();
+        Curso curso = cursoEnEstado("PUBLICADO");
+        Leccion leccion = leccionEnVivoDe(moduloDe(curso));
+        leccion.setFechaHoraInicio(Instant.parse("2026-09-18T18:00:00Z"));
+        leccion.setFechaHoraFin(Instant.parse("2026-09-18T20:00:00Z"));
+        leccion.setEnlaceReunion("https://meet.example.com/original");
+        when(lecciones.findById(20L)).thenReturn(Optional.of(leccion));
+        when(materiales.findByLeccion_IdOrderByOrdenAsc(20L)).thenReturn(List.of());
+
+        Instant nuevoInicio = Instant.parse("2026-09-22T18:00:00Z");
+        Instant nuevoFin = Instant.parse("2026-09-22T20:00:00Z");
+        LeccionResponse respuesta = service.actualizarSesion(20L,
+                new ActualizarSesionRequest(nuevoInicio, nuevoFin, "https://meet.example.com/nueva"));
+
+        assertEquals(nuevoInicio, respuesta.fechaHoraInicio());
+        assertEquals("https://meet.example.com/nueva", respuesta.enlaceReunion());
+    }
+
+    @Test
+    void actualizarSesionSobreLeccionNoEnVivoLanzaValidacion() {
+        // HU-012 Escenario 3 (datos obligatorios / operación rechazada).
+        comoAdministrador();
+        Curso curso = cursoEnEstado("PUBLICADO");
+        Modulo modulo = moduloDe(curso);
+        Leccion leccion = leccionEnVivoDe(modulo);
+        leccion.setTipo(TipoLeccion.GRABADA.name());
+        when(lecciones.findById(20L)).thenReturn(Optional.of(leccion));
+
+        assertThrows(BusinessValidationException.class, () -> service.actualizarSesion(20L,
+                new ActualizarSesionRequest(Instant.parse("2026-09-20T18:00:00Z"),
+                        Instant.parse("2026-09-20T20:00:00Z"), "https://meet.example.com/sesion")));
+    }
+
+    @Test
+    void actualizarSesionEnCursoVirtualLanzaValidacion() {
+        comoAdministrador();
+        Curso curso = cursoEnEstado("PUBLICADO");
+        curso.setModalidad("VIRTUAL");
+        Leccion leccion = leccionEnVivoDe(moduloDe(curso));
+        when(lecciones.findById(20L)).thenReturn(Optional.of(leccion));
+
+        assertThrows(BusinessValidationException.class, () -> service.actualizarSesion(20L,
+                new ActualizarSesionRequest(Instant.parse("2026-09-20T18:00:00Z"),
+                        Instant.parse("2026-09-20T20:00:00Z"), "https://meet.example.com/sesion")));
+    }
+
+    @Test
+    void actualizarSesionConFinAnteriorAlInicioLanzaValidacion() {
+        comoAdministrador();
+        Curso curso = cursoEnEstado("PUBLICADO");
+        Leccion leccion = leccionEnVivoDe(moduloDe(curso));
+        when(lecciones.findById(20L)).thenReturn(Optional.of(leccion));
+
+        assertThrows(BusinessValidationException.class, () -> service.actualizarSesion(20L,
+                new ActualizarSesionRequest(Instant.parse("2026-09-20T20:00:00Z"),
+                        Instant.parse("2026-09-20T18:00:00Z"), "https://meet.example.com/sesion")));
+    }
+
+    @Test
+    void actualizarSesionFueraDelPeriodoDelCursoLanzaValidacion() {
+        comoAdministrador();
+        Curso curso = cursoEnEstado("PUBLICADO");
+        Leccion leccion = leccionEnVivoDe(moduloDe(curso));
+        when(lecciones.findById(20L)).thenReturn(Optional.of(leccion));
+
+        // El curso va del 1 de septiembre al 1 de octubre; esta sesión cae en noviembre.
+        assertThrows(BusinessValidationException.class, () -> service.actualizarSesion(20L,
+                new ActualizarSesionRequest(Instant.parse("2026-11-05T18:00:00Z"),
+                        Instant.parse("2026-11-05T20:00:00Z"), "https://meet.example.com/sesion")));
+    }
+
+    // ---------------------------------------------------------------- Eliminar (HU-016 apoyo) --
+
+    @Test
+    void eliminarModuloConCursoEnBorradorLoElimina() {
+        comoAdministrador();
+        Curso curso = cursoEnEstado("BORRADOR");
+        Modulo modulo = moduloDe(curso);
+        when(modulos.findById(10L)).thenReturn(Optional.of(modulo));
+        when(lecciones.findByModulo_IdOrderByOrdenAsc(10L)).thenReturn(List.of());
+        when(examenes.findByModulo_IdOrderByOrdenAsc(10L)).thenReturn(List.of());
+
+        service.eliminarModulo(10L);
+
+        org.mockito.Mockito.verify(modulos).delete(modulo);
+    }
+
+    @Test
+    void eliminarModuloConCursoYaPublicadoLanzaValidacion() {
+        comoAdministrador();
+        Curso curso = cursoEnEstado("PUBLICADO");
+        Modulo modulo = moduloDe(curso);
+        when(modulos.findById(10L)).thenReturn(Optional.of(modulo));
+
+        assertThrows(BusinessValidationException.class, () -> service.eliminarModulo(10L));
+    }
+}

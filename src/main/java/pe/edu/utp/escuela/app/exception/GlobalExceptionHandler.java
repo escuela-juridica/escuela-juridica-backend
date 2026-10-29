@@ -14,6 +14,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import pe.edu.utp.escuela.app.dto.ApiErrorResponse;
 import pe.edu.utp.escuela.app.dto.FieldErrorResponse;
 
@@ -56,6 +57,12 @@ public class GlobalExceptionHandler {
     ResponseEntity<ApiErrorResponse> handleUnreadable(HttpServletRequest request) {
         return response(HttpStatus.BAD_REQUEST, "INVALID_BODY",
                 "El contenido de la solicitud no es válido", request, List.of());
+    }
+
+    /** Una ruta o archivo estático que no existe (o que no se publica) responde 404, no un error interno. */
+    @ExceptionHandler(NoResourceFoundException.class)
+    ResponseEntity<ApiErrorResponse> handleNoResource(HttpServletRequest request) {
+        return response(HttpStatus.NOT_FOUND, "NOT_FOUND", "El recurso solicitado no existe", request, List.of());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

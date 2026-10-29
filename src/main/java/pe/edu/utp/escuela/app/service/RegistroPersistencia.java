@@ -10,25 +10,25 @@ import pe.edu.utp.escuela.app.dto.*;
 import pe.edu.utp.escuela.app.entity.*;
 import pe.edu.utp.escuela.app.exception.*;
 import pe.edu.utp.escuela.app.repository.*;
-import pe.edu.utp.escuela.app.service.ContextoGoogleRegistro;
+import pe.edu.utp.escuela.app.integration.ContextoGoogleRegistroIntegration;
 import pe.edu.utp.escuela.app.util.TextNormalizer;
 
 /** Límite transaccional separado para capturar colisiones después del rollback. */
 @Service @RequiredArgsConstructor
 public class RegistroPersistencia {
-    private final PersonaRepositorio personas;
-    private final UsuarioRepositorio usuarios;
-    private final RolRepositorio roles;
-    private final UsuarioRolRepositorio asignaciones;
+    private final PersonaRepository personas;
+    private final UsuarioRepository usuarios;
+    private final RolRepository roles;
+    private final UsuarioRolRepository asignaciones;
     private final PasswordEncoder encoder;
-    private final CodigoVerificacionServicio codigos;
-    private final ReferenciaVerificacionServicio referencias;
-    private final SesionRegistroServicio sesiones;
+    private final CodigoVerificacionService codigos;
+    private final ReferenciaVerificacionService referencias;
+    private final SesionRegistroService sesiones;
     private final TextNormalizer textos;
     private final Clock clock;
 
     @Transactional
-    public RegistroRespuesta formulario(RegistroPeticion p) {
+    public RegistroResponse formulario(RegistroRequest p) {
         String correo = textos.normalizeEmail(p.correo());
         comprobarCorreo(correo);
         Rol rol = rolAlumno();
@@ -47,12 +47,12 @@ public class RegistroPersistencia {
         usuarios.saveAndFlush(usuario);
         asignarRol(usuario, rol);
         boolean enviado = codigos.emitirPara(usuario);
-        return new RegistroRespuesta(usuario.getId(), correo, enviado,
+        return new RegistroResponse(usuario.getId(), correo, enviado,
                 referencias.emitir(usuario.getId()));
     }
 
     @Transactional
-    public SesionRegistroServicio.SesionCreada google(RegistroGooglePeticion p, ContextoGoogleRegistro.Identidad identidad) {
+    public SesionRegistroService.SesionCreada google(RegistroGoogleRequest p, ContextoGoogleRegistroIntegration.Identidad identidad) {
         String correo = textos.normalizeEmail(identidad.correo());
         comprobarCorreo(correo);
         if (usuarios.findByGoogleSubject(identidad.subject()).isPresent()) {

@@ -5,8 +5,8 @@
 > Estado de integración: esta historia **ya estaba implementada y funcionando** (listado, detalle y
 > cancelación de matrículas, con datos reales). Se retiró deliberadamente para convertirla en ejercicio
 > de programación del equipo — esta guía documenta exactamente cómo estaba construida, con el código
-> real, para que se reconstruya igual o mejor. **Importante:** `MatriculaServicio` y
-> `MatriculaControlador` son archivos **compartidos** con HU-017 (matrícula gratuita), HU-019 (matricular
+> real, para que se reconstruya igual o mejor. **Importante:** `MatriculaService` y
+> `MatriculaController` son archivos **compartidos** con HU-017 (matrícula gratuita), HU-019 (matricular
 > administrativamente) y HU-021 (mis cursos), que siguen funcionando — no se tocó nada de esos. Tampoco
 > se tocó HU-041 (reporte de matrículas), que vive en los mismos archivos pero es harina de otro costal
 > (otra guía aparte). Lo único que se retiró son los tres métodos/endpoints exclusivos de esta historia.
@@ -24,14 +24,14 @@ motivo. El vencimiento se recalcula de forma idempotente antes de cada consulta.
 ## Punto de partida — ya existe, se reutiliza tal cual
 
 - Entidades `Matricula`, `HistorialEstadoMatricula`, `Pago` — no se tocan.
-- `MatriculaRepositorio.findWithDetalleById`, `.buscarAdministrativas(texto, estado, pageable)` — ya
+- `MatriculaRepository.findWithDetalleById`, `.buscarAdministrativas(texto, estado, pageable)` — ya
   existen y siguen ahí.
-- `HistorialEstadoMatriculaRepositorio`, `PagoRepositorio.findByMatricula_IdOrderByResultadoEnDesc` — ya
+- `HistorialEstadoMatriculaRepository`, `PagoRepository.findByMatricula_IdOrderByResultadoEnDesc` — ya
   existen.
-- DTOs ya existen en `dto/`, no hace falta recrearlos: `MatriculaAdministrativaRespuesta`,
-  `MatriculaDetalleAdministrativaRespuesta`, `PagoMatriculaDetalleRespuesta`,
-  `HistorialEstadoMatriculaRespuesta`, `CancelarMatriculaPeticion`.
-- En `MatriculaServicio` (que se queda, no se borra) ya están disponibles como helpers privados:
+- DTOs ya existen en `dto/`, no hace falta recrearlos: `MatriculaAdministrativaResponse`,
+  `MatriculaDetalleAdministrativaResponse`, `PagoMatriculaDetalleResponse`,
+  `HistorialEstadoMatriculaResponse`, `CancelarMatriculaRequest`.
+- En `MatriculaService` (que se queda, no se borra) ya están disponibles como helpers privados:
   `procesarVencimientos()`, `exigirAdministrador()`, `registrarCambio(...)`, `respuesta(Matricula, String)`.
   Reutilízalos, no los reescribas.
 - **`normalizar(String)` y `normalizarEstado(String)` NO están** (los usaba también HU-041, que se
@@ -61,11 +61,11 @@ motivo. El vencimiento se recalcula de forma idempotente antes de cada consulta.
 ## 🔑 Punto de oro — con quién coordinar
 
 Puedes arrancar ya, sin esperar a nadie. Solo dos avisos puntuales, no bloqueos, con **Ariana y
-Gabriel** (HU-041, reporte de matrículas — comparten `MatriculaServicio`, `MatriculaControlador` y
+Gabriel** (HU-041, reporte de matrículas — comparten `MatriculaService`, `MatriculaController` y
 `matricula-api.service.ts` con ustedes):
 
 1. **`normalizar(String)` / `normalizarEstado(String)`** — ninguno de los dos existe hoy en
-   `MatriculaServicio`; los necesitan tanto tú (`listarAdministrativas`) como HU-041
+   `MatriculaService`; los necesitan tanto tú (`listarAdministrativas`) como HU-041
    (`reportePaginado`/`reporte`). **El que los cree primero avisa en el grupo** — el segundo los
    reutiliza, no los vuelve a crear (si los duplica, no compila).
 2. **Bloques separados en los archivos compartidos** — agrega tus 3 métodos/endpoints en un bloque
@@ -87,9 +87,9 @@ aparte.
 
 ### Archivos y responsabilidades
 
-- `service/MatriculaServicio.java` (ya existe, se amplía): agregar los métodos `listarAdministrativas`,
+- `service/MatriculaService.java` (ya existe, se amplía): agregar los métodos `listarAdministrativas`,
   `detalleAdministrativo` y `cancelar`, más el helper privado `nombreUsuario(Long)`.
-- `controller/MatriculaControlador.java` (ya existe, se amplía): agregar los tres endpoints.
+- `controller/MatriculaController.java` (ya existe, se amplía): agregar los tres endpoints.
 
 ### Reglas en orden
 
@@ -97,8 +97,8 @@ aparte.
    vencida no se vuelve a tocar), exige rol ADMINISTRADOR, normaliza texto/estado y delega en
    `matriculas.buscarAdministrativas(...)`.
 2. `detalleAdministrativo`: exige administrador, busca con `findWithDetalleById` (404 si no existe),
-   arma por separado la lista de pagos (`PagoMatriculaDetalleRespuesta`, con el nombre de quien registró
-   cada uno) y el historial de cambios de estado (`HistorialEstadoMatriculaRespuesta`) — **nunca se
+   arma por separado la lista de pagos (`PagoMatriculaDetalleResponse`, con el nombre de quien registró
+   cada uno) y el historial de cambios de estado (`HistorialEstadoMatriculaResponse`) — **nunca se
    mezclan en una sola lista**, son conceptos distintos (dinero vs. acceso).
 3. `cancelar`: exige administrador, solo permite cancelar una matrícula en estado `ACTIVA` (si no,
    `BusinessValidationException`), guarda motivo y quién canceló, y registra el cambio de estado en el
@@ -163,30 +163,30 @@ igual que antes.
 
 ## Implementación guiada para copiar y adaptar
 
-### 1. Backend — métodos a agregar en `MatriculaServicio` (ya existe la clase)
+### 1. Backend — métodos a agregar en `MatriculaService` (ya existe la clase)
 
 ```java
 @Transactional
-public Page<MatriculaAdministrativaRespuesta> listarAdministrativas(String texto, String estado, Pageable pageable) {
+public Page<MatriculaAdministrativaResponse> listarAdministrativas(String texto, String estado, Pageable pageable) {
     procesarVencimientos();
     exigirAdministrador();
     return matriculas.buscarAdministrativas(normalizar(texto), normalizarEstado(estado), pageable);
 }
 
 @Transactional
-public MatriculaDetalleAdministrativaRespuesta detalleAdministrativo(Long matriculaId) {
+public MatriculaDetalleAdministrativaResponse detalleAdministrativo(Long matriculaId) {
     procesarVencimientos();
     exigirAdministrador();
     Matricula m = matriculas.findWithDetalleById(matriculaId)
             .orElseThrow(() -> new ResourceNotFoundException("La matrícula no existe."));
-    List<PagoMatriculaDetalleRespuesta> pagosRespuesta = pagos.findByMatricula_IdOrderByResultadoEnDesc(matriculaId)
-            .stream().map(p -> new PagoMatriculaDetalleRespuesta(p.getId(), p.getOrigen(), p.getEstado(),
+    List<PagoMatriculaDetalleResponse> pagosRespuesta = pagos.findByMatricula_IdOrderByResultadoEnDesc(matriculaId)
+            .stream().map(p -> new PagoMatriculaDetalleResponse(p.getId(), p.getOrigen(), p.getEstado(),
                     p.getImporte(), p.getMoneda(), p.getMedio(), p.getReferenciaExterna(), p.getMotivo(),
                     p.getRegistradoPorUsuarioId(), nombreUsuario(p.getRegistradoPorUsuarioId()), p.getResultadoEn())).toList();
-    List<HistorialEstadoMatriculaRespuesta> estados = historial.findByMatricula_IdOrderByRealizadoEnDesc(matriculaId)
-            .stream().map(h -> new HistorialEstadoMatriculaRespuesta(h.getEstadoAnterior(), h.getEstadoNuevo(),
+    List<HistorialEstadoMatriculaResponse> estados = historial.findByMatricula_IdOrderByRealizadoEnDesc(matriculaId)
+            .stream().map(h -> new HistorialEstadoMatriculaResponse(h.getEstadoAnterior(), h.getEstadoNuevo(),
                     h.getMotivo(), h.getRealizadoPorUsuarioId(), nombreUsuario(h.getRealizadoPorUsuarioId()), h.getRealizadoEn())).toList();
-    return new MatriculaDetalleAdministrativaRespuesta(m.getId(), m.getUsuario().getId(),
+    return new MatriculaDetalleAdministrativaResponse(m.getId(), m.getUsuario().getId(),
             m.getUsuario().getPersona().nombreCompleto(), m.getUsuario().getCorreo(), m.getCurso().getId(),
             m.getCurso().getTitulo(), m.getCurso().getModalidad(), m.getEstado(), m.getFormaIngreso(),
             m.getFechaMatricula(), m.getFechaActivacion(), m.getFechaVencimiento(), m.getFechaFinalizacion(),
@@ -194,7 +194,7 @@ public MatriculaDetalleAdministrativaRespuesta detalleAdministrativo(Long matric
 }
 
 @Transactional
-public MatriculaRespuesta cancelar(Long matriculaId, CancelarMatriculaPeticion p) {
+public MatriculaResponse cancelar(Long matriculaId, CancelarMatriculaRequest p) {
     procesarVencimientos();
     exigirAdministrador();
     Matricula m = matriculas.findWithDetalleById(matriculaId)
@@ -217,29 +217,29 @@ private String nombreUsuario(Long usuarioId) {
 }
 ```
 
-### 2. Backend — endpoints a agregar en `MatriculaControlador` (ya existe la clase)
+### 2. Backend — endpoints a agregar en `MatriculaController` (ya existe la clase)
 
 ```java
 @GetMapping("/admin/matriculas/{matriculaId}")
-public ResponseEntity<MatriculaDetalleAdministrativaRespuesta> detalle(@PathVariable Long matriculaId) {
+public ResponseEntity<MatriculaDetalleAdministrativaResponse> detalle(@PathVariable Long matriculaId) {
     return ResponseEntity.ok(servicio.detalleAdministrativo(matriculaId));
 }
 
 @GetMapping("/admin/matriculas")
-public ResponseEntity<PageResponse<MatriculaAdministrativaRespuesta>> listarAdministrativas(
+public ResponseEntity<PageResponse<MatriculaAdministrativaResponse>> listarAdministrativas(
         @RequestParam(defaultValue = "") String texto,
         @RequestParam(defaultValue = "") String estado,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int size) {
     int tamano = Math.min(Math.max(size, 1), 50);
-    Page<MatriculaAdministrativaRespuesta> pagina = servicio.listarAdministrativas(
+    Page<MatriculaAdministrativaResponse> pagina = servicio.listarAdministrativas(
             texto, estado, PageRequest.of(Math.max(page, 0), tamano));
     return ResponseEntity.ok(PageResponse.from(pagina));
 }
 
 @PatchMapping("/admin/matriculas/{matriculaId}/cancelacion")
-public ResponseEntity<MatriculaRespuesta> cancelar(
-        @PathVariable Long matriculaId, @Valid @RequestBody CancelarMatriculaPeticion peticion) {
+public ResponseEntity<MatriculaResponse> cancelar(
+        @PathVariable Long matriculaId, @Valid @RequestBody CancelarMatriculaRequest peticion) {
     return ResponseEntity.ok(servicio.cancelar(matriculaId, peticion));
 }
 ```
