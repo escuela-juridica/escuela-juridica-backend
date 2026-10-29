@@ -34,10 +34,10 @@ public class CulqiWebhookController {
     private final PagoEnLineaService servicio;
     private final JsonMapper json;
 
-    @Value("${esejur.culqi.webhook-usuario:}")
+    @Value("${esejur.culqi.webhook-user:}")
     private String usuario;
 
-    @Value("${esejur.culqi.webhook-clave:}")
+    @Value("${esejur.culqi.webhook-password:}")
     private String clave;
 
     @PostMapping("/webhook")

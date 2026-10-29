@@ -11,7 +11,6 @@ public record PagoCheckoutResponse(
         BigDecimal importe,
         String moneda,
         boolean reanudado,
-        String modo,
         String llavePublica,
         String ordenId,
         long montoCentimos,

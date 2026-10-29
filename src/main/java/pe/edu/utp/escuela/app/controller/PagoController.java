@@ -14,7 +14,6 @@ import pe.edu.utp.escuela.app.dto.ConstanciaPagoResponse;
 import pe.edu.utp.escuela.app.dto.PagoCheckoutResponse;
 import pe.edu.utp.escuela.app.dto.PagoDetalleResponse;
 import pe.edu.utp.escuela.app.dto.PagoIniciarRequest;
-import pe.edu.utp.escuela.app.dto.PagoSimulacionRequest;
 import pe.edu.utp.escuela.app.dto.PagoTokenRequest;
 import pe.edu.utp.escuela.app.dto.PagosCursoResponse;
 import pe.edu.utp.escuela.app.service.PagoEnLineaService;
@@ -63,11 +62,5 @@ public class PagoController {
     @Operation(summary = "Reenviar el aviso del resultado sin duplicar pago, constancia ni acceso")
     public PagoDetalleResponse reenviarAviso(@PathVariable String numeroPedido) {
         return service.reenviarAviso(numeroPedido);
-    }
-
-    @PostMapping("/pagos/{numeroPedido}/simular")
-    @Operation(summary = "Solo con Culqi simulado: reproducir el aviso que enviaría Culqi")
-    public PagoDetalleResponse simular(@PathVariable String numeroPedido, @Valid @RequestBody PagoSimulacionRequest peticion) {
-        return service.simular(numeroPedido, peticion.resultado(), peticion.repetirUltimo());
     }
 }

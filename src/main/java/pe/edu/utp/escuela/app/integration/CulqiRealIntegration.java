@@ -12,7 +12,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import pe.edu.utp.escuela.app.exception.BusinessValidationException;
 import tools.jackson.databind.JsonNode;
@@ -29,7 +28,6 @@ import tools.jackson.databind.json.JsonMapper;
  */
 @Slf4j
 @Service
-@ConditionalOnProperty(name = "esejur.culqi.modo", havingValue = "REAL")
 public class CulqiRealIntegration implements CulqiIntegration {
 
     private final JsonMapper json;
@@ -42,12 +40,12 @@ public class CulqiRealIntegration implements CulqiIntegration {
 
     public CulqiRealIntegration(JsonMapper json, Clock clock,
             @Value("${esejur.culqi.api-url:https://api.culqi.com/v2}") String apiUrl,
-            @Value("${esejur.culqi.llave-publica:}") String llavePublica,
-            @Value("${esejur.culqi.llave-privada:}") String llavePrivada,
-            @Value("${esejur.culqi.orden-vigencia-horas:24}") long vigenciaOrdenHoras) {
+            @Value("${esejur.culqi.public-key:}") String llavePublica,
+            @Value("${esejur.culqi.private-key:}") String llavePrivada,
+            @Value("${esejur.culqi.order-validity-hours:24}") long vigenciaOrdenHoras) {
         if (llavePublica.isBlank() || llavePrivada.isBlank()) {
             throw new IllegalStateException(
-                    "esejur.culqi.modo=REAL exige esejur.culqi.llave-publica y esejur.culqi.llave-privada (pk_test/sk_test).");
+                    "Culqi exige esejur.culqi.public-key y esejur.culqi.private-key (pk_test/sk_test en integración, pk_live/sk_live en producción).");
         }
         this.json = json;
         this.clock = clock;
@@ -55,11 +53,6 @@ public class CulqiRealIntegration implements CulqiIntegration {
         this.llavePublica = llavePublica;
         this.llavePrivada = llavePrivada;
         this.vigenciaOrdenHoras = vigenciaOrdenHoras;
-    }
-
-    @Override
-    public boolean esSimulado() {
-        return false;
     }
 
     @Override
@@ -88,7 +81,7 @@ public class CulqiRealIntegration implements CulqiIntegration {
             log.warn("Culqi no creó la orden de {}: HTTP {} {}", s.numeroPedido(), r.estado(), r.cuerpo());
             throw new BusinessValidationException("No pudimos iniciar el pago con Culqi. Inténtalo nuevamente en unos minutos.");
         }
-        return new CheckoutCulqi("REAL", llavePublica, ordenId, s.montoCentimos(), s.moneda(), "Escuela Jurídica");
+        return new CheckoutCulqi(llavePublica, ordenId, s.montoCentimos(), s.moneda(), "Escuela Jurídica");
     }
 
     @Override
@@ -123,8 +116,9 @@ public class CulqiRealIntegration implements CulqiIntegration {
         }
         // Rechazo del emisor (card_error) o error de la operación: Culqi lo informa como objeto "error".
         String tipoError = texto(j, "type");
-        String estado = "card_error".equals(tipoError) ? "RECHAZADO" : "ERROR";
-        String codigo = texto(j, "decline_code") != null ? texto(j, "decline_code") : texto(j, "code");
+        String codigoRechazo = texto(j, "decline_code");
+        String estado = "card_error".equals(tipoError) || codigoRechazo != null ? "RECHAZADO" : "ERROR";
+        String codigo = codigoRechazo != null ? codigoRechazo : texto(j, "code");
         return new ResultadoCulqi(estado, texto(j, "charge_id"), null, medio, null, null, codigo,
                 textoOr(j, "user_message", "La operación no pudo completarse."), c.numeroPedido(), clock.instant());
     }

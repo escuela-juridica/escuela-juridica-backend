@@ -4,13 +4,10 @@ import java.time.Instant;
 
 /**
  * HU-047 — Puerto hacia Culqi. Culqi procesa el dinero y decide el resultado; ESEJUR solo inicia la operación
- * y registra lo que Culqi informa. Existen dos implementaciones, elegidas con {@code esejur.culqi.modo}:
- * {@link CulqiRealIntegration} (API de Culqi) y {@link CulqiSimuladoIntegration} (local, para desarrollo y demostración).
+ * y registra lo que Culqi informa. La implementación es {@link CulqiRealIntegration} (API de Culqi); la llave
+ * ({@code pk_test_}/{@code sk_test_} o {@code pk_live_}/{@code sk_live_}) decide si es integración o producción.
  */
 public interface CulqiIntegration {
-
-    /** {@code true} cuando los resultados los fabrica el simulador local en lugar de Culqi. */
-    boolean esSimulado();
 
     /** Llave pública con la que el navegador abre el checkout (nunca la privada). */
     String llavePublica();
@@ -31,8 +28,7 @@ public interface CulqiIntegration {
             String nombres, String apellidos, String telefono) {
     }
 
-    record CheckoutCulqi(String modo, String llavePublica, String ordenId, long montoCentimos, String moneda,
-            String titulo) {
+    record CheckoutCulqi(String llavePublica, String ordenId, long montoCentimos, String moneda, String titulo) {
     }
 
     record CobroConToken(String tokenId, String numeroPedido, long montoCentimos, String moneda, String correo,

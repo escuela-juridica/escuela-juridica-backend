@@ -161,7 +161,7 @@ public class PagoEnLineaService {
     private PagoCheckoutResponse checkoutDe(Pago pago, Usuario usuario, boolean reanudado) {
         Persona p = usuario.getPersona();
         return new PagoCheckoutResponse(pago.getNumeroPedido(), pago.getImporte(), pago.getMoneda(), reanudado,
-                culqi.esSimulado() ? "SIMULADO" : "REAL", culqi.llavePublica(), pago.getReferenciaExterna(),
+                culqi.llavePublica(), pago.getReferenciaExterna(),
                 centimos(pago.getImporte()), "Escuela Jurídica", usuario.getCorreo(), p.getNombres(), apellidos(p));
     }
 
@@ -197,7 +197,7 @@ public class PagoEnLineaService {
 
     /**
      * Aplica un resultado de Culqi una sola vez. {@code eventoId} identifica la confirmación: si ya se aplicó,
-     * no ocurre nada. Es el único camino por el que un pago cambia de estado (token, webhook, consulta o simulación).
+     * no ocurre nada. Es el único camino por el que un pago cambia de estado (token, webhook o consulta).
      */
     public void aplicar(String numeroPedido, ResultadoCulqi r, String eventoId) {
         new TransactionTemplate(transacciones).executeWithoutResult(estado -> {
@@ -369,7 +369,7 @@ public class PagoEnLineaService {
     public PagoDetalleResponse detalle(String numeroPedido) {
         String orden = new TransactionTemplate(transacciones, soloLectura()).execute(estado -> {
             Pago pago = propio(numeroPedido);
-            return Pago.PENDIENTE.equals(pago.getEstado()) && !culqi.esSimulado() ? pago.getReferenciaExterna() : null;
+            return Pago.PENDIENTE.equals(pago.getEstado()) ? pago.getReferenciaExterna() : null;
         });
         if (orden != null) {
             ResultadoCulqi r = culqi.consultarOrden(orden);
@@ -406,49 +406,6 @@ public class PagoEnLineaService {
         String pendiente = intentos.stream().filter(p -> Pago.PENDIENTE.equals(p.getEstado()))
                 .map(Pago::getNumeroPedido).findFirst().orElse(null);
         return new PagosCursoResponse(m.get().getEstado(), pendiente, intentos.stream().map(this::mapear).toList());
-    }
-
-    // ================================================================================== simulación ==
-
-    /**
-     * Solo con Culqi simulado: reproduce el aviso que Culqi enviaría para este intento. {@code repetirUltimo}
-     * reenvía el mismo evento. El propietario o un administrador pueden usarlo (el administrador, para mostrar
-     * aprobaciones tardías o contradictorias).
-     */
-    public PagoDetalleResponse simular(String numeroPedido, String resultado, boolean repetirUltimo) {
-        if (!culqi.esSimulado()) {
-            throw new BusinessValidationException("La simulación solo está disponible con Culqi simulado.");
-        }
-        String evento = new TransactionTemplate(transacciones).execute(estado -> {
-            Pago pago = propio(numeroPedido);
-            if (repetirUltimo) {
-                return eventos.findFirstByPago_IdOrderByIdDesc(pago.getId()).map(EventoPago::getIdentificadorEvento)
-                        .orElseThrow(() -> new BusinessValidationException("Todavía no hay una confirmación que repetir."));
-            }
-            return "sim:" + pago.getNumeroPedido() + ":" + resultado + ":" + System.nanoTime();
-        });
-        Pago pago = new TransactionTemplate(transacciones, soloLectura()).execute(estado -> propio(numeroPedido));
-        String estadoEvento = repetirUltimo
-                ? new TransactionTemplate(transacciones, soloLectura()).execute(estado -> eventos.findFirstByPago_IdOrderByIdDesc(pago.getId())
-                        .map(EventoPago::getEstadoInformado).orElse(resultado))
-                : resultado;
-        String medio = pago.getMedio() != null ? pago.getMedio() : "BILLETERA";
-        String codigo = switch (estadoEvento) {
-            case "APROBADO" -> "venta_exitosa";
-            case "RECHAZADO" -> "card_declined";
-            case "EXPIRADO" -> "expired";
-            default -> "processing_error";
-        };
-        String mensaje = switch (estadoEvento) {
-            case "APROBADO" -> "Su compra ha sido exitosa.";
-            case "RECHAZADO" -> "Culqi rechazó la operación.";
-            case "EXPIRADO" -> "La operación expiró sin ser aprobada.";
-            default -> "La operación no pudo completarse.";
-        };
-        ResultadoCulqi r = new ResultadoCulqi(estadoEvento, "sim_chr_" + numeroPedido, pago.getReferenciaExterna(), medio,
-                null, null, codigo, mensaje, numeroPedido, clock.instant());
-        aplicar(numeroPedido, r, evento);
-        return detalle(numeroPedido);
     }
 
     // ==================================================================================== webhook ==
@@ -492,7 +449,7 @@ public class PagoEnLineaService {
                 p.getNumeroCuotas(), p.getImporte(), p.getMoneda(), p.getPrecioRegularAplicado(),
                 p.getPrecioPromocionalAplicado(), mensaje(p, m), p.getIniciadoEn(), p.getResultadoEn(),
                 p.esAprobado() ? p.getConstanciaNumero() : null, m.getEstado(), acceso,
-                p.esNoAprobadoFinal() && "PENDIENTE_PAGO".equals(m.getEstado()), culqi.esSimulado(), correo);
+                p.esNoAprobadoFinal() && "PENDIENTE_PAGO".equals(m.getEstado()), correo);
     }
 
     private static String mensaje(Pago p, Matricula m) {
