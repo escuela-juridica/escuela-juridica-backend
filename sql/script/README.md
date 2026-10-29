@@ -44,6 +44,9 @@ proyecto, estos scripts no crean triggers, funciones, procedimientos ni vistas.
 - Miguel Saldivar y Ariana Lazaro: docentes públicos sin cuenta.
 - Contraseña de demostración para las cuentas: `Marco1415@`.
 - Historial no vigente de verificación y recuperación, sin códigos ni tokens activos.
+- Alumno de demostración del flujo completo: `alumno.demo@escuelajuridica.edu.pe` (contraseña `Marco1415@`), sin matrícula, y el curso 
+  «Curso Práctico de Procedimiento Administrativo» (S/ 20, virtual) con 3 lecciones y un examen final automático, para mostrar pagar, 
+  estudiar y generar el certificado.
 - Quince cursos de distintas modalidades y condiciones comerciales.
 - Matrículas gratuita, manual, exonerada y pagada con Culqi.
 - Progreso, asistencia, intento automático/abierto, certificado y reclamación de ejemplo.

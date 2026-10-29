@@ -2288,4 +2288,148 @@ FROM pago p JOIN matricula m ON m.matricula_id=p.matricula_id
 JOIN usuario u ON u.usuario_id=m.usuario_id
 WHERE p.numero_pedido='PED-EP06-0002';
 
+-- =============================================================================
+-- DEMOSTRACION: FLUJO COMPLETO DE UN ALUMNO (pagar, estudiar y obtener el certificado)
+-- =============================================================================
+-- Cuenta:  alumno.demo@escuelajuridica.edu.pe   Contrasena: Marco1415@
+--          (cambia el correo por uno propio si quieres recibir los avisos de pago y de certificado)
+-- Curso:   "Curso Practico de Procedimiento Administrativo" (S/ 20.00, virtual, publicado)
+--          3 lecciones en 2 modulos + examen final de 3 preguntas de correccion automatica.
+-- El alumno NO tiene matricula: el recorrido empieza en la ficha del curso con "Pagar ahora".
+--   1. Paga con la tarjeta de prueba de Culqi (4111 1111 1111 1111, 09/30, CVV 123) o con Yape.
+--   2. Completa las 3 lecciones en orden.
+--   3. Rinde el examen final (alternativas correctas: ver el comentario de cada pregunta).
+--   4. Confirma sus nombres y genera el certificado: sale al instante, sin intervencion de
+--      administracion, con nivel REFRENDADO si la nota llega a 14 (el curso tiene entidad certificadora).
+-- Los contenidos, correos y enlaces son datos de demostracion.
+
+INSERT INTO persona (nombres, apellido_paterno, apellido_materno, telefono)
+VALUES ('Valeria Sofia', 'Ramirez', 'Torres', '999 100 105');
+
+INSERT INTO usuario (persona_id, correo, origen_registro, contrasena_hash, correo_verificado_en)
+SELECT p.persona_id, 'alumno.demo@escuelajuridica.edu.pe', 'FORMULARIO',
+       '{bcrypt}$2a$10$41ZIgbSSlPVd3pBrI3BGuu9O6s0NXg.XnZZ2svvawPxfzrHU5Aj3G', CURRENT_TIMESTAMP
+FROM persona p
+WHERE p.nombres = 'Valeria Sofia' AND p.apellido_paterno = 'Ramirez' AND p.apellido_materno = 'Torres';
+
+INSERT INTO usuario_rol (usuario_id, rol_id, es_principal)
+SELECT u.usuario_id, r.rol_id, true
+FROM usuario u JOIN rol r ON r.codigo = 'ROLE_ALUMNO'
+WHERE u.correo = 'alumno.demo@escuelajuridica.edu.pe';
+
+INSERT INTO curso
+    (url_amigable, titulo, descripcion, imagen_portada_url, tipo_curso_id, categoria_tematica_id,
+     entidad_certificadora_id, modalidad, tipo_venta, estado_curso_id, destacado, precio_regular,
+     horas_academicas, beneficios, creado_por_usuario_id, publicado_en)
+SELECT 'procedimiento-administrativo-practico',
+       'Curso Practico de Procedimiento Administrativo',
+       'Recorrido corto y aplicado por los principios, el procedimiento y los recursos del procedimiento administrativo general, con examen final y certificado.',
+       'https://images.unsplash.com/photo-1556761175-b413da4baf72?q=80&w=1200',
+       tc.tipo_curso_id, ct.categoria_tematica_id, ec.entidad_certificadora_id, 'VIRTUAL', 'PAGADO',
+       es.estado_curso_id, true, 20.00, 8.00,
+       ARRAY['Acceso inmediato a los materiales','Examen final de correccion automatica','Certificado al terminar'],
+       a.usuario_id, CURRENT_TIMESTAMP
+FROM tipo_curso tc, categoria_tematica ct, entidad_certificadora ec, estado_curso es, usuario a
+WHERE tc.codigo = 'CURSO' AND ct.codigo = 'DERECHO_ADMINISTRATIVO'
+  AND ec.nombre = 'Colegio de Abogados de Lima' AND es.codigo = 'PUBLICADO'
+  AND a.correo = 'admin@escuelajuridica.edu.pe';
+
+INSERT INTO historial_estado_curso (curso_id, estado_nuevo_id, realizado_por_usuario_id)
+SELECT c.curso_id, c.estado_curso_id, c.creado_por_usuario_id
+FROM curso c WHERE c.url_amigable = 'procedimiento-administrativo-practico';
+
+INSERT INTO curso_docente (curso_id, persona_id, orden)
+SELECT c.curso_id, p.persona_id, 1
+FROM curso c, persona p
+WHERE c.url_amigable = 'procedimiento-administrativo-practico'
+  AND p.nombres = 'Miguel Bryan' AND p.apellido_paterno = 'Saldivar';
+
+INSERT INTO curso_firmante (curso_id, firmante_id, orden)
+SELECT c.curso_id, f.firmante_id, row_number() OVER (ORDER BY f.firmante_id)
+FROM curso c CROSS JOIN firmante f
+WHERE c.url_amigable = 'procedimiento-administrativo-practico';
+
+-- Todo el progreso y el examen son obligatorios; el certificado se genera de inmediato (sin dias de espera).
+INSERT INTO regla_curso
+    (curso_id, requiere_examenes, requiere_progreso, requiere_asistencia, nota_minima, nota_refrendado,
+     progreso_minimo, umbral_video, asistencia_minima, secuencia_obligatoria, dias_espera_certificado)
+SELECT c.curso_id, true, true, false, 12, 14, 100, 50, 80, true, 0
+FROM curso c WHERE c.url_amigable = 'procedimiento-administrativo-practico';
+
+INSERT INTO modulo (curso_id, titulo, descripcion, orden)
+SELECT c.curso_id, v.titulo, v.descripcion, v.orden
+FROM curso c
+CROSS JOIN (VALUES
+    ('Fundamentos del procedimiento', 'Principios y reglas basicas del procedimiento administrativo.', 1),
+    ('Aplicacion practica', 'Recursos y efectos del silencio administrativo.', 2)
+) v(titulo, descripcion, orden)
+WHERE c.url_amigable = 'procedimiento-administrativo-practico';
+
+INSERT INTO leccion
+    (modulo_id, titulo, descripcion, orden, tipo, estado, es_obligatoria, es_vista_previa)
+SELECT m.modulo_id, v.titulo, v.descripcion, v.orden, 'GRABADA', 'PROGRAMADA', true, v.vista_previa
+FROM modulo m
+JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'procedimiento-administrativo-practico'
+JOIN (VALUES
+    (1, 'Principios del procedimiento administrativo', 'Legalidad, debido procedimiento e informalismo.', 1, true),
+    (1, 'Etapas del procedimiento', 'Inicio, instruccion y resolucion del procedimiento.', 2, false),
+    (2, 'Recursos y silencio administrativo', 'Reconsideracion, apelacion y efectos del silencio.', 1, false)
+) v(modulo_orden, titulo, descripcion, orden, vista_previa) ON v.modulo_orden = m.orden;
+
+INSERT INTO recurso
+    (tipo_material_id, tipo, origen, referencia, nombre_archivo, tipo_mime, duracion_segundos,
+     duracion_detectada, youtube_no_listado_confirmado, creado_por_usuario_id)
+SELECT tm.tipo_material_id, 'VIDEO', 'YOUTUBE', 'https://www.youtube.com/watch?v=demo-flujo-' || l.leccion_id,
+       NULL, 'video/youtube', NULL, false, true, a.usuario_id
+FROM leccion l
+JOIN modulo m ON m.modulo_id = l.modulo_id
+JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'procedimiento-administrativo-practico'
+JOIN tipo_material tm ON tm.codigo = 'VIDEO'
+JOIN usuario a ON a.correo = 'admin@escuelajuridica.edu.pe';
+
+INSERT INTO material_leccion (leccion_id, recurso_id, titulo, orden)
+SELECT l.leccion_id, r.recurso_id, 'Video de la leccion', 1
+FROM leccion l
+JOIN modulo m ON m.modulo_id = l.modulo_id
+JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'procedimiento-administrativo-practico'
+JOIN recurso r ON r.referencia = 'https://www.youtube.com/watch?v=demo-flujo-' || l.leccion_id;
+
+-- Examen final: 3 preguntas de seleccion unica (10 puntos c/u), 3 intentos, sin tiempo limite.
+INSERT INTO examen
+    (curso_id, modulo_id, titulo, descripcion, tipo, finalidad, orden, maximo_intentos, tiempo_limite_minutos,
+     barajar_preguntas, barajar_opciones, mostrar_respuestas, bloquea_siguiente_modulo, dias_revision)
+SELECT c.curso_id, NULL, 'Examen final del curso',
+       'Responde las tres preguntas. La nota se calcula automaticamente al enviar.',
+       'CALIFICADO', 'FINAL', 1, 3, NULL, false, false, 'AL_APROBAR', false, 3
+FROM curso c WHERE c.url_amigable = 'procedimiento-administrativo-practico';
+
+INSERT INTO pregunta (examen_id, tipo, enunciado, puntaje, orden)
+SELECT e.examen_id, 'SELECCION_UNICA', v.enunciado, 10, v.orden
+FROM examen e
+JOIN curso c ON c.curso_id = e.curso_id AND c.url_amigable = 'procedimiento-administrativo-practico'
+CROSS JOIN (VALUES
+    (1, 'Que principio exige que la autoridad administrativa actue solo dentro de las facultades que la ley le atribuye?'),
+    (2, 'Que recurso se presenta ante la misma autoridad que emitio el acto, sustentado en nueva prueba?'),
+    (3, 'Cual es el efecto del silencio administrativo positivo?')
+) v(orden, enunciado);
+
+-- Respuestas correctas: pregunta 1 = "Principio de legalidad"; pregunta 2 = "Recurso de reconsideracion";
+-- pregunta 3 = "La solicitud se considera aprobada".
+INSERT INTO opcion_pregunta (pregunta_id, texto, es_correcta, orden)
+SELECT p.pregunta_id, v.texto, v.correcta, v.orden
+FROM pregunta p
+JOIN examen e ON e.examen_id = p.examen_id
+JOIN curso c ON c.curso_id = e.curso_id AND c.url_amigable = 'procedimiento-administrativo-practico'
+JOIN (VALUES
+    (1, 'Principio de informalismo', false, 1),
+    (1, 'Principio de legalidad', true, 2),
+    (1, 'Principio de celeridad', false, 3),
+    (2, 'Recurso de apelacion', false, 1),
+    (2, 'Recurso de revision', false, 2),
+    (2, 'Recurso de reconsideracion', true, 3),
+    (3, 'La solicitud se considera aprobada', true, 1),
+    (3, 'La solicitud se considera denegada', false, 2),
+    (3, 'El procedimiento queda suspendido', false, 3)
+) v(pregunta_orden, texto, correcta, orden) ON v.pregunta_orden = p.orden;
+
 COMMIT;
