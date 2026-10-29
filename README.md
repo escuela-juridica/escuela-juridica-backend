@@ -131,7 +131,7 @@ Para otro perfil: `--spring.profiles.active=dev` (o `prod`, con las variables de
 java -jar target/escuela-juridica-api-0.0.1-SNAPSHOT.jar
 ```
 
-El JAR solo lleva `application.properties` y `application-prod.properties` (los archivos de `local` y `dev` se dejan fuera al empaquetar, pero el IDE y `spring-boot:run` los siguen usando). En producción se arranca con `SPRING_PROFILES_ACTIVE=prod` (por ejemplo, como una línea más del archivo de entorno del servicio); sin esa variable el JAR intentaría usar `local`, que no trae, y no arrancaría. Con el perfil `prod` hay que definir todas estas variables de entorno; si falta alguna, la aplicación no arranca (o arranca con un valor vacío), así que revísalas antes de desplegar:
+El JAR solo lleva `application.properties` y `application-prod.properties` (los archivos de `local` y `dev` se dejan fuera al empaquetar, pero el IDE y `spring-boot:run` los siguen usando). En producción se arranca con `SPRING_PROFILES_ACTIVE=prod` (por ejemplo, como una línea más del archivo de entorno del servicio); sin esa variable el JAR intentaría usar `local`, que no trae, y no arrancaría. Con el perfil `prod`, `ValidadorVariablesProduccion` comprueba al arrancar todas estas variables: que existan, que no estén vacías ni sin resolver y que tengan sentido (base de datos `jdbc:postgresql://`, secretos JWT de al menos 32 caracteres y distintos entre sí, URLs `https://` sin `/` final, carpeta de archivos absoluta y con permiso de escritura, dominio de cookie sin `https://`, llaves de Culqi `pk_`/`sk_` del mismo entorno). Si algo falla, la aplicación no arranca y el log lista cada problema sin mostrar valores secretos:
 
 | Variable | Qué es |
 |---|---|
