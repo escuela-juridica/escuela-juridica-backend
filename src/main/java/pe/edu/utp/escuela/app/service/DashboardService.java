@@ -45,6 +45,7 @@ public class DashboardService {
     private static final Set<String> MODALIDADES = Set.of("VIRTUAL", "EN_VIVO", "HIBRIDO");
     private static final int DIAS_MAXIMOS_RANGO = 3660;
     private static final int CURSOS_VISIBLES = 10;
+    private static final int LOTE_IDS = 1000;
     private static final String[] MESES = {"ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"};
     /** Formas de ingreso del gráfico, en orden fijo (cada una conserva su color aunque otra quede en cero). */
     private static final Map<String, String> FORMAS = new LinkedHashMap<>();
@@ -125,8 +126,12 @@ public class DashboardService {
         FORMAS.keySet().forEach(k -> conteo.put(k, new long[1]));
         if (!activadas.isEmpty()) {
             List<Long> ids = activadas.stream().map(ActivacionRow::getId).toList();
-            Map<Long, List<Pago>> pagosPorMatricula = pagos.findByMatricula_IdIn(ids).stream()
-                    .collect(Collectors.groupingBy(p -> p.getMatricula().getId()));
+            // Por lotes: una lista de miles de ids superaría el límite de parámetros de una consulta.
+            Map<Long, List<Pago>> pagosPorMatricula = new java.util.HashMap<>();
+            for (int i = 0; i < ids.size(); i += LOTE_IDS) {
+                pagos.findByMatricula_IdIn(ids.subList(i, Math.min(i + LOTE_IDS, ids.size()))).forEach(
+                        p -> pagosPorMatricula.computeIfAbsent(p.getMatricula().getId(), k -> new ArrayList<>()).add(p));
+            }
             for (ActivacionRow a : activadas) {
                 List<Pago> delaMatricula = pagosPorMatricula.get(a.getId());
                 String forma = delaMatricula == null ? a.getForma() : MatriculaService.origenReporte(delaMatricula);
