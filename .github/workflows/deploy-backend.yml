@@ -49,57 +49,47 @@ jobs:
             ${{ env.IMAGE }}:latest
             ${{ env.IMAGE }}:${{ github.sha }}
 
-      - name: Preparar SSH
+      - name: Desplegar en el VPS (Podman)
+        uses: appleboy/ssh-action@v1
         env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_PORT: ${{ secrets.VPS_PORT }}
-          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
-        run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p "$VPS_PORT" -T 15 "$VPS_HOST" >> ~/.ssh/known_hosts
-
-      - name: Desplegar en el VPS
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_PORT: ${{ secrets.VPS_PORT }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_USER: ${{ github.actor }}
-        run: |
-          SSH="ssh -p $VPS_PORT -i $HOME/.ssh/deploy_key -o StrictHostKeyChecking=yes $VPS_USER@$VPS_HOST"
+          IMAGE: ${{ env.IMAGE }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          port: ${{ secrets.VPS_PORT }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: GHCR_TOKEN,GHCR_USER,IMAGE
+          script_stop: true
+          script: |
+            export REGISTRY_AUTH_FILE="$HOME/.config/containers/auth.json"
+            mkdir -p "$HOME/.config/containers"
 
-          printf '%s' "$GHCR_TOKEN" | $SSH "docker login ghcr.io -u '$GHCR_USER' --password-stdin"
+            echo "$GHCR_TOKEN" | podman login ghcr.io -u "$GHCR_USER" --password-stdin
+            podman pull "$IMAGE:latest"
+            podman rm -f esejurce || true
 
-          $SSH "bash -s -- '$IMAGE'" <<'REMOTO'
-          set -euo pipefail
-          IMAGE="$1"
+            podman run -d \
+              --name esejurce \
+              --restart unless-stopped \
+              --network host \
+              --env-file /etc/esejurce/app.env \
+              -v /opt/esejurce/files:/opt/esejurce/files:Z \
+              "$IMAGE:latest"
 
-          docker pull "$IMAGE:latest"
-          docker stop esejurce 2>/dev/null || true
-          docker rm esejurce 2>/dev/null || true
+            podman image prune -f > /dev/null
 
-          docker run -d \
-            --name esejurce \
-            --restart unless-stopped \
-            --network host \
-            --env-file /etc/esejurce/app.env \
-            -v /opt/esejurce/files:/opt/esejurce/files \
-            "$IMAGE:latest"
+            for intento in $(seq 1 40); do
+              if curl -fsS http://127.0.0.1:8080/api/health > /dev/null 2>&1; then
+                echo "Backend arriba tras $((intento * 3)) s"
+                podman logout ghcr.io > /dev/null 2>&1 || true
+                exit 0
+              fi
+              sleep 3
+            done
 
-          for intento in $(seq 1 40); do
-            if curl -fsS http://127.0.0.1:8080/api/health > /dev/null 2>&1; then
-              echo "Backend arriba tras $((intento * 3)) s"
-              docker image prune -f > /dev/null
-              docker logout ghcr.io > /dev/null
-              exit 0
-            fi
-            sleep 3
-          done
-
-          echo "El backend no respondió en 2 minutos. Últimas líneas del log:"
-          docker logs --tail 80 esejurce
-          docker logout ghcr.io > /dev/null
-          exit 1
-          REMOTO
+            echo "El backend no respondió en 2 minutos. Últimas líneas del log:"
+            podman logs --tail 80 esejurce
+            podman logout ghcr.io > /dev/null 2>&1 || true
+            exit 1
