@@ -109,7 +109,7 @@ Variables relevantes de `application.properties` y perfiles (`local`, `dev`, `pr
 
 El perfil `prod` es el único libre de secretos en el repo: usa exclusivamente variables de entorno (ver "JAR de producción"). Los perfiles `local`/`dev` traen credenciales de desarrollo en texto plano para facilitar el trabajo en equipo — no deben usarse fuera de ese contexto.
 
-**Perfil por defecto:** desde el IDE o con `spring-boot:run` arranca con `local`; el JAR empaquetado arranca con `prod`. Un `--spring.profiles.active=...` o `SPRING_PROFILES_ACTIVE` explícito tiene prioridad sobre ambos.
+**Perfiles:** `application.properties` solo trae la configuración común (JPA, servidor, Swagger, zona horaria) y fija `spring.profiles.active=local`. Cada perfil define su propio entorno: `local` y `dev` tienen los mismos valores de trabajo (correo, JWT, cookies, Culqi, URLs, pool y log) y solo cambia la conexión a la base de datos. Para producción se elige el perfil `prod` de forma explícita (`SPRING_PROFILES_ACTIVE=prod` o `--spring.profiles.active=prod`): las constantes están en `application-prod.properties` y los secretos y valores propios del servidor salen de variables de entorno.
 
 ## Cómo ejecutar el proyecto
 
@@ -131,21 +131,26 @@ Para otro perfil: `--spring.profiles.active=dev` (o `prod`, con las variables de
 java -jar target/escuela-juridica-api-0.0.1-SNAPSHOT.jar
 ```
 
-El JAR arranca con el perfil `prod` sin indicar nada más y **no incluye** `application-local.properties` ni `application-dev.properties`. Si falta alguna de estas variables de entorno, la aplicación no arranca y lo dice en el log:
+El JAR solo lleva `application.properties` y `application-prod.properties` (los archivos de `local` y `dev` se dejan fuera al empaquetar, pero el IDE y `spring-boot:run` los siguen usando). En producción se arranca con `SPRING_PROFILES_ACTIVE=prod` (por ejemplo, como una línea más del archivo de entorno del servicio); sin esa variable el JAR intentaría usar `local`, que no trae, y no arrancaría. Con el perfil `prod` hay que definir todas estas variables de entorno; si falta alguna, la aplicación no arranca (o arranca con un valor vacío), así que revísalas antes de desplegar:
 
 | Variable | Qué es |
 |---|---|
+| `SPRING_PROFILES_ACTIVE` | Debe valer `prod` |
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | Base de datos PostgreSQL (`jdbc:postgresql://host:5432/base`) |
 | `JWT_SECRET`, `JWT_VERIFICATION_SECRET` | Secretos para firmar las sesiones y los enlaces de verificación (cadenas largas y aleatorias) |
 | `MAIL_PASSWORD` | Contraseña de la cuenta SMTP |
 | `FRONTEND_BASE_URL` | URL pública del frontend (para los enlaces de los correos) |
 | `CORS_ALLOWED_ORIGIN` | Origen del frontend permitido por CORS |
+| `FILES_DIR` | Carpeta persistente donde se guardan los archivos subidos (ej. `/opt/esejurce/files`) |
+| `CSRF_COOKIE_DOMAIN` | Dominio común de frontend y backend para la cookie CSRF (ej. `aulavirtual.escuelajuridica.edu.pe`) |
 
-Además, **sobrescribe con variables de entorno** lo que `application.properties` trae con valores de desarrollo:
+En producción el servidor escucha solo en `127.0.0.1` (se espera un proxy delante) y Swagger queda desactivado.
+
+Además, con el perfil `prod` también son obligatorias:
 
 | Variable | Qué es |
 |---|---|
 | `ESEJUR_CULQI_PUBLIC_KEY`, `ESEJUR_CULQI_PRIVATE_KEY` | Llaves de Culqi de producción (`pk_live_` / `sk_live_`) |
-| `ESEJUR_CULQI_WEBHOOK_USER`, `ESEJUR_CULQI_WEBHOOK_PASSWORD` | Credenciales del webhook de Culqi (las mismas que registres en CulqiPanel) |
+| `ESEJUR_CULQI_WEBHOOK_USER`, `ESEJUR_CULQI_WEBHOOK_PASSWORD` | Credenciales del webhook de Culqi (las mismas que registres en CulqiPanel; la contraseña, de 20 caracteres como máximo) |
 
-En producción las cookies de sesión van con `Secure`, así que el sitio debe servirse por HTTPS. Los archivos subidos se guardan en la carpeta `uploads` junto al lugar desde donde se lanza el JAR (`esejur.almacenamiento.directorio`); conviene fijarla a una ruta persistente con `ESEJUR_ALMACENAMIENTO_DIRECTORIO`.
+En producción las cookies de sesión van con `Secure`, así que el sitio debe servirse por HTTPS.
