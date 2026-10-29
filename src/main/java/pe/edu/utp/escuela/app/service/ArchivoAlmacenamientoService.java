@@ -26,6 +26,7 @@ import pe.edu.utp.escuela.app.repository.ReglaArchivoRepository;
 public class ArchivoAlmacenamientoService {
 
     private static final long TAMANO_MAXIMO_IMAGEN_BYTES = 2L * 1024 * 1024;
+    private static final long TAMANO_MAXIMO_ADJUNTO_BYTES = 5L * 1024 * 1024;
 
     private final Path raiz;
     private final ReglaArchivoRepository reglasArchivo;
@@ -116,6 +117,46 @@ public class ArchivoAlmacenamientoService {
             throw new BusinessValidationException("Solo se admiten imágenes PNG o JPG.");
         }
         return guardarBytes(carpeta, UUID.randomUUID() + "." + extension, contenido);
+    }
+
+    /** Valida una imagen adjunta a una reclamación (PNG, JPG o WEBP de hasta 5 MB) sin guardarla todavía. */
+    public byte[] validarAdjuntoReclamacion(MultipartFile archivo) {
+        String nombre = archivo == null || archivo.getOriginalFilename() == null ? "imagen" : archivo.getOriginalFilename();
+        if (archivo == null || archivo.isEmpty()) {
+            throw new BusinessValidationException("La imagen «" + nombre + "» está vacía.");
+        }
+        if (archivo.getSize() > TAMANO_MAXIMO_ADJUNTO_BYTES) {
+            throw new BusinessValidationException("La imagen «" + nombre + "» supera el máximo de 5 MB.");
+        }
+        byte[] contenido;
+        try {
+            contenido = archivo.getBytes();
+        } catch (IOException e) {
+            throw new BusinessValidationException("No pudimos leer la imagen «" + nombre + "».");
+        }
+        if (!esPng(contenido) && !esJpeg(contenido) && !esWebp(contenido)) {
+            throw new BusinessValidationException("«" + nombre + "» no es una imagen válida (PNG, JPG o WEBP).");
+        }
+        return contenido;
+    }
+
+    /** Guarda un adjunto ya validado de la reclamación; el nombre lo decide el servidor. */
+    public ArchivoGuardado guardarAdjuntoReclamacion(Long reclamacionId, MultipartFile archivo, byte[] contenido) {
+        String extension = esPng(contenido) ? "png" : esJpeg(contenido) ? "jpg" : "webp";
+        String tipoMime = switch (extension) {
+            case "png" -> "image/png";
+            case "jpg" -> "image/jpeg";
+            default -> "image/webp";
+        };
+        String referencia = guardarBytes("reclamaciones/" + reclamacionId, UUID.randomUUID() + "." + extension, contenido);
+        String original = StringUtils.cleanPath(archivo.getOriginalFilename() == null ? "imagen." + extension
+                : archivo.getOriginalFilename());
+        return new ArchivoGuardado(referencia, original, tipoMime, contenido.length);
+    }
+
+    private static boolean esWebp(byte[] b) {
+        return b.length > 12 && b[0] == 'R' && b[1] == 'I' && b[2] == 'F' && b[3] == 'F'
+                && b[8] == 'W' && b[9] == 'E' && b[10] == 'B' && b[11] == 'P';
     }
 
     private static boolean esPng(byte[] b) {

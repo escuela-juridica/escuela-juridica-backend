@@ -317,7 +317,31 @@ public class CertificacionService {
 
     // ================================================================= emisión ==
 
+    /**
+     * HU-035 — Emite un certificado excepcional que {@code CertificadoAdminService} ya validó (motivo, datos
+     * confirmados, ausencia de certificado y de revisiones pendientes). Nunca elige el nivel: lo decide la
+     * nota definitiva con los umbrales del curso; sin nota, el nivel es Normal y no se imprime ninguna.
+     */
+    Certificado emitirExcepcional(Matricula matricula, String motivo, Long administradorId, Instant fechaFinalizacion) {
+        Situacion base = evaluar(matricula);
+        LogroCertificacion logro = base.logro();
+        if (logro.getFechaFinalizacion() == null) {
+            logro.setFechaFinalizacion(fechaFinalizacion);
+            matricula.setFechaFinalizacion(fechaFinalizacion);
+            matriculas.save(matricula);
+            logros.save(logro);
+        }
+        Situacion s = new Situacion(matricula, base.avance(), logro, null, "LISTO_PARA_EMITIR",
+                "Emisión manual administrativa.", false, null, base.espera(), base.condicionesActivas(), base.nota(),
+                base.nivel());
+        return emitir(s, "MANUAL", motivo, administradorId);
+    }
+
     private void emitir(Situacion s, String tipoEmision) {
+        emitir(s, tipoEmision, null, null);
+    }
+
+    private Certificado emitir(Situacion s, String tipoEmision, String motivoManual, Long administradorId) {
         Matricula matricula = s.matricula();
         Curso curso = matricula.getCurso();
         LogroCertificacion logro = s.logro();
@@ -351,6 +375,9 @@ public class CertificacionService {
         c.setEmitidoEn(ahora);
         if ("SOLICITADA".equals(tipoEmision)) {
             c.setEmitidoPorUsuarioId(actual.get().userId());
+        } else if ("MANUAL".equals(tipoEmision)) {
+            c.setMotivoEmisionManual(motivoManual);
+            c.setEmitidoPorUsuarioId(administradorId);
         }
         certificados.save(c);
 
@@ -381,6 +408,7 @@ public class CertificacionService {
         logros.save(logro);
 
         avisarCertificado(matricula, c);
+        return c;
     }
 
     private String nuevoCodigo(int anio) {

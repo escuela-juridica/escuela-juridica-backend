@@ -168,6 +168,33 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Long> {
             @Param("texto") String texto, @Param("cursoId") Long cursoId, @Param("modalidad") String modalidad,
             @Param("desde") Instant desde, @Param("hasta") Instant hasta, Pageable pageable);
 
+    /**
+     * HU-035/HU-036 — Gestión administrativa de certificados: una fila por matrícula con acceso (no pendiente
+     * de pago), filtrable por alumno, curso, código y por la situación de su certificado.
+     */
+    String ALCANCE_GESTION_CERTIFICADOS = """
+            from Matricula m join m.usuario u join u.persona p join m.curso c
+            where m.estado <> 'PENDIENTE_PAGO'
+              and (:texto = ''
+                   or lower(concat(p.nombres, ' ', p.apellidoPaterno, ' ', coalesce(p.apellidoMaterno, ''))) like concat('%', :texto, '%')
+                   or lower(u.correo) like concat('%', :texto, '%')
+                   or lower(c.titulo) like concat('%', :texto, '%')
+                   or exists (select 1 from Certificado k where k.logro.matricula = m
+                              and lower(k.codigo) like concat('%', :texto, '%')))
+              and (:estadoCertificado = ''
+                   or (:estadoCertificado = 'SIN_CERTIFICADO'
+                       and not exists (select 1 from Certificado k where k.logro.matricula = m))
+                   or (:estadoCertificado <> 'SIN_CERTIFICADO'
+                       and exists (select 1 from Certificado k where k.logro.matricula = m
+                                   and k.estado = :estadoCertificado)))
+            """;
+
+    @EntityGraph(attributePaths = { "curso", "usuario", "usuario.persona" })
+    @Query(value = "select m " + ALCANCE_GESTION_CERTIFICADOS + " order by m.fechaMatricula desc, m.id desc",
+            countQuery = "select count(m) " + ALCANCE_GESTION_CERTIFICADOS)
+    Page<Matricula> buscarGestionCertificados(@Param("texto") String texto,
+            @Param("estadoCertificado") String estadoCertificado, Pageable pageable);
+
     @EntityGraph(attributePaths = { "curso", "curso.estadoCurso", "usuario", "usuario.persona" })
     @Query("select m " + ALCANCE_ACADEMICO + ORDEN_ACADEMICO)
     List<Matricula> exportarReporteAcademico(

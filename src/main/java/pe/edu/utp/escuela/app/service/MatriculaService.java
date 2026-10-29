@@ -135,6 +135,65 @@ public class MatriculaService {
         return respuesta(matricula, enviarConfirmacion(matricula, condicion));
     }
 
+    /** Resultado de aplicar un pago APROBADO a la matrícula (HU-047). */
+    public record ActivacionPago(boolean accesoConcedido, String atencion, boolean sobrecupo) {
+    }
+
+    /**
+     * HU-047 — Matrícula PENDIENTE_PAGO de una compra en línea. No concede contenido ni ocupa cupo: solo existe
+     * para conservar los intentos de pago hasta que Culqi apruebe alguno. El curso llega bloqueado por quien llama.
+     */
+    @Transactional
+    public Matricula crearPendientePago(Usuario usuario, Curso curso) {
+        validarSesionesFuturas(curso, true);
+        Matricula m = new Matricula();
+        m.setUsuario(usuario);
+        m.setCurso(curso);
+        m.setEstado("PENDIENTE_PAGO");
+        m.setFormaIngreso("PAGO_EN_LINEA");
+        m.setFechaMatricula(clock.instant());
+        matriculas.saveAndFlush(m);
+        registrarCambio(m, null, "PENDIENTE_PAGO", "Compra iniciada con Culqi.", usuario.getId());
+        return m;
+    }
+
+    /**
+     * HU-047 — Aplica el primer pago APROBADO. Se respeta un cobro iniciado válidamente aunque el cierre, el
+     * estado CERRADO o el cupo hayan cambiado (si se supera el cupo se activa igual y se avisa); pero si el curso
+     * o esa matrícula fueron cancelados, el pago se registra, la matrícula permanece CANCELADA y el caso queda
+     * para atención externa. ESEJUR nunca revierte el resultado bancario.
+     */
+    @Transactional
+    public ActivacionPago activarPorPagoAprobado(Matricula matricula) {
+        Curso curso = cursos.bloquearParaMatricula(matricula.getCurso().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("El curso no existe."));
+        if ("CANCELADA".equals(matricula.getEstado())) {
+            return new ActivacionPago(false, "MATRICULA_CANCELADA", false);
+        }
+        if ("CANCELADO".equals(curso.getEstadoCurso().getCodigo())) {
+            if ("PENDIENTE_PAGO".equals(matricula.getEstado())) {
+                String anterior = matricula.getEstado();
+                matricula.setEstado("CANCELADA");
+                matricula.setCanceladaEn(clock.instant());
+                matricula.setMotivoCancelacion("El curso fue cancelado mientras se procesaba el pago.");
+                registrarCambio(matricula, anterior, "CANCELADA", matricula.getMotivoCancelacion(), null);
+            }
+            return new ActivacionPago(false, "CURSO_CANCELADO", false);
+        }
+        if (!"PENDIENTE_PAGO".equals(matricula.getEstado())) {
+            return new ActivacionPago("ACTIVA".equals(matricula.getEstado()), null, false);
+        }
+        boolean sobrecupo = curso.getCupoMaximo() != null
+                && matriculas.contarActivas(List.of(curso.getId())).getOrDefault(curso.getId(), 0L) >= curso.getCupoMaximo();
+        Instant ahora = clock.instant();
+        matricula.setEstado("ACTIVA");
+        matricula.setFechaActivacion(ahora);
+        matricula.setFechaVencimiento(vencimiento(curso, ahora));
+        matriculas.save(matricula);
+        registrarCambio(matricula, "PENDIENTE_PAGO", "ACTIVA", "Pago aprobado por Culqi.", null);
+        return new ActivacionPago(true, null, sobrecupo);
+    }
+
     @Transactional(readOnly = true)
     public AdvertenciaMatriculaResponse consultarAdvertenciaAdministrativa(Long cursoId) {
         exigirAdministrador();
@@ -422,7 +481,8 @@ public class MatriculaService {
                 || !LocalDate.now(clock.withZone(LIMA)).isBefore(m.getCurso().getFechaInicio());
         boolean efectivo = "ACTIVA".equals(m.getEstado()) && vigente && inicio && m.getUsuario().isActivo()
                 && m.getUsuario().getCorreoVerificadoEn() != null && !m.getUsuario().isRequiereCambioContrasena();
-        String mensaje = efectivo ? "Disponible para continuar."
+        String mensaje = "PENDIENTE_PAGO".equals(m.getEstado()) ? "Tu pago aún no está aprobado."
+                : efectivo ? "Disponible para continuar."
                 : !inicio ? "El curso aún no inicia."
                         : !vigente || "VENCIDA".equals(m.getEstado()) ? "El acceso venció."
                                 : "El acceso no está disponible.";
