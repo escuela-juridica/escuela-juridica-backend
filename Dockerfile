@@ -7,4 +7,4 @@ ENV SPRING_PROFILES_ACTIVE=prod
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-Xms256m", "-Xmx1g", "-Duser.timezone=America/Lima", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Xms256m", "-Xmx768m", "-Duser.timezone=America/Lima", "-jar", "app.jar"]
