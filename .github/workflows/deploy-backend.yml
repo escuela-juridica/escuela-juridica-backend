@@ -76,6 +76,9 @@ jobs:
               --name esejurce \
               --restart unless-stopped \
               --network host \
+              --memory 1500m --memory-swap 1500m \
+              --oom-score-adj 500 \
+              --log-opt max-size=10m \
               --env-file /etc/esejurce/app.env \
               -v /opt/esejurce/files:/opt/esejurce/files:Z \
               "$IMAGE:latest"

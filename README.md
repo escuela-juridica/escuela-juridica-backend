@@ -107,7 +107,7 @@ Variables relevantes de `application.properties` y perfiles (`local`, `dev`, `pr
 - `security.jwt.expiration-minutes=60`, `security.cookie.name=ESEJUR_SESION`
 - `spring.mail.*` — configuración SMTP
 
-El perfil `prod` es el único libre de secretos en el repo: usa exclusivamente variables de entorno (ver "JAR de producción"). Los perfiles `local`/`dev` traen credenciales de desarrollo en texto plano para facilitar el trabajo en equipo — no deben usarse fuera de ese contexto.
+El perfil `prod` es el único libre de secretos en el repo: usa exclusivamente variables de entorno (ver "Despliegue (CI/CD)"). Los perfiles `local`/`dev` traen credenciales de desarrollo en texto plano para facilitar el trabajo en equipo — no deben usarse fuera de ese contexto.
 
 **Perfiles:** `application.properties` solo trae la configuración común (JPA, servidor, Swagger, zona horaria) y fija `spring.profiles.active=local`. Cada perfil define su propio entorno: `local` y `dev` tienen los mismos valores de trabajo (correo, JWT, cookies, Culqi, URLs, pool y log) y solo cambia la conexión a la base de datos. Para producción se elige el perfil `prod` de forma explícita (`SPRING_PROFILES_ACTIVE=prod` o `--spring.profiles.active=prod`): las constantes están en `application-prod.properties` y los secretos y valores propios del servidor salen de variables de entorno.
 
@@ -124,33 +124,114 @@ El perfil `prod` es el único libre de secretos en el repo: usa exclusivamente v
 
 Para otro perfil: `--spring.profiles.active=dev` (o `prod`, con las variables de entorno de la sección siguiente).
 
-## JAR de producción
+## Despliegue (CI/CD)
 
-```bash
-./mvnw clean install            # genera target/escuela-juridica-api-0.0.1-SNAPSHOT.jar (con -DskipTests para omitir las pruebas)
-java -jar target/escuela-juridica-api-0.0.1-SNAPSHOT.jar
+Cada push a `main` compila el JAR, construye la imagen, la sube a GHCR y reemplaza el contenedor en el VPS por SSH. Lo mismo se puede lanzar a mano desde GitHub (Actions → "Deploy backend" → Run workflow).
+
+```mermaid
+flowchart LR
+    A[push a main] --> B["GitHub Actions<br/>mvn package + pruebas<br/>build de imagen<br/>push a GHCR"]
+    B -->|"SSH :21098"| C["VPS (usuario deploy)<br/>podman pull + run"]
+    C --> D["contenedor esejurce<br/>127.0.0.1:8080"]
+    U[Navegador] -->|HTTPS| E["Apache (proxy inverso)<br/>api.aulavirtual.escuelajuridica.edu.pe"]
+    E --> D
+    D --> P[(PostgreSQL 16<br/>localhost:5432)]
 ```
 
-El JAR solo lleva `application.properties` y `application-prod.properties` (los archivos de `local` y `dev` se dejan fuera al empaquetar, pero el IDE y `spring-boot:run` los siguen usando). En producción se arranca con `SPRING_PROFILES_ACTIVE=prod` (por ejemplo, como una línea más del archivo de entorno del servicio); sin esa variable el JAR intentaría usar `local`, que no trae, y no arrancaría. Con el perfil `prod`, `ValidadorVariablesProduccion` comprueba al arrancar todas estas variables: que existan, que no estén vacías ni sin resolver y que tengan sentido (base de datos `jdbc:postgresql://`, secretos JWT de al menos 32 caracteres y distintos entre sí, URLs `https://` sin `/` final, carpeta de archivos absoluta y con permiso de escritura, dominio de cookie sin `https://`, llaves de Culqi `pk_`/`sk_` del mismo entorno). Si algo falla, la aplicación no arranca y el log lista cada problema sin mostrar valores secretos:
+### Infraestructura
+
+- **Servidor:** VPS AlmaLinux 9 con cPanel/WHM.
+- **Proxy:** Apache de cPanel con certificado Let's Encrypt en `https://api.aulavirtual.escuelajuridica.edu.pe`, que reenvía a `http://127.0.0.1:8080`.
+- **Base de datos:** PostgreSQL 16 en el mismo servidor (`localhost:5432`, base `aulavirtual_pg`). El esquema no se crea solo (`ddl-auto=validate`), así que la base debe existir con sus tablas.
+- **Contenedores:** Podman *rootless* con el usuario `deploy`. Se usa Podman y no Docker porque Docker CE choca con paquetes de cPanel.
+- **SSH:** escucha en el puerto `21098`.
+- El frontend es otro repositorio y se despliega aparte, en `https://app.aulavirtual.escuelajuridica.edu.pe`.
+
+### Archivos del repositorio
+
+| Archivo | Qué hace |
+|---|---|
+| `Dockerfile` | Imagen `eclipse-temurin:21-jre`: copia `target/escuela-juridica-api-*.jar` y arranca con `java -Xms256m -Xmx1g -Duser.timezone=America/Lima -jar`. Define `SPRING_PROFILES_ACTIVE=prod` por defecto. No crea un usuario aparte: con Podman *rootless*, `root` dentro del contenedor equivale al usuario `deploy` del servidor. |
+| `.dockerignore` | Deja entrar al contexto de construcción solo el JAR. |
+| `.github/workflows/deploy-backend.yml` | Se dispara con push a `main` y manualmente (`workflow_dispatch`). Compila con `./mvnw -B clean package` (incluye las pruebas), construye y sube la imagen a GHCR con las etiquetas `latest` y el `sha` del commit, y despliega por SSH (`appleboy/ssh-action`). Al final espera hasta 2 minutos a que `http://127.0.0.1:8080/api/health` responda; si no responde, el job termina en rojo y muestra las últimas 80 líneas del log. |
+| `src/main/resources/application-prod.properties` | Perfil de producción: datos sensibles y valores propios del servidor por variable de entorno, `server.address=127.0.0.1`, cookie de sesión `Secure`, Swagger desactivado, log en `INFO` para el paquete de la aplicación y `WARN` para el resto. |
+| `ValidadorVariablesProduccion` | Con el perfil `prod`, comprueba al arrancar las variables de la tabla siguiente: que existan, que no estén vacías y que tengan formato válido (base `jdbc:postgresql://`, secretos JWT de al menos 32 caracteres y distintos entre sí, URLs `https://` sin `/` final, carpeta de archivos absoluta y con permiso de escritura, dominio de cookie sin `https://`, llaves de Culqi `pk_`/`sk_` del mismo entorno). Si algo falla, la aplicación no arranca y el log lista cada problema sin mostrar valores. |
+
+### Secrets de GitHub
+
+| Secret | Para qué sirve |
+|---|---|
+| `VPS_HOST` | Dirección IP del VPS |
+| `VPS_USER` | Usuario Linux que despliega (`deploy`) |
+| `VPS_PORT` | Puerto SSH (`21098`) |
+| `VPS_SSH_KEY` | Llave privada SSH exclusiva para GitHub Actions |
+
+El workflow usa además el `GITHUB_TOKEN` automático de GitHub para publicar la imagen en GHCR y para que el VPS la descargue; no hay que crearlo.
+
+### Variables de entorno del servidor
+
+La aplicación las lee de `/etc/esejurce/app.env` (formato `CLAVE=valor`, sin comillas ni espacios). El archivo vive solo en el servidor y no se versiona.
 
 | Variable | Qué es |
 |---|---|
-| `SPRING_PROFILES_ACTIVE` | Debe valer `prod` |
-| `DB_URL`, `DB_USER`, `DB_PASSWORD` | Base de datos PostgreSQL (`jdbc:postgresql://host:5432/base`) |
-| `JWT_SECRET`, `JWT_VERIFICATION_SECRET` | Secretos para firmar las sesiones y los enlaces de verificación (cadenas largas y aleatorias) |
-| `MAIL_PASSWORD` | Contraseña de la cuenta SMTP |
-| `FRONTEND_BASE_URL` | URL pública del frontend (para los enlaces de los correos) |
-| `CORS_ALLOWED_ORIGIN` | Origen del frontend permitido por CORS |
-| `FILES_DIR` | Carpeta persistente donde se guardan los archivos subidos (ej. `/opt/esejurce/files`) |
-| `CSRF_COOKIE_DOMAIN` | Dominio común de frontend y backend para la cookie CSRF (ej. `aulavirtual.escuelajuridica.edu.pe`) |
+| `SPRING_PROFILES_ACTIVE` | Perfil de Spring: `prod`. El `Dockerfile` ya lo define; ponerlo en `app.env` es opcional. |
+| `DB_URL` | URL JDBC de PostgreSQL, por ejemplo `jdbc:postgresql://localhost:5432/<base>` |
+| `DB_USER`, `DB_PASSWORD` | Usuario y contraseña de la base de datos |
+| `MAIL_PASSWORD` | Contraseña de la cuenta SMTP (el host, el puerto 465 con SSL y el usuario ya están fijos en el perfil) |
+| `JWT_SECRET`, `JWT_VERIFICATION_SECRET` | Secretos que firman las sesiones y los enlaces de verificación; distintos entre sí, de al menos 32 caracteres |
+| `FRONTEND_BASE_URL` | URL pública del frontend, usada en los enlaces de los correos |
+| `CORS_ALLOWED_ORIGIN` | Único origen que puede llamar a la API desde el navegador |
+| `FILES_DIR` | Carpeta de los archivos subidos dentro del contenedor (`/opt/esejurce/files`) |
+| `CSRF_COOKIE_DOMAIN` | Dominio común del frontend y la API para la cookie CSRF, sin `https://` |
+| `ESEJUR_CULQI_PUBLIC_KEY`, `ESEJUR_CULQI_PRIVATE_KEY` | Llaves de Culqi (`pk_live_...` / `sk_live_...`) |
+| `ESEJUR_CULQI_WEBHOOK_USER`, `ESEJUR_CULQI_WEBHOOK_PASSWORD` | Credenciales del webhook de Culqi; las mismas que se registren en CulqiPanel (contraseña de 20 caracteres como máximo) |
 
-En producción el servidor escucha solo en `127.0.0.1` (se espera un proxy delante) y Swagger queda desactivado.
+### Detalles del contenedor
 
-Además, con el perfil `prod` también son obligatorias:
+El workflow ejecuta en el VPS:
 
-| Variable | Qué es |
+```bash
+podman rm -f esejurce || true
+podman run -d --name esejurce --restart unless-stopped --network host \
+  --env-file /etc/esejurce/app.env \
+  -v /opt/esejurce/files:/opt/esejurce/files:Z \
+  ghcr.io/<organizacion>/esejurce-backend:latest
+podman image prune -f
+```
+
+- `--network host`: el contenedor comparte la red del servidor, por eso la base es `localhost` y la API escucha solo en `127.0.0.1:8080`.
+- `--restart unless-stopped`: se levanta solo tras un reinicio del servidor.
+- `--env-file /etc/esejurce/app.env`: las variables de la sección anterior.
+- Volumen `/opt/esejurce/files`: guarda los archivos subidos y los certificados PDF fuera del contenedor, para que sobrevivan a cada despliegue. El sufijo `:Z` evita problemas de permisos con SELinux. La carpeta debe existir y ser del usuario `deploy`.
+- Cada despliegue **reemplaza** el contenedor anterior y `podman image prune -f` borra las imágenes sin uso. Nada de lo que está en la base, en el volumen o en `app.env` se pierde.
+- El workflow no define un límite de logs; se usa el comportamiento predeterminado de Podman.
+
+### Perfil de Spring
+
+- `local`: desarrollo, fijado en `application.properties` (`spring.profiles.active=local`).
+- `prod`: producción. Se activa con `SPRING_PROFILES_ACTIVE=prod`, que ya viene en la imagen y puede repetirse en `app.env`. El JAR empaquetado no incluye los archivos de `local` ni de `dev`.
+
+### Operación
+
+Como usuario `deploy` en el servidor:
+
+```bash
+podman ps -a                               # estado del contenedor
+podman logs -f esejurce                    # seguir el log en vivo
+podman logs --tail 100 esejurce            # últimas 100 líneas
+podman restart esejurce                    # reiniciar el contenedor
+curl -s http://127.0.0.1:8080/api/health   # comprobar que responde
+```
+
+- **Relanzar el despliegue a mano:** en GitHub, pestaña *Actions* → *Deploy backend* → *Run workflow*.
+- **Volver a una versión anterior:** cada despliegue publica también la etiqueta del `sha` del commit; basta ejecutar el contenedor con `:<sha>` en lugar de `:latest`.
+
+### Solución de problemas
+
+| Síntoma | Qué revisar |
 |---|---|
-| `ESEJUR_CULQI_PUBLIC_KEY`, `ESEJUR_CULQI_PRIVATE_KEY` | Llaves de Culqi de producción (`pk_live_` / `sk_live_`) |
-| `ESEJUR_CULQI_WEBHOOK_USER`, `ESEJUR_CULQI_WEBHOOK_PASSWORD` | Credenciales del webhook de Culqi (las mismas que registres en CulqiPanel; la contraseña, de 20 caracteres como máximo) |
-
-En producción las cookies de sesión van con `Secure`, así que el sitio debe servirse por HTTPS.
+| **502/503 en la API** | El contenedor está caído. `podman ps -a` y `podman logs --tail 100 esejurce`; si solo está detenido, `podman start esejurce`. |
+| **Error de conexión a la base** | Credenciales `DB_URL`, `DB_USER` y `DB_PASSWORD` en `app.env`; que PostgreSQL esté activo y acepte conexiones desde `127.0.0.1`; que la base tenga el esquema cargado (`ddl-auto=validate`). |
+| **Error de CORS en el navegador** | `CORS_ALLOWED_ORIGIN` debe ser exactamente el origen del frontend (`https://app.aulavirtual.escuelajuridica.edu.pe`), con `https://` y sin `/` final. |
+| **El contenedor se cae al arrancar** | Falta o es inválida una variable de `app.env`. `podman logs esejurce` muestra "Configuración de producción inválida" y lista cada variable con su problema. |
+| **El workflow termina en rojo en el despliegue** | El backend no respondió en 2 minutos; el propio job muestra las últimas líneas del log. Suele ser alguno de los casos anteriores. |
