@@ -1,0 +1,40 @@
+Clase de prueba | Pruebas | Fallas | Errores | Omitidas | Tiempo (s)
+---|---|---|---|---|---
+pe.edu.utp.escuela.app.controller.AulaHttpTests | 11 | 0 | 0 | 0 | 22.520
+pe.edu.utp.escuela.app.controller.CancelacionYExcepcionesPagoHttpTests | 11 | 0 | 0 | 0 | 1.097
+pe.edu.utp.escuela.app.controller.CertificacionHttpTests | 10 | 0 | 0 | 0 | 1.179
+pe.edu.utp.escuela.app.controller.DashboardYReportePagosHttpTests | 10 | 0 | 0 | 0 | 1.501
+pe.edu.utp.escuela.app.controller.ExamenHttpTests | 11 | 0 | 0 | 0 | 0.718
+pe.edu.utp.escuela.app.controller.MailTestControllerTests | 1 | 0 | 0 | 0 | 0.012
+pe.edu.utp.escuela.app.controller.PagoHttpTests | 19 | 0 | 0 | 0 | 0.652
+pe.edu.utp.escuela.app.controller.ReclamacionHttpTests | 9 | 0 | 0 | 0 | 0.260
+pe.edu.utp.escuela.app.mail.MailTemplateRendererTests | 2 | 0 | 0 | 0 | 0.013
+pe.edu.utp.escuela.app.mail.SmtpMailServiceTests | 2 | 0 | 0 | 0 | 0.241
+pe.edu.utp.escuela.app.security.SecurityComponentsTests | 2 | 0 | 0 | 0 | 0.186
+pe.edu.utp.escuela.app.service.AccesoServiceTests | 8 | 0 | 0 | 0 | 0.513
+pe.edu.utp.escuela.app.service.AdministrarSesionesServiceTests | 11 | 0 | 0 | 0 | 1.037
+pe.edu.utp.escuela.app.service.AntiRobotNativoIntegrationTests | 10 | 0 | 0 | 0 | 0.043
+pe.edu.utp.escuela.app.service.AntiRobotRegistroHttpTests | 2 | 0 | 0 | 0 | 5.969
+pe.edu.utp.escuela.app.service.AulaServiceTests | 10 | 0 | 0 | 0 | 0.453
+pe.edu.utp.escuela.app.service.AvanceAcademicoServiceTests | 10 | 0 | 0 | 0 | 0.156
+pe.edu.utp.escuela.app.service.CicloVidaCursoServiceTests | 13 | 0 | 0 | 0 | 1.482
+pe.edu.utp.escuela.app.service.CodigoVerificacionServiceTests | 10 | 0 | 0 | 0 | 0.269
+pe.edu.utp.escuela.app.service.ContenidoServiceTests | 22 | 0 | 0 | 0 | 0.810
+pe.edu.utp.escuela.app.service.CourseCommercialStatusServiceTests | 4 | 0 | 0 | 0 | 0.008
+pe.edu.utp.escuela.app.service.CursoServiceReglasTests | 8 | 0 | 0 | 0 | 0.727
+pe.edu.utp.escuela.app.service.ExamenServiceTests | 22 | 0 | 0 | 0 | 0.087
+pe.edu.utp.escuela.app.service.InformacionBaseServiceTests | 14 | 0 | 0 | 0 | 0.324
+pe.edu.utp.escuela.app.service.MaterialAlumnoServiceTests | 8 | 0 | 0 | 0 | 0.310
+pe.edu.utp.escuela.app.service.MatriculaServiceTests | 23 | 0 | 0 | 0 | 0.655
+pe.edu.utp.escuela.app.service.PasswordPolicyServiceTests | 2 | 0 | 0 | 0 | 0.007
+pe.edu.utp.escuela.app.service.PerfilServiceTests | 15 | 0 | 0 | 0 | 0.167
+pe.edu.utp.escuela.app.service.ProgresoServiceTests | 14 | 0 | 0 | 0 | 0.079
+pe.edu.utp.escuela.app.service.PublicacionServiceTests | 8 | 0 | 0 | 0 | 0.049
+pe.edu.utp.escuela.app.service.RecuperacionAccesoServiceTests | 14 | 0 | 0 | 0 | 0.451
+pe.edu.utp.escuela.app.service.ReferenciaVerificacionServiceTests | 4 | 0 | 0 | 0 | 0.015
+pe.edu.utp.escuela.app.service.RegistroIntegracionTests | 23 | 0 | 0 | 0 | 6.762
+pe.edu.utp.escuela.app.service.RegistroSinIntegracionesTests | 2 | 0 | 0 | 0 | 3.952
+pe.edu.utp.escuela.app.service.RutaAcademicaServiceTests | 10 | 0 | 0 | 0 | 0.287
+pe.edu.utp.escuela.app.service.SesionAlumnoServiceTests | 14 | 0 | 0 | 0 | 0.066
+pe.edu.utp.escuela.app.util.TextNormalizerTests | 1 | 0 | 0 | 0 | 0.008
+TOTAL (37 clases) | 370 | 0 | 0 | 0 | 53.065

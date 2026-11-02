@@ -1,0 +1,15 @@
+﻿Épica,Historia/flujo,Archivo de prueba,Tipo de prueba,Resultado
+EP04,HU-027 · Reprogramar/cancelar sesiones y corregir asistencia,src/test/java/pe/edu/utp/escuela/app/service/AdministrarSesionesServiceTests.java,Unitaria (Mockito),11/11 aprobadas
+EP04,"HU-022 a HU-026 · Aula, progreso, materiales y calendario por HTTP con H2",src/test/java/pe/edu/utp/escuela/app/controller/AulaHttpTests.java,Integración HTTP (MockMvc + Spring Security + H2),11/11 aprobadas
+EP04,"HU-022 · Autorización para acceder al aula, temario, bloqueos y continuar",src/test/java/pe/edu/utp/escuela/app/service/AulaServiceTests.java,Unitaria (Mockito),10/10 aprobadas
+EP04,HU-023 · Bloqueo de materiales sin matrícula y entrega protegida,src/test/java/pe/edu/utp/escuela/app/service/MaterialAlumnoServiceTests.java,Unitaria (Mockito),8/8 aprobadas
+EP04,"HU-024 · Registro de progreso (video, manual, asistencia)",src/test/java/pe/edu/utp/escuela/app/service/ProgresoServiceTests.java,Unitaria (Mockito),14/14 aprobadas
+EP04,"HU-025 · Reglas de ruta académica (secuencia, exámenes bloqueantes)",src/test/java/pe/edu/utp/escuela/app/service/RutaAcademicaServiceTests.java,Unitaria (Mockito),10/10 aprobadas
+EP04,"HU-026 · Sesiones en vivo: ingreso, calendario, asistencia",src/test/java/pe/edu/utp/escuela/app/service/SesionAlumnoServiceTests.java,Unitaria (Mockito),14/14 aprobadas
+EP05,HU-025 / HU-032 · Cálculo de condiciones de certificación,src/test/java/pe/edu/utp/escuela/app/service/AvanceAcademicoServiceTests.java,Unitaria (Mockito),10/10 aprobadas
+EP05,"HU-032 a HU-034 · Certificación, emisión, mis certificados, verificación pública",src/test/java/pe/edu/utp/escuela/app/controller/CertificacionHttpTests.java,Integración HTTP (MockMvc + Spring Security + H2),10/10 aprobadas
+EP05,"HU-028 / HU-029 / HU-030 · Examen automático, respuesta abierta y revisión",src/test/java/pe/edu/utp/escuela/app/controller/ExamenHttpTests.java,Integración HTTP (MockMvc + Spring Security + H2),11/11 aprobadas
+EP06,HU-037 / HU-038 · Cancelación de curso y excepciones de pago,src/test/java/pe/edu/utp/escuela/app/controller/CancelacionYExcepcionesPagoHttpTests.java,Integración HTTP (MockMvc + Spring Security + H2),11/11 aprobadas
+EP06,HU-042 / HU-046 · Dashboard y reporte de pagos,src/test/java/pe/edu/utp/escuela/app/controller/DashboardYReportePagosHttpTests.java,Integración HTTP (MockMvc + Spring Security + H2),10/10 aprobadas
+EP06,"HU-047 · Pagos Culqi: aprobado, pendiente, rechazado, error, reintento, webhook",src/test/java/pe/edu/utp/escuela/app/controller/PagoHttpTests.java,Integración HTTP (MockMvc + Spring Security + H2),19/19 aprobadas
+EP06,HU-039 / HU-040 · Libro de reclamaciones y atención administrativa,src/test/java/pe/edu/utp/escuela/app/controller/ReclamacionHttpTests.java,Integración HTTP (MockMvc + Spring Security + H2),9/9 aprobadas
