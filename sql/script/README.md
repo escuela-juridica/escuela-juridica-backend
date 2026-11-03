@@ -47,8 +47,9 @@ proyecto, estos scripts no crean triggers, funciones, procedimientos ni vistas.
 - Alumno de demostración del flujo completo: `alumno.demo@escuelajuridica.edu.pe` (contraseña `Marco1415@`), sin matrícula, y el curso 
   «Curso Práctico de Procedimiento Administrativo» (S/ 20, virtual) con 3 lecciones y un examen final automático, para mostrar pagar, 
   estudiar y generar el certificado.
-- Quince cursos de distintas modalidades con descripcion, beneficios, docentes, dos modulos con sus lecciones y un examen por curso. Las fechas de inicio, cierre de matricula y sesiones en vivo se calculan a partir del dia de ejecucion del script.
+- Treinta cursos de distintas modalidades, tipos y categorias, con descripcion, imagen de portada, beneficios, docentes, dos o tres modulos con sus lecciones y un examen por curso. Las fechas de inicio, cierre de matricula y sesiones en vivo se calculan a partir del dia de ejecucion del script.
 - Matrículas gratuita, manual, exonerada y pagada con Culqi.
+- Las portadas de esos cursos son archivos de la carpeta `uploads/portadas/` del backend (rutas `/uploads/portadas/<id del curso>-<marca de tiempo>.jpg`, el mismo formato que usa el panel al subir una portada); en un servidor nuevo hay que copiar esa carpeta junto con el script.
 - Progreso, asistencia, intento automático/abierto, certificado y reclamación de ejemplo.
 - Excepción académica, corrección de certificado y pago aprobado tras una cancelación para probar
   los recorridos excepcionales.

@@ -30,6 +30,9 @@ public interface CursoRepository extends JpaRepository<Curso, Long> {
 
     boolean existsByUrlAmigableAndIdNot(String urlAmigable, Long id);
 
+    /** Indica si otro curso usa la misma imagen de portada (p. ej. una copia del curso). */
+    boolean existsByImagenPortadaUrlAndIdNot(String imagenPortadaUrl, Long id);
+
     /** HU-016 — Candidatos a pasar de PUBLICADO a EN_CURSO: llegó su fecha de inicio. */
     List<Curso> findByEstadoCurso_CodigoAndFechaInicioLessThanEqual(String codigoEstado, LocalDate hoy);
 

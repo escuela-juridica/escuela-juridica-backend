@@ -34,4 +34,7 @@ Thumbs.db
 application-local.properties
 
 ### Archivos subidos por usuarios ###
-uploads/
+uploads/*
+# TEMPORAL: se versionan las portadas de los cursos de demostracion (vienen al crear el proyecto por primera vez).
+# Al terminar de subirlas, volver a la linea unica 'uploads/' y quitar la excepcion.
+!uploads/portadas/

@@ -38,6 +38,12 @@ public class ArchivoAlmacenamientoService {
     private static final int FIRMA_ALTO_MAXIMO_PX = 1500;
     private static final double FIRMA_PROPORCION_MINIMA = 2.0;
     private static final double FIRMA_PROPORCION_MAXIMA = 5.0;
+    /** La portada se recorta en tarjetas (16:9) y en cabeceras anchas: debe ser horizontal y de resolucion suficiente. */
+    private static final long PORTADA_TAMANO_MAXIMO_BYTES = 5L * 1024 * 1024;
+    private static final int PORTADA_ANCHO_MINIMO_PX = 800;
+    private static final int PORTADA_ANCHO_MAXIMO_PX = 6000;
+    private static final double PORTADA_PROPORCION_MINIMA = 1.3;
+    private static final double PORTADA_PROPORCION_MAXIMA = 2.4;
 
     private final Path raiz;
     private final ReglaArchivoRepository reglasArchivo;
@@ -112,11 +118,19 @@ public class ArchivoAlmacenamientoService {
      * servidor y la referencia devuelta es la que se guarda en el firmante o la entidad.
      */
     public String guardarImagen(String carpeta, MultipartFile archivo) {
+        return guardarImagen(carpeta, archivo, UUID.randomUUID().toString());
+    }
+
+    /** Igual que {@link #guardarImagen(String, MultipartFile)}, pero con el nombre (sin extension) que decide quien llama. */
+    public String guardarImagen(String carpeta, MultipartFile archivo, String nombreSinExtension) {
         if (archivo == null || archivo.isEmpty()) {
             throw new BusinessValidationException("Selecciona una imagen para subir.");
         }
-        if (archivo.getSize() > TAMANO_MAXIMO_IMAGEN_BYTES) {
-            throw new BusinessValidationException("La imagen supera el tamaño máximo permitido (2.0 MB).");
+        boolean esPortada = "portadas".equals(carpeta);
+        long tamanoMaximo = esPortada ? PORTADA_TAMANO_MAXIMO_BYTES : TAMANO_MAXIMO_IMAGEN_BYTES;
+        if (archivo.getSize() > tamanoMaximo) {
+            throw new BusinessValidationException(
+                    "La imagen supera el tamaño máximo permitido (" + (esPortada ? "5.0" : "2.0") + " MB).");
         }
         byte[] contenido;
         try {
@@ -131,7 +145,68 @@ public class ArchivoAlmacenamientoService {
         if ("firmas".equals(carpeta)) {
             validarFirma(contenido, extension);
         }
-        return guardarBytes(carpeta, UUID.randomUUID() + "." + extension, contenido);
+        if (esPortada) {
+            validarPortada(contenido);
+        }
+        return guardarBytes(carpeta, nombreSinExtension + "." + extension, contenido);
+    }
+
+    /**
+     * Las portadas de un curso se guardan como {@code {cursoId}-{marca de tiempo}.jpg|png}. Retira las que quedaron de subidas que
+     * nunca se guardaron en el curso, conservando solo las referencias indicadas (la portada vigente y la recien subida).
+     */
+    public void retirarPortadasSinUso(Long cursoId, String... conservar) {
+        Path carpeta = raiz.resolve("portadas");
+        if (!Files.isDirectory(carpeta)) {
+            return;
+        }
+        java.util.regex.Pattern patron = java.util.regex.Pattern.compile("^" + cursoId + "-\\d+\\.(jpg|png)$");
+        java.util.Set<String> vigentes = new java.util.HashSet<>();
+        for (String referencia : conservar) {
+            if (referencia != null) {
+                vigentes.add(referencia);
+            }
+        }
+        try (var archivos = Files.list(carpeta)) {
+            for (Path archivo : (Iterable<Path>) archivos::iterator) {
+                String nombre = archivo.getFileName().toString();
+                if (patron.matcher(nombre).matches() && !vigentes.contains("/uploads/portadas/" + nombre)) {
+                    Files.deleteIfExists(archivo);
+                }
+            }
+        } catch (IOException e) {
+            // Limpieza de cortesia: si falla, el archivo sobrante se retira en la siguiente subida.
+        }
+    }
+
+    /** La portada de un curso debe ser horizontal (entre 1.3:1 y 2.4:1) y de al menos 800 px de ancho. */
+    private static void validarPortada(byte[] contenido) {
+        int ancho;
+        int alto;
+        try (ImageInputStream flujo = ImageIO.createImageInputStream(new ByteArrayInputStream(contenido))) {
+            var lectores = ImageIO.getImageReaders(flujo);
+            if (!lectores.hasNext()) {
+                throw new BusinessValidationException("No pudimos leer la portada. Prueba con otra imagen.");
+            }
+            ImageReader lector = lectores.next();
+            try {
+                lector.setInput(flujo);
+                ancho = lector.getWidth(0);
+                alto = lector.getHeight(0);
+            } finally {
+                lector.dispose();
+            }
+        } catch (IOException e) {
+            throw new BusinessValidationException("No pudimos leer la portada. Prueba con otra imagen.");
+        }
+        double proporcion = alto == 0 ? 0 : (double) ancho / alto;
+        if (ancho < PORTADA_ANCHO_MINIMO_PX || proporcion < PORTADA_PROPORCION_MINIMA || proporcion > PORTADA_PROPORCION_MAXIMA) {
+            throw new BusinessValidationException(
+                    "La portada debe ser horizontal (entre 1.3:1 y 2.4:1) y de al menos 800 px de ancho, por ejemplo 1200 x 675 px.");
+        }
+        if (ancho > PORTADA_ANCHO_MAXIMO_PX) {
+            throw new BusinessValidationException("La portada es demasiado grande: usa como máximo 6000 px de ancho.");
+        }
     }
 
     /**

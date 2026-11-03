@@ -141,7 +141,9 @@ public class CicloVidaCursoService {
         cursoDocentes.deleteAllByCurso_Id(cursoId);
         cursoFirmantes.deleteAllByCurso_Id(cursoId);
         historial.deleteAllByCurso_Id(cursoId);
+        String portada = curso.getImagenPortadaUrl();
         cursos.delete(curso);
+        cursoService.retirarPortadaDeCursoEliminado(portada, cursoId);
     }
 
     /** HU-016 — Nueva convocatoria BORRADOR independiente: copia información general, módulos,

@@ -58,6 +58,7 @@ class CursoServiceReglasTests {
     @Mock private PersonaRepository personas;
     @Mock private FirmanteRepository firmantes;
     @Mock private MatriculaRepository matriculas;
+    @Mock private ArchivoAlmacenamientoService almacenamiento;
     @Mock private CurrentUserService currentUserService;
 
     private CursoService service;
@@ -67,7 +68,7 @@ class CursoServiceReglasTests {
         Clock clock = Clock.fixed(Instant.parse("2026-09-15T12:00:00Z"), ZoneId.of("America/Lima"));
         service = new CursoService(cursos, cursoDocentes, cursoFirmantes, reglasCurso, examenes, historial,
                 estadosCurso, tiposCurso, categorias, entidades, personas, firmantes, matriculas,
-                currentUserService, new TextNormalizer(), clock);
+                almacenamiento, currentUserService, new TextNormalizer(), clock);
         when(currentUserService.get())
                 .thenReturn(new CurrentUser(1L, "admin@escuelajuridica.edu.pe", Set.of("ADMINISTRADOR")));
     }
