@@ -1257,6 +1257,7 @@ CREATE TABLE certificado (
     horas_impresas numeric(8,2) NOT NULL,
     fecha_inicio_impresa date,
     fecha_fin_impresa date,
+    temario_impreso text,
     lugar_emision varchar(180) NOT NULL,
     entidad_impresa varchar(220),
     nota_impresa numeric(5,2),
@@ -1267,13 +1268,15 @@ CREATE TABLE certificado (
     anulado_en timestamptz,
     motivo_anulacion text,
     CONSTRAINT pk_certificado PRIMARY KEY (certificado_id),
-    CONSTRAINT uq_certificado_logro UNIQUE (logro_certificacion_id),
     CONSTRAINT uq_certificado_codigo UNIQUE (codigo),
     CONSTRAINT fk_certificado_logro FOREIGN KEY (logro_certificacion_id) REFERENCES logro_certificacion(logro_certificacion_id),
     CONSTRAINT fk_certificado_emisor FOREIGN KEY (emitido_por_usuario_id) REFERENCES usuario(usuario_id),
     CONSTRAINT ck_certificado_nota CHECK (nota_impresa IS NULL OR nota_impresa BETWEEN 0 AND 20)
 );
-COMMENT ON TABLE certificado IS 'Documento unico emitido para un logro y verificable mediante codigo.';
+-- Un logro puede tener varios certificados a lo largo del tiempo (uno anulado y su reemplazo), pero solo uno VIGENTE.
+CREATE UNIQUE INDEX uq_certificado_vigente_logro ON certificado (logro_certificacion_id) WHERE estado = 'VIGENTE';
+CREATE INDEX ix_certificado_logro ON certificado (logro_certificacion_id);
+COMMENT ON TABLE certificado IS 'Documento emitido para un logro y verificable mediante codigo; un anulado puede tener un reemplazo vigente.';
 COMMENT ON COLUMN certificado.certificado_id IS 'Identificador del certificado.';
 COMMENT ON COLUMN certificado.logro_certificacion_id IS 'Logro que origino el documento.';
 COMMENT ON COLUMN certificado.codigo IS 'Codigo publico estable y unico de verificacion.';
@@ -1286,6 +1289,7 @@ COMMENT ON COLUMN certificado.tipo_curso_impreso IS 'Copia historica del tipo de
 COMMENT ON COLUMN certificado.horas_impresas IS 'Horas academicas impresas.';
 COMMENT ON COLUMN certificado.fecha_inicio_impresa IS 'Fecha academica inicial impresa cuando aplica.';
 COMMENT ON COLUMN certificado.fecha_fin_impresa IS 'Fecha academica final impresa cuando aplica.';
+COMMENT ON COLUMN certificado.temario_impreso IS 'Temario congelado al emitir, para el reverso del certificado.';
 COMMENT ON COLUMN certificado.lugar_emision IS 'Lugar institucional congelado al emitir.';
 COMMENT ON COLUMN certificado.entidad_impresa IS 'Entidad refrendante congelada cuando aplica.';
 COMMENT ON COLUMN certificado.nota_impresa IS 'Nota congelada cuando existe.';
@@ -1738,8 +1742,10 @@ SELECT c.curso_id,c.estado_curso_id,c.creado_por_usuario_id FROM curso c;
 INSERT INTO modulo (curso_id,titulo,descripcion,orden)
 SELECT c.curso_id,v.titulo,v.descripcion,v.orden
 FROM (VALUES
- ('derecho-registral-notarial',1,'Fundamentos del sistema registral','Principios registrales, organizacion de los Registros Publicos y publicidad registral.'),
- ('derecho-registral-notarial',2,'Funcion notarial e instrumentos publicos','Organizacion del notariado, escrituras publicas y formalidades del acto.'),
+ -- Este diplomado muestra el temario del certificado con el formato de la plantilla: cada modulo es una sesion y cada
+ -- leccion, una linea del temario (con sus tildes, tal como se imprime).
+ ('derecho-registral-notarial',1,'Sesión 1: Perspectiva registral','Principios registrales, organizacion de los Registros Publicos y calificacion de titulos.'),
+ ('derecho-registral-notarial',2,'Sesión 2: Función notarial e instrumentos públicos','Organizacion del notariado, escrituras publicas y formalidades del acto.'),
  ('contrataciones-estado',1,'Planificacion y seleccion','Del plan anual de contrataciones a la buena pro.'),
  ('contrataciones-estado',2,'Ejecucion contractual y controversias','Gestion del contrato, adicionales, penalidades y solucion de controversias.'),
  ('litigacion-penal',1,'Teoria del caso y alegatos','Como estructurar el caso y presentarlo ante el juez.'),
@@ -1781,10 +1787,14 @@ SELECT m.modulo_id,v.titulo,v.descripcion,v.orden,CASE WHEN v.en_vivo THEN 'EN_V
        CASE WHEN v.en_vivo THEN ((((CURRENT_DATE+v.dia)+v.hora)+(v.duracion||' hours')::interval)::timestamp AT TIME ZONE 'America/Lima') END,
        CASE WHEN v.en_vivo THEN 'https://meet.example.com/esejur-'||v.slug||'-m'||v.modulo END
 FROM (VALUES
- ('derecho-registral-notarial',1,1,'Principios registrales y publicidad','Legalidad, tracto sucesivo, prioridad y fe publica registral.',false,NULL::integer,NULL::time,NULL::integer),
- ('derecho-registral-notarial',1,2,'La calificacion registral','Alcance de la calificacion, observaciones, tachas y recursos ante el Tribunal Registral.',false,NULL::integer,NULL::time,NULL::integer),
- ('derecho-registral-notarial',2,1,'La escritura publica y sus formalidades','Estructura, requisitos y efectos de la escritura publica.',false,NULL::integer,NULL::time,NULL::integer),
- ('derecho-registral-notarial',2,2,'Responsabilidad del notario y practica de inscripcion','Responsabilidad funcional y flujo del titulo desde la notaria hasta el registro.',false,NULL::integer,NULL::time,NULL::integer),
+ ('derecho-registral-notarial',1,1,'Principios registrales y publicidad: legalidad, tracto sucesivo, prioridad y fe pública registral.','Legalidad, tracto sucesivo, prioridad y fe publica registral.',false,NULL::integer,NULL::time,NULL::integer),
+ ('derecho-registral-notarial',1,2,'La calificación registral: alcance, observaciones, tachas y recursos ante el Tribunal Registral.','Alcance de la calificacion, observaciones, tachas y recursos ante el Tribunal Registral.',false,NULL::integer,NULL::time,NULL::integer),
+ ('derecho-registral-notarial',1,3,'Organización de los Registros Públicos: SUNARP, zonas registrales y tipos de partida.','Estructura del sistema registral y de las partidas registrales.',false,NULL::integer,NULL::time,NULL::integer),
+ ('derecho-registral-notarial',1,4,'Casuística y errores habituales: cómo formular y subsanar observaciones emitidas por el registrador.','Casos practicos de observaciones y su subsanacion.',false,NULL::integer,NULL::time,NULL::integer),
+ ('derecho-registral-notarial',2,1,'La escritura pública y sus formalidades: estructura, requisitos y efectos.','Estructura, requisitos y efectos de la escritura publica.',false,NULL::integer,NULL::time,NULL::integer),
+ ('derecho-registral-notarial',2,2,'Actas notariales y asuntos no contenciosos: sucesión intestada, rectificaciones y otros trámites.','Actas notariales y asuntos no contenciosos de competencia notarial.',false,NULL::integer,NULL::time,NULL::integer),
+ ('derecho-registral-notarial',2,3,'Responsabilidad del notario: responsabilidad funcional, disciplinaria y civil.','Responsabilidad funcional, disciplinaria y civil del notario.',false,NULL::integer,NULL::time,NULL::integer),
+ ('derecho-registral-notarial',2,4,'Práctica de inscripción: flujo del título desde la notaría hasta el registro.','Del titulo notarial a la partida registral.',false,NULL::integer,NULL::time,NULL::integer),
  ('contrataciones-estado',1,1,'Planificacion de las contrataciones y plan anual','Necesidad, valor estimado y Plan Anual de Contrataciones.',false,NULL::integer,NULL::time,NULL::integer),
  ('contrataciones-estado',1,2,'Analisis de casos de procedimientos de seleccion','Revision de bases, consultas, observaciones y otorgamiento de la buena pro.',true,-4,TIME '19:00',2),
  ('contrataciones-estado',2,1,'Ejecucion, adicionales y penalidades','Obligaciones de las partes, prestaciones adicionales y aplicacion de penalidades.',false,NULL::integer,NULL::time,NULL::integer),
@@ -2202,10 +2212,18 @@ WHERE u.correo='gabriel.mayanga@escuelajuridica.edu.pe'
 INSERT INTO certificado
     (logro_certificacion_id,codigo,estado,tipo_emision,nivel,nombres_impresos,
      titulo_curso_impreso,tipo_curso_impreso,horas_impresas,fecha_inicio_impresa,
-     fecha_fin_impresa,lugar_emision,entidad_impresa,nota_impresa,archivo_pdf_url,emitido_en)
+     fecha_fin_impresa,lugar_emision,entidad_impresa,nota_impresa,archivo_pdf_url,emitido_en,temario_impreso)
 SELECT lc.logro_certificacion_id,'ESEJUR-2026-DEMO-0001','VIGENTE','AUTOMATICA',lc.nivel,
        lc.nombres_confirmados,c.titulo,tc.nombre,c.horas_academicas,c.fecha_inicio,c.fecha_fin,
-       'Lima, Peru',ec.nombre,lc.nota_final,'certificados/ESEJUR-2026-DEMO-0001.pdf',CURRENT_TIMESTAMP
+       'Lima, Peru',ec.nombre,lc.nota_final,'certificados/ESEJUR-2026-DEMO-0001.pdf',CURRENT_TIMESTAMP,
+       -- Temario congelado, en el formato con que lo guarda el sistema al emitir: "# " abre una sesion (modulo)
+       -- y "- " una vineta (leccion).
+       (SELECT string_agg(s.bloque,E'\n\n' ORDER BY s.orden)
+        FROM (SELECT mo.orden,
+                     '# '||mo.titulo||E'\n'||
+                     (SELECT string_agg('- '||l.titulo,E'\n' ORDER BY l.orden)
+                      FROM leccion l WHERE l.modulo_id=mo.modulo_id AND l.activo) AS bloque
+              FROM modulo mo WHERE mo.curso_id=c.curso_id AND mo.activo) s)
 FROM logro_certificacion lc JOIN matricula m ON m.matricula_id=lc.matricula_id
 JOIN curso c ON c.curso_id=m.curso_id JOIN tipo_curso tc ON tc.tipo_curso_id=c.tipo_curso_id
 LEFT JOIN entidad_certificadora ec ON ec.entidad_certificadora_id=c.entidad_certificadora_id;

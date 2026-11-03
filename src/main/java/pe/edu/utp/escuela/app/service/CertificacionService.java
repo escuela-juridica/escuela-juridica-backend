@@ -30,6 +30,8 @@ import pe.edu.utp.escuela.app.entity.CertificadoFirmante;
 import pe.edu.utp.escuela.app.entity.ConfiguracionInstitucional;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.CursoFirmante;
+import pe.edu.utp.escuela.app.entity.Leccion;
+import pe.edu.utp.escuela.app.entity.Modulo;
 import pe.edu.utp.escuela.app.entity.LogroCertificacion;
 import pe.edu.utp.escuela.app.entity.Matricula;
 import pe.edu.utp.escuela.app.entity.Notificacion;
@@ -47,6 +49,8 @@ import pe.edu.utp.escuela.app.repository.CertificadoFirmanteRepository;
 import pe.edu.utp.escuela.app.repository.CertificadoRepository;
 import pe.edu.utp.escuela.app.repository.ConfiguracionInstitucionalRepository;
 import pe.edu.utp.escuela.app.repository.CursoFirmanteRepository;
+import pe.edu.utp.escuela.app.repository.LeccionRepository;
+import pe.edu.utp.escuela.app.repository.ModuloRepository;
 import pe.edu.utp.escuela.app.repository.LogroCertificacionRepository;
 import pe.edu.utp.escuela.app.repository.MatriculaRepository;
 import pe.edu.utp.escuela.app.repository.NotificacionRepository;
@@ -85,6 +89,8 @@ public class CertificacionService {
     private final CertificadoRepository certificados;
     private final CertificadoFirmanteRepository certificadoFirmantes;
     private final CursoFirmanteRepository cursoFirmantes;
+    private final ModuloRepository modulos;
+    private final LeccionRepository lecciones;
     private final ConfiguracionInstitucionalRepository configuracion;
     private final NotificacionRepository notificaciones;
     private final PersonaRepository personas;
@@ -126,8 +132,11 @@ public class CertificacionService {
     public CertificacionResponse confirmarDatos(Long cursoId, ConfirmarDatosRequest peticion) {
         Matricula matricula = matriculaDelAlumno(cursoId);
         LogroCertificacion logro = logroDe(matricula);
-        if (certificados.findByLogro_Matricula_Id(matricula.getId()).isPresent()) {
-            throw new BusinessValidationException("Tu certificado ya fue emitido: sus datos no se pueden cambiar.");
+        Certificado existente = certificados.findByLogro_Matricula_Id(matricula.getId()).orElse(null);
+        if (existente != null) {
+            throw new BusinessValidationException(Certificado.ANULADO.equals(existente.getEstado())
+                    ? "Tu certificado fue anulado. Si corresponde, la administración puede emitirte uno nuevo."
+                    : "Tu certificado ya fue emitido: sus datos no se pueden cambiar.");
         }
         Persona persona = matricula.getUsuario().getPersona();
         persona.setNombres(limpiar(peticion.nombres()));
@@ -155,7 +164,9 @@ public class CertificacionService {
         Matricula matricula = matriculaDelAlumno(cursoId);
         Situacion s = evaluar(matricula);
         if (s.certificado() != null) {
-            throw new BusinessValidationException("Tu certificado ya fue emitido.");
+            throw new BusinessValidationException(Certificado.ANULADO.equals(s.certificado().getEstado())
+                    ? "Tu certificado fue anulado. Si corresponde, la administración puede emitirte uno nuevo."
+                    : "Tu certificado ya fue emitido.");
         }
         if (!"LISTO_PARA_EMITIR".equals(s.estado())) {
             throw new BusinessValidationException(s.mensaje());
@@ -264,7 +275,9 @@ public class CertificacionService {
         if (certificado != null) {
             String estado = Certificado.ANULADO.equals(certificado.getEstado()) ? "ANULADO" : "VIGENTE";
             return new Situacion(matricula, avance, logro, certificado, estado,
-                    "ANULADO".equals(estado) ? "Este certificado fue anulado." : "Tu certificado fue emitido.",
+                    "ANULADO".equals(estado)
+                            ? "Este certificado fue anulado. Si corresponde, la administración puede emitirte uno nuevo."
+                            : "Tu certificado fue emitido.",
                     false, null, regla.getDiasEsperaCertificado(), condicionesActivas, certificado.getNotaImpresa(),
                     certificado.getNivel());
         }
@@ -394,6 +407,7 @@ public class CertificacionService {
         c.setNombresImpresos(logro.getNombresConfirmados());
         c.setTituloCursoImpreso(curso.getTitulo());
         c.setTipoCursoImpreso(curso.getTipoCurso() != null ? curso.getTipoCurso().getNombre() : "Curso");
+        c.setTemarioImpreso(temarioDe(curso));
         c.setHorasImpresas(curso.getHorasAcademicas() != null ? curso.getHorasAcademicas() : BigDecimal.ZERO);
         // En vivo / híbrido: fechas del curso. Virtual sin fin: matrícula y finalización del alumno.
         LocalDate inicio = !virtual && curso.getFechaInicio() != null ? curso.getFechaInicio()
@@ -445,6 +459,36 @@ public class CertificacionService {
 
         avisarCertificado(matricula, c);
         return c;
+    }
+
+    /**
+     * Lo que se dictó, tomado del contenido del curso: cada módulo activo es una sesión y sus lecciones activas, las
+     * viñetas. Se congela en el certificado para que cambios posteriores del curso no alteren lo ya emitido.
+     */
+    private String temarioDe(Curso curso) {
+        List<Modulo> modulosActivos = modulos.findByCursoIdAndActivoTrueOrderByOrdenAsc(curso.getId());
+        if (modulosActivos.isEmpty()) {
+            return null;
+        }
+        Map<Long, List<Leccion>> porModulo = new java.util.LinkedHashMap<>();
+        for (Leccion leccion : lecciones.buscarActivasDeModulos(modulosActivos.stream().map(Modulo::getId).toList())) {
+            porModulo.computeIfAbsent(leccion.getModulo().getId(), k -> new java.util.ArrayList<>()).add(leccion);
+        }
+        StringBuilder temario = new StringBuilder();
+        int numero = 1;
+        for (Modulo modulo : modulosActivos) {
+            if (!temario.isEmpty()) {
+                temario.append('\n');
+            }
+            String titulo = modulo.getTitulo().strip();
+            // Un módulo que ya se titula «Sesión 1: …» se imprime tal cual; si no, se numera como «Módulo n: …».
+            temario.append("# ").append(titulo.matches("^\\p{L}+\\s+\\d+\\s*[:.\\-].*") ? titulo : "Módulo " + numero + ": " + titulo).append('\n');
+            numero++;
+            for (Leccion leccion : porModulo.getOrDefault(modulo.getId(), List.of())) {
+                temario.append("- ").append(leccion.getTitulo().strip()).append('\n');
+            }
+        }
+        return temario.toString().strip();
     }
 
     private String nuevoCodigo(int anio) {

@@ -61,13 +61,14 @@ public class MatriculaController {
 
     @GetMapping("/admin/matriculas")
     public ResponseEntity<PageResponse<MatriculaAdministrativaResponse>> listarAdministrativas(
-            @RequestParam(defaultValue = "") String texto,
+            @RequestParam(required = false) Long usuarioId,
+            @RequestParam(required = false) Long cursoId,
             @RequestParam(defaultValue = "") String estado,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         int tamano = Math.min(Math.max(size, 1), 50);
         Page<MatriculaAdministrativaResponse> pagina = service.listarAdministrativas(
-                texto, estado, PageRequest.of(Math.max(page, 0), tamano));
+                usuarioId, cursoId, estado, PageRequest.of(Math.max(page, 0), tamano));
         return ResponseEntity.ok(PageResponse.from(pagina));
     }
 

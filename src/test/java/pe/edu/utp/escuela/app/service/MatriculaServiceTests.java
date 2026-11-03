@@ -367,20 +367,20 @@ class MatriculaServiceTests {
     }
 
     @Test
-    void listarAdministrativasNormalizaYDelegaLosFiltros() {
+    void listarAdministrativasNormalizaElEstadoYDelegaLosFiltros() {
         comoAdministrador(1L);
         Pageable pageable = PageRequest.of(1, 20);
         MatriculaAdministrativaResponse fila = new MatriculaAdministrativaResponse(
                 500L, 5L, "Ana Pérez", "ana@example.com", 200L, "Curso gratuito",
                 "ACTIVA", "ADMINISTRADOR", Instant.parse("2026-09-01T12:00:00Z"), null);
         Page<MatriculaAdministrativaResponse> pagina = new PageImpl<>(List.of(fila), pageable, 1);
-        when(matriculas.buscarAdministrativas("ana pérez", "ACTIVA", pageable)).thenReturn(pagina);
+        when(matriculas.buscarAdministrativas(5L, 200L, "ACTIVA", pageable)).thenReturn(pagina);
 
         Page<MatriculaAdministrativaResponse> resultado = service.listarAdministrativas(
-                "  Ana Pérez  ", " activa ", pageable);
+                5L, 200L, " activa ", pageable);
 
         assertEquals(List.of(fila), resultado.getContent());
-        verify(matriculas).buscarAdministrativas("ana pérez", "ACTIVA", pageable);
+        verify(matriculas).buscarAdministrativas(5L, 200L, "ACTIVA", pageable);
     }
 
     @Test

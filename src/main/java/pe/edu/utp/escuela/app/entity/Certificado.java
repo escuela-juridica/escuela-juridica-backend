@@ -7,7 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -17,7 +17,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * HU-032 — Documento único emitido para un logro y verificable con su código. Al emitirse se
+ * HU-032 — Documento emitido para un logro y verificable con su código. Un logro tiene a lo sumo un certificado
+ * VIGENTE; si se anula, la administración puede emitir uno nuevo (con otro código) y el anulado queda como historia. Al emitirse se
  * congelan nombres, curso, horas, fechas, nota y nivel: lo impreso no cambia aunque después
  * cambien el curso o el perfil.
  */
@@ -31,13 +32,23 @@ public class Certificado {
     public static final String VIGENTE = "VIGENTE";
     public static final String ANULADO = "ANULADO";
 
+    /** El que cuenta como actual de una matrícula: el vigente y, si no lo hay, el último emitido. */
+    public static Certificado actualEntre(Certificado a, Certificado b) {
+        boolean aVigente = VIGENTE.equals(a.getEstado());
+        boolean bVigente = VIGENTE.equals(b.getEstado());
+        if (aVigente != bVigente) {
+            return aVigente ? a : b;
+        }
+        return a.getEmitidoEn().isAfter(b.getEmitidoEn()) ? a : b;
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "certificado_id")
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "logro_certificacion_id", nullable = false, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "logro_certificacion_id", nullable = false)
     private LogroCertificacion logro;
 
     @Column(nullable = false, length = 80)
@@ -72,6 +83,13 @@ public class Certificado {
 
     @Column(name = "fecha_fin_impresa")
     private LocalDate fechaFinImpresa;
+
+    /**
+     * Temario congelado al emitir (lo que se dictó), para el reverso del certificado: «# » abre una sesión, «- » una
+     * viñeta. Vacío en los certificados anteriores al reverso.
+     */
+    @Column(name = "temario_impreso", columnDefinition = "text")
+    private String temarioImpreso;
 
     @Column(name = "lugar_emision", nullable = false, length = 180)
     private String lugarEmision;

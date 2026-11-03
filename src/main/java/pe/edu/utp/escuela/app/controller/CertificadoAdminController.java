@@ -39,12 +39,13 @@ public class CertificadoAdminController {
     @GetMapping("/gestion")
     @Operation(summary = "Matrículas con la situación de su certificado")
     public ResponseEntity<PageResponse<CertificadoGestionResponse>> listar(
-            @RequestParam(defaultValue = "") String texto,
+            @RequestParam(required = false) Long usuarioId,
+            @RequestParam(required = false) Long cursoId,
             @RequestParam(defaultValue = "") String estado,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         int tamano = Math.min(Math.max(size, 1), 50);
-        return ResponseEntity.ok(PageResponse.from(service.listar(texto, estado, PageRequest.of(Math.max(page, 0), tamano))));
+        return ResponseEntity.ok(PageResponse.from(service.listar(usuarioId, cursoId, estado, PageRequest.of(Math.max(page, 0), tamano))));
     }
 
     @GetMapping("/manual/{matriculaId}")

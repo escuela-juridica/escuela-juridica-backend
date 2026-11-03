@@ -1,5 +1,6 @@
 package pe.edu.utp.escuela.app.service;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -26,6 +27,7 @@ import pe.edu.utp.escuela.app.dto.CorregirCertificadoRequest;
 import pe.edu.utp.escuela.app.dto.CertificadoGestionResponse;
 import pe.edu.utp.escuela.app.dto.EmisionManualSituacionResponse;
 import pe.edu.utp.escuela.app.dto.EmisionManualSituacionResponse.CertificadoResumen;
+import pe.edu.utp.escuela.app.dto.EmisionManualSituacionResponse.FirmanteVista;
 import pe.edu.utp.escuela.app.dto.EmitirCertificadoManualRequest;
 import pe.edu.utp.escuela.app.dto.VistaPreviaCertificadoRequest;
 import pe.edu.utp.escuela.app.entity.Certificado;
@@ -42,6 +44,7 @@ import pe.edu.utp.escuela.app.exception.ResourceNotFoundException;
 import pe.edu.utp.escuela.app.export.CertificadoPdfExport;
 import pe.edu.utp.escuela.app.repository.CertificadoFirmanteRepository;
 import pe.edu.utp.escuela.app.repository.CertificadoRepository;
+import pe.edu.utp.escuela.app.repository.CursoFirmanteRepository;
 import pe.edu.utp.escuela.app.repository.ExcepcionAcademicaRepository;
 import pe.edu.utp.escuela.app.repository.FirmanteRepository;
 import pe.edu.utp.escuela.app.repository.HistorialCertificadoRepository;
@@ -72,6 +75,7 @@ public class CertificadoAdminService {
     private final AvanceAcademicoService avanceAcademico;
     private final CertificacionService certificacion;
     private final CertificadoFirmanteRepository certificadoFirmantes;
+    private final CursoFirmanteRepository cursoFirmantes;
     private final FirmanteRepository firmantes;
     private final UsuarioRepository usuarios;
     private final ArchivoAlmacenamientoService archivos;
@@ -86,27 +90,29 @@ public class CertificadoAdminService {
     // ---------------------------------------------------------------------------------------- listado --
 
     @Transactional(readOnly = true)
-    public Page<CertificadoGestionResponse> listar(String texto, String estadoCertificado, Pageable pageable) {
+    public Page<CertificadoGestionResponse> listar(Long usuarioId, Long cursoId, String estadoCertificado, Pageable pageable) {
         exigirAdministrador();
         String estado = estadoCertificado == null ? "" : estadoCertificado.strip().toUpperCase(Locale.ROOT);
         if (!List.of("", "SIN_CERTIFICADO", "VIGENTE", "ANULADO").contains(estado)) {
             throw new BusinessValidationException("El estado del certificado no es válido.");
         }
-        Page<Matricula> pagina = matriculas.buscarGestionCertificados(
-                texto == null ? "" : texto.strip().toLowerCase(Locale.ROOT), estado, pageable);
+        Page<Matricula> pagina = matriculas.buscarGestionCertificados(usuarioId, cursoId, estado, pageable);
         Map<Long, Certificado> porMatricula = pagina.isEmpty() ? Map.of()
                 : certificados.findByLogro_Matricula_IdIn(pagina.getContent().stream().map(Matricula::getId).toList())
-                        .stream().collect(Collectors.toMap(c -> c.getLogro().getMatricula().getId(), Function.identity()));
+                        .stream().collect(Collectors.toMap(c -> c.getLogro().getMatricula().getId(), Function.identity(),
+                                Certificado::actualEntre));
         return pagina.map(m -> fila(m, porMatricula.get(m.getId())));
     }
 
     private CertificadoGestionResponse fila(Matricula m, Certificado c) {
+        AvanceAcademico avance = avanceAcademico.calcular(m);
         return new CertificadoGestionResponse(m.getId(), c == null ? null : c.getId(),
                 m.getUsuario().getPersona().nombreCompleto(),
                 m.getUsuario().getCorreo(), m.getCurso().getId(), m.getCurso().getTitulo(), m.getEstado(),
                 c == null ? "SIN_CERTIFICADO" : c.getEstado(), c == null ? null : c.getCodigo(),
                 c == null ? null : c.getNivel(), c == null ? null : c.getTipoEmision(),
-                c == null ? null : c.getEmitidoEn(), c == null && !"CANCELADA".equals(m.getEstado()));
+                c == null ? null : c.getEmitidoEn(), (c == null || Certificado.ANULADO.equals(c.getEstado())) && !"CANCELADA".equals(m.getEstado()),
+                avance.porcentaje(), avance.cumpleTodo(), m.getFechaMatricula());
     }
 
     // ----------------------------------------------------------------------------------- emisión manual --
@@ -125,9 +131,13 @@ public class CertificadoAdminService {
         if (situacion.bloqueo() != null) {
             throw new BusinessValidationException(situacion.bloqueo());
         }
-        // Si el alumno no confirmó los nombres impresos, los confirma la administración al emitir (queda en la evidencia).
+        // Si el último certificado fue anulado, este lo reemplaza: el anterior queda anulado y enlazado en el historial.
+        Certificado reemplazado = certificados.findByLogro_Matricula_Id(matriculaId).orElse(null);
+        boolean reemision = reemplazado != null;
+        // Si el alumno no confirmó los nombres impresos (o es una reemisión, donde pueden corregirse), los confirma la
+        // administración al emitir (queda en la evidencia).
         String nombresPorAdministracion = null;
-        if (!situacion.datosConfirmados()) {
+        if (!situacion.datosConfirmados() || (reemision && p.nombres() != null && !p.nombres().isBlank())) {
             nombresPorAdministracion = p.nombres() == null || p.nombres().isBlank()
                     ? matricula.getUsuario().getPersona().nombreCompleto()
                     : p.nombres().strip().replaceAll("\\s+", " ");
@@ -140,7 +150,7 @@ public class CertificadoAdminService {
         Long administrador = actual.get().userId();
 
         Certificado emitido = certificacion.emitirExcepcional(matricula, motivo, administrador, finalizacion);
-        registrarEvidencia(matricula, emitido, motivo, administrador, situacion, nombresPorAdministracion);
+        registrarEvidencia(matricula, emitido, motivo, administrador, situacion, nombresPorAdministracion, reemplazado);
         return construir(matricula);
     }
 
@@ -160,14 +170,15 @@ public class CertificadoAdminService {
     }
 
     private void registrarEvidencia(Matricula matricula, Certificado emitido, String motivo, Long administrador,
-            EmisionManualSituacionResponse antes, String nombresPorAdministracion) {
+            EmisionManualSituacionResponse antes, String nombresPorAdministracion, Certificado reemplazado) {
         String nombresNota = nombresPorAdministracion == null ? ""
                 : " · nombres impresos confirmados por la administración: " + nombresPorAdministracion;
         Instant ahora = clock.instant();
         HistorialCertificado h = new HistorialCertificado();
         h.setCertificado(emitido);
         h.setAccion(HistorialCertificado.EMISION_MANUAL);
-        h.setDatosAnteriores("Sin certificado");
+        h.setDatosAnteriores(reemplazado == null ? "Sin certificado"
+                : "Reemplaza al certificado " + reemplazado.getCodigo() + " (anulado)");
         h.setDatosNuevos("Certificado " + emitido.getCodigo() + " · nivel " + emitido.getNivel()
                 + (emitido.getNotaImpresa() == null ? " · sin nota" : " · nota " + emitido.getNotaImpresa().toPlainString())
                 + nombresNota);
@@ -181,7 +192,8 @@ public class CertificadoAdminService {
         e.setTipo(ExcepcionAcademica.EMITIR_CERTIFICADO);
         e.setReferenciaTipo("CERTIFICADO");
         e.setReferenciaId(emitido.getId());
-        e.setValorAnterior(antes.cumpleTodo() ? "Cumplía los requisitos" : antes.frase());
+        e.setValorAnterior(reemplazado != null ? "Certificado " + reemplazado.getCodigo() + " anulado"
+                : antes.cumpleTodo() ? "Cumplía los requisitos" : antes.frase());
         e.setValorNuevo("Certificado " + emitido.getCodigo() + " emitido manualmente" + nombresNota);
         e.setMotivo(motivo);
         e.setRealizadoPorUsuarioId(administrador);
@@ -270,6 +282,7 @@ public class CertificadoAdminService {
         copia.setFechaInicioImpresa(c.getFechaInicioImpresa());
         copia.setFechaFinImpresa(c.getFechaFinImpresa());
         copia.setLugarEmision(c.getLugarEmision());
+        copia.setTemarioImpreso(c.getTemarioImpreso());
         copia.setEntidadImpresa(entidadNueva);
         copia.setNotaImpresa(c.getNotaImpresa());
         copia.setEmitidoEn(c.getEmitidoEn());
@@ -355,7 +368,7 @@ public class CertificadoAdminService {
     private void exigirVigente(Certificado c, String accion) {
         if (Certificado.ANULADO.equals(c.getEstado())) {
             throw new BusinessException(HttpStatus.CONFLICT, "CERTIFICADO_ANULADO",
-                    "Un certificado anulado no se puede " + accion + ": la anulación es irreversible.");
+                    "Un certificado anulado no se puede " + accion + ": la anulación no se deshace. Si corresponde, emite uno nuevo para el alumno.");
         }
     }
 
@@ -402,7 +415,7 @@ public class CertificadoAdminService {
                 .toList();
         return new CertificadoDetalleResponse(c.getId(), c.getCodigo(), c.getEstado(), c.getTipoEmision(), c.getNivel(),
                 c.getNotaImpresa(), m.getUsuario().getPersona().nombreCompleto(), m.getUsuario().getCorreo(),
-                m.getCurso().getId(), c.getNombresImpresos(), c.getTituloCursoImpreso(), c.getTipoCursoImpreso(),
+                m.getCurso().getId(), m.getId(), c.getNombresImpresos(), c.getTituloCursoImpreso(), c.getTipoCursoImpreso(),
                 c.getHorasImpresas(), c.getEntidadImpresa(), c.getEmitidoEn(), c.getAnuladoEn(),
                 c.getMotivoAnulacion(), Certificado.VIGENTE.equals(c.getEstado()), firmantesImpresos,
                 List.copyOf(disponibles.values()), cambios);
@@ -421,7 +434,8 @@ public class CertificadoAdminService {
         boolean datos = logro != null && logro.getDatosConfirmadosEn() != null && logro.getNombresConfirmados() != null;
         Instant finalizacion = logro == null ? null : logro.getFechaFinalizacion();
         String nivel = certificado != null ? certificado.getNivel() : nivelProyectado(m, avance);
-        String entidad = certificado != null ? certificado.getEntidadImpresa()
+        Certificado vigente = certificado != null && Certificado.VIGENTE.equals(certificado.getEstado()) ? certificado : null;
+        String entidad = vigente != null ? vigente.getEntidadImpresa()
                 : "REFRENDADO".equals(nivel) && m.getCurso().getEntidadCertificadora() != null
                         ? m.getCurso().getEntidadCertificadora().getNombre() : null;
         return new EmisionManualSituacionResponse(m.getId(), m.getUsuario().getPersona().nombreCompleto(),
@@ -429,11 +443,54 @@ public class CertificadoAdminService {
                 m.getFechaMatricula(), finalizacion, m.getFechaMatricula().atZone(LIMA).toLocalDate(),
                 LocalDate.now(clock.withZone(LIMA)), datos, datos ? logro.getNombresConfirmados() : null,
                 certificado != null ? certificado.getNotaImpresa() : avance.notaFinal(), nivel, entidad,
+                horasDelCurso(m, vigente), tipoCurso(m, vigente), fechaInicio(m, vigente),
+                vigente != null ? vigente.getFechaFinImpresa() : fechaFinDelCurso(m), firmantesImpresos(m, vigente),
                 avance.condiciones(), avance.cumpleTodo(), SeguimientoAcademicoService.enTerceraPersona(avance.frase()),
                 certificado == null ? null : new CertificadoResumen(certificado.getCodigo(), certificado.getEstado(),
                         certificado.getNivel(), certificado.getTipoEmision(), certificado.getEmitidoEn(),
                         certificado.getMotivoEmisionManual()),
                 bloqueo(m, avance, certificado));
+    }
+
+
+    private static BigDecimal horasDelCurso(Matricula m, Certificado c) {
+        if (c != null) {
+            return c.getHorasImpresas();
+        }
+        return m.getCurso().getHorasAcademicas() != null ? m.getCurso().getHorasAcademicas() : BigDecimal.ZERO;
+    }
+
+    private static String tipoCurso(Matricula m, Certificado c) {
+        if (c != null) {
+            return c.getTipoCursoImpreso();
+        }
+        return m.getCurso().getTipoCurso() != null ? m.getCurso().getTipoCurso().getNombre() : "Curso";
+    }
+
+    /** Mismo criterio que al emitir: en vivo/híbrido, el inicio del curso; si no, la matrícula del alumno. */
+    private static LocalDate fechaInicio(Matricula m, Certificado c) {
+        if (c != null) {
+            return c.getFechaInicioImpresa();
+        }
+        var curso = m.getCurso();
+        boolean virtual = "VIRTUAL".equals(curso.getModalidad());
+        return !virtual && curso.getFechaInicio() != null ? curso.getFechaInicio()
+                : m.getFechaMatricula().atZone(LIMA).toLocalDate();
+    }
+
+    /** Fin que impone el curso (en vivo/híbrido); vacío cuando el fin es la finalización del alumno. */
+    private static LocalDate fechaFinDelCurso(Matricula m) {
+        var curso = m.getCurso();
+        return !"VIRTUAL".equals(curso.getModalidad()) ? curso.getFechaFin() : null;
+    }
+
+    private List<FirmanteVista> firmantesImpresos(Matricula m, Certificado c) {
+        if (c != null) {
+            return certificadoFirmantes.findByCertificado_IdOrderByOrdenAsc(c.getId()).stream()
+                    .map(f -> new FirmanteVista(f.getNombreImpreso(), f.getCargoImpreso())).toList();
+        }
+        return cursoFirmantes.findByCurso_IdOrderByOrdenAsc(m.getCurso().getId()).stream()
+                .map(f -> new FirmanteVista(f.getFirmante().getPersona().nombreCompleto(), f.getFirmante().getCargoFirma())).toList();
     }
 
     /** Refrendado solo con nota definitiva que alcanza el umbral del curso y entidad; en cualquier otro caso, Normal. */
@@ -449,9 +506,9 @@ public class CertificadoAdminService {
      * Por qué no se puede emitir. Los nombres sin confirmar ya no bloquean: los confirma la administración al emitir.
      */
     private static String bloqueo(Matricula m, AvanceAcademico avance, Certificado certificado) {
-        if (certificado != null) {
-            return "Este alumno ya tiene un certificado " + certificado.getEstado().toLowerCase(Locale.ROOT)
-                    + " en este curso: solo se emite uno por alumno y curso.";
+        if (certificado != null && Certificado.VIGENTE.equals(certificado.getEstado())) {
+            return "Este alumno ya tiene un certificado vigente en este curso. Para cambiar sus datos usa «Corregir»; "
+                    + "si lo anulas, podrás emitirle uno nuevo.";
         }
         // Una matrícula cancelada ya no da acceso al curso: no se emite un certificado sobre ella (reactívala antes si corresponde).
         if ("CANCELADA".equals(m.getEstado())) {

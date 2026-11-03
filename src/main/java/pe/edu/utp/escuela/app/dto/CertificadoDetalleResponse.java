@@ -19,6 +19,7 @@ public record CertificadoDetalleResponse(
         String alumno,
         String correo,
         Long cursoId,
+        Long matriculaId,
         String nombres,
         String titulo,
         String tipoCurso,

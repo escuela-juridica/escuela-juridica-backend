@@ -213,10 +213,10 @@ public class MatriculaService {
 
     @Transactional
     public Page<MatriculaAdministrativaResponse> listarAdministrativas(
-            String texto, String estado, Pageable pageable) {
+            Long usuarioId, Long cursoId, String estado, Pageable pageable) {
         procesarVencimientos();
         exigirAdministrador();
-        return matriculas.buscarAdministrativas(normalizar(texto), normalizarEstado(estado), pageable);
+        return matriculas.buscarAdministrativas(usuarioId, cursoId, normalizarEstado(estado), pageable);
     }
 
     @Transactional
