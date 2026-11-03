@@ -110,6 +110,16 @@ public class Curso extends RegistroAuditable {
     @Column(name = "publicado_en")
     private Instant publicadoEn;
 
+    /** Código de registro, p. ej. «02-DP_2026»: número del curso dentro de su tipo y año. Se asigna al publicarlo. */
+    @Column(name = "codigo_registro", unique = true, length = 20)
+    private String codigoRegistro;
+
+    @Column(name = "anio_registro")
+    private Integer anioRegistro;
+
+    @Column(name = "numero_registro")
+    private Integer numeroRegistro;
+
     @Column(name = "cerrado_en")
     private Instant cerradoEn;
 

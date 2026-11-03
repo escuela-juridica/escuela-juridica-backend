@@ -1,0 +1,6 @@
+Tipografías incluidas en los certificados, todas con SIL Open Font License 1.1 (permiten incrustarse en documentos):
+- Oswald (The Oswald Project Authors)
+- Roboto (The Roboto Project Authors)
+- Archivo Black (Omnibus-Type)
+- Great Vibes (Robert Leuschke)
+Texto de la licencia: https://openfontlicense.org

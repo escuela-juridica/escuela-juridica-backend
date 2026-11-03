@@ -1,11 +1,16 @@
 package pe.edu.utp.escuela.app.service;
 
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.UUID;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -27,6 +32,12 @@ public class ArchivoAlmacenamientoService {
 
     private static final long TAMANO_MAXIMO_IMAGEN_BYTES = 2L * 1024 * 1024;
     private static final long TAMANO_MAXIMO_ADJUNTO_BYTES = 5L * 1024 * 1024;
+    /** La firma se dibuja en una caja horizontal del certificado (160 x 48 puntos): fuera de esta forma se ve diminuta. */
+    private static final int FIRMA_ANCHO_MINIMO_PX = 300;
+    private static final int FIRMA_ANCHO_MAXIMO_PX = 3000;
+    private static final int FIRMA_ALTO_MAXIMO_PX = 1500;
+    private static final double FIRMA_PROPORCION_MINIMA = 2.0;
+    private static final double FIRMA_PROPORCION_MAXIMA = 5.0;
 
     private final Path raiz;
     private final ReglaArchivoRepository reglasArchivo;
@@ -95,8 +106,9 @@ public class ArchivoAlmacenamientoService {
     }
 
     /**
-     * HU-009 — Guarda la imagen de una firma o el logo de una entidad. Solo admite PNG o JPG, de hasta
-     * 2 MB, y comprueba el contenido real del archivo (no solo su extensión). El nombre lo decide el
+     * HU-009 — Guarda la imagen de una firma, el logo de una entidad o la foto de un docente. Solo admite PNG o JPG,
+     * de hasta 2 MB, y comprueba el contenido real del archivo (no solo su extensión). Las firmas además deben ser
+     * PNG transparentes y horizontales. El nombre lo decide el
      * servidor y la referencia devuelta es la que se guarda en el firmante o la entidad.
      */
     public String guardarImagen(String carpeta, MultipartFile archivo) {
@@ -116,7 +128,69 @@ public class ArchivoAlmacenamientoService {
         if (extension == null) {
             throw new BusinessValidationException("Solo se admiten imágenes PNG o JPG.");
         }
+        if ("firmas".equals(carpeta)) {
+            validarFirma(contenido, extension);
+        }
         return guardarBytes(carpeta, UUID.randomUUID() + "." + extension, contenido);
+    }
+
+    /**
+     * La firma que se imprime en el certificado debe ser un PNG con fondo transparente (si no, tapa el diseño del
+     * diploma), horizontal y con resolución suficiente. Se comprueba el contenido real del archivo.
+     */
+    private static void validarFirma(byte[] contenido, String extension) {
+        if (!"png".equals(extension)) {
+            throw new BusinessValidationException("La firma debe ser un PNG con fondo transparente.");
+        }
+        int ancho;
+        int alto;
+        try (ImageInputStream flujo = ImageIO.createImageInputStream(new ByteArrayInputStream(contenido))) {
+            var lectores = ImageIO.getImageReaders(flujo);
+            if (!lectores.hasNext()) {
+                throw new BusinessValidationException("No pudimos leer la imagen de la firma. Prueba con otro PNG.");
+            }
+            ImageReader lector = lectores.next();
+            try {
+                lector.setInput(flujo);
+                ancho = lector.getWidth(0);
+                alto = lector.getHeight(0);
+            } finally {
+                lector.dispose();
+            }
+        } catch (IOException e) {
+            throw new BusinessValidationException("No pudimos leer la imagen de la firma. Prueba con otro PNG.");
+        }
+        double proporcion = alto == 0 ? 0 : (double) ancho / alto;
+        if (ancho < FIRMA_ANCHO_MINIMO_PX || proporcion < FIRMA_PROPORCION_MINIMA || proporcion > FIRMA_PROPORCION_MAXIMA) {
+            throw new BusinessValidationException(
+                    "La firma debe ser horizontal (entre 2:1 y 5:1) y de al menos 300 px de ancho, por ejemplo 600 x 180 px.");
+        }
+        if (ancho > FIRMA_ANCHO_MAXIMO_PX || alto > FIRMA_ALTO_MAXIMO_PX) {
+            throw new BusinessValidationException("La firma es demasiado grande: usa como máximo 3000 x 1500 px.");
+        }
+        BufferedImage imagen;
+        try {
+            imagen = ImageIO.read(new ByteArrayInputStream(contenido));
+        } catch (IOException e) {
+            imagen = null;
+        }
+        if (imagen == null || !tieneTransparencia(imagen)) {
+            throw new BusinessValidationException("La firma debe tener fondo transparente. Exporta el PNG sin fondo.");
+        }
+    }
+
+    private static boolean tieneTransparencia(BufferedImage imagen) {
+        if (!imagen.getColorModel().hasAlpha()) {
+            return false;
+        }
+        for (int y = 0; y < imagen.getHeight(); y++) {
+            for (int x = 0; x < imagen.getWidth(); x++) {
+                if ((imagen.getRGB(x, y) >>> 24) < 255) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /** Valida una imagen adjunta a una reclamación (PNG, JPG o WEBP de hasta 5 MB) sin guardarla todavía. */
@@ -152,6 +226,45 @@ public class ArchivoAlmacenamientoService {
         String original = StringUtils.cleanPath(archivo.getOriginalFilename() == null ? "imagen." + extension
                 : archivo.getOriginalFilename());
         return new ArchivoGuardado(referencia, original, tipoMime, contenido.length);
+    }
+
+    /** Boleta o captura que respalda un pago manual: PNG, JPG, WEBP o PDF de hasta 5 MB, validado por su contenido real. */
+    public ArchivoGuardado guardarComprobantePago(Long pagoId, MultipartFile archivo) {
+        if (archivo == null || archivo.isEmpty()) {
+            throw new BusinessValidationException("Selecciona la boleta o captura que quieres adjuntar.");
+        }
+        if (archivo.getSize() > TAMANO_MAXIMO_ADJUNTO_BYTES) {
+            throw new BusinessValidationException("El comprobante supera el máximo de 5 MB.");
+        }
+        byte[] contenido;
+        try {
+            contenido = archivo.getBytes();
+        } catch (IOException e) {
+            throw new BusinessValidationException("No pudimos leer el comprobante.");
+        }
+        String extension = esPng(contenido) ? "png" : esJpeg(contenido) ? "jpg" : esWebp(contenido) ? "webp"
+                : esPdf(contenido) ? "pdf" : null;
+        if (extension == null) {
+            throw new BusinessValidationException("El comprobante debe ser una imagen (PNG, JPG o WEBP) o un PDF.");
+        }
+        String referencia = guardarBytes("comprobantes/" + pagoId, UUID.randomUUID() + "." + extension, contenido);
+        String original = StringUtils.cleanPath(archivo.getOriginalFilename() == null ? "comprobante." + extension
+                : archivo.getOriginalFilename());
+        return new ArchivoGuardado(referencia, original, tipoMimeDe(extension), contenido.length);
+    }
+
+    public static String tipoMimeDe(String extension) {
+        return switch (extension.toLowerCase(Locale.ROOT)) {
+            case "png" -> "image/png";
+            case "jpg", "jpeg" -> "image/jpeg";
+            case "webp" -> "image/webp";
+            case "pdf" -> "application/pdf";
+            default -> "application/octet-stream";
+        };
+    }
+
+    private static boolean esPdf(byte[] b) {
+        return b.length > 5 && b[0] == (byte) 0x25 && b[1] == (byte) 0x50 && b[2] == (byte) 0x44 && b[3] == (byte) 0x46;
     }
 
     private static boolean esWebp(byte[] b) {

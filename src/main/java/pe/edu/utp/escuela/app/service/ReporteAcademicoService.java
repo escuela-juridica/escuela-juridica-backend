@@ -149,7 +149,7 @@ public class ReporteAcademicoService {
         Map<Long, PendienteRevisionRow> pendientes = respuestas.pendientesPorMatricula(ids).stream()
                 .collect(Collectors.toMap(PendienteRevisionRow::matriculaId, f -> f, (a, b) -> a));
         Map<Long, Certificado> certificadoPorMatricula = certificados.findByLogro_Matricula_IdIn(ids).stream()
-                .collect(Collectors.toMap(c -> c.getLogro().getMatricula().getId(), c -> c, (a, b) -> a));
+                .collect(Collectors.toMap(c -> c.getLogro().getMatricula().getId(), c -> c, Certificado::actualEntre));
         return lista.stream().map(m -> fila(m, avanceAcademico.calcular(m), pendientes.get(m.getId()),
                 certificadoPorMatricula.get(m.getId()))).toList();
     }

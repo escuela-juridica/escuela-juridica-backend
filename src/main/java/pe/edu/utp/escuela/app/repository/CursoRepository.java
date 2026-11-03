@@ -111,4 +111,8 @@ public interface CursoRepository extends JpaRepository<Curso, Long> {
             @Param("categoria") String categoria,
             @Param("hoy") LocalDate hoy,
             Pageable pageable);
+
+    /** Mayor número de registro ya usado por los cursos de un tipo en un año (0 si no hay ninguno). */
+    @Query("select coalesce(max(c.numeroRegistro), 0) from Curso c where c.tipoCurso.id = :tipoId and c.anioRegistro = :anio")
+    int maximoNumeroRegistro(@Param("tipoId") Long tipoId, @Param("anio") int anio);
 }

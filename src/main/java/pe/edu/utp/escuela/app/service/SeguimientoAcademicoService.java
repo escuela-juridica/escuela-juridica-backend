@@ -118,8 +118,21 @@ public class SeguimientoAcademicoService {
                 matricula.getCurso().getTitulo(), matricula.getCurso().getModalidad(), matricula.getEstado(),
                 matricula.getUsuario().getPersona().nombreCompleto(), matricula.getUsuario().getCorreo(),
                 matricula.getFechaMatricula(), avance.porcentaje(), avance.condiciones(), avance.cumpleTodo(),
-                avance.frase(), avance.notaFinal(), avance.asistencia(), avance.asistenciaExigida(), modulos,
-                examenes, sesiones, certificado, excepcionesDto);
+                enTerceraPersona(avance.frase()), avance.notaFinal(), avance.asistencia(), avance.asistenciaExigida(),
+                modulos, examenes, sesiones, certificado, excepcionesDto);
+    }
+
+    /** La frase del avance está redactada para el alumno ("Te falta…"); el administrador lee sobre otra persona. */
+    static String enTerceraPersona(String frase) {
+        if (frase == null) {
+            return null;
+        }
+        return frase
+                .replace("Te falta:", "Le falta:")
+                .replace("Cumples todos los requisitos activos para tu certificado.",
+                        "Cumple todos los requisitos activos para su certificado.")
+                .replace("tu nota promedio", "su nota promedio")
+                .replace("(llevas ", "(lleva ");
     }
 
     /** Concede exactamente un intento adicional: no toca los intentos existentes ni la nota. */

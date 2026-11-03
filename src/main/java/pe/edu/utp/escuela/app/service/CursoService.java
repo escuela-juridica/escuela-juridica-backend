@@ -136,7 +136,8 @@ public class CursoService {
         Curso curso = buscarOLanzar(cursoId);
         boolean modalidadSinDefinir = curso.getModalidad() == null;
 
-        LocalDate fechaFin = p.modalidad() == ModalidadCurso.VIRTUAL ? null : p.fechaFin();
+        // Un curso virtual puede indicar solo el inicio o un rango (inicio y fin); el cierre de matrícula no aplica.
+        LocalDate fechaFin = p.fechaFin();
         LocalDate fechaCierre = p.modalidad() == ModalidadCurso.VIRTUAL ? null : p.fechaCierreMatricula();
         validarModalidadYFechas(p.modalidad(), p.fechaInicio(), fechaFin, fechaCierre);
         validarPrecios(p.tipoVenta(), p.precioRegular(), p.precioPromocional(), p.promocionInicioEn(), p.promocionFinEn());
@@ -368,8 +369,12 @@ public class CursoService {
 
     private void validarModalidadYFechas(ModalidadCurso modalidad, LocalDate inicio, LocalDate fin, LocalDate cierre) {
         if (modalidad == ModalidadCurso.VIRTUAL) {
-            if (fin != null) {
-                throw new BusinessValidationException("Un curso virtual no admite fecha de fin.");
+            // Virtual: sin fechas, solo el inicio o un rango completo (inicio y fin).
+            if (fin != null && inicio == null) {
+                throw new BusinessValidationException("Para indicar la fecha de fin de un curso virtual indica también la de inicio.");
+            }
+            if (fin != null && fin.isBefore(inicio)) {
+                throw new BusinessValidationException("La fecha de fin no puede ser anterior a la de inicio.");
             }
             return;
         }
@@ -545,6 +550,7 @@ public class CursoService {
                 matriculas.existsByCurso_Id(c.getId()),
                 docentes,
                 firmantesCurso,
-                c.getCreadoEn());
+                c.getCreadoEn(),
+                c.getCodigoRegistro());
     }
 }

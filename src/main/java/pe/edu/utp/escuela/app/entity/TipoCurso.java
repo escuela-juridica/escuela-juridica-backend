@@ -28,6 +28,10 @@ public class TipoCurso {
     @Column(nullable = false, length = 120)
     private String nombre;
 
+    /** Sigla que identifica al tipo en el código de registro del curso (SM, DP…). */
+    @Column(name = "sigla_registro", nullable = false, unique = true, length = 4)
+    private String siglaRegistro;
+
     @Column(nullable = false)
     private boolean activo;
 

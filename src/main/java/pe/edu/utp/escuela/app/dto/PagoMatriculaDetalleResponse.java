@@ -6,4 +6,4 @@ import java.time.Instant;
 public record PagoMatriculaDetalleResponse(
         Long pagoId, String origen, String estado, BigDecimal importe, String moneda,
         String medio, String referencia, String motivo, Long registradoPorUsuarioId,
-        String registradoPor, Instant resultadoEn) {}
+        String registradoPor, Instant resultadoEn, boolean tieneComprobante) {}
