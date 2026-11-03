@@ -164,8 +164,12 @@ public class CertificacionService {
         return respuesta(evaluar(matricula));
     }
 
-    /** Entrega el PDF a su dueño (o a un administrador). El PDF nunca viaja por correo. */
-    @Transactional(readOnly = true)
+    /**
+     * Entrega el PDF a su dueño (o a un administrador). El PDF nunca viaja por correo. Si el archivo no existe en el
+     * almacenamiento (p. ej. un certificado cargado por script, o una carpeta restaurada), se vuelve a generar con los
+     * datos congelados del certificado: el documento es el mismo y su código no cambia.
+     */
+    @Transactional
     public Descarga descargar(String codigo) {
         Certificado certificado = certificados.findByCodigo(codigo)
                 .orElseThrow(() -> new ResourceNotFoundException("El certificado no existe."));
@@ -177,7 +181,25 @@ public class CertificacionService {
         if (Certificado.ANULADO.equals(certificado.getEstado())) {
             throw new BusinessValidationException("Este certificado fue anulado y ya no se puede descargar.");
         }
-        return new Descarga(archivos.cargar(certificado.getArchivoPdfUrl()), "certificado-" + certificado.getCodigo() + ".pdf");
+        Resource archivo;
+        try {
+            archivo = archivos.cargar(certificado.getArchivoPdfUrl());
+        } catch (ResourceNotFoundException | BusinessValidationException faltante) {
+            archivo = regenerarPdf(certificado);
+        }
+        return new Descarga(archivo, "certificado-" + certificado.getCodigo() + ".pdf");
+    }
+
+    /** Vuelve a dibujar el PDF de un certificado vigente a partir de lo congelado y lo guarda donde corresponde. */
+    private Resource regenerarPdf(Certificado c) {
+        List<CertificadoFirmante> firmantes = certificadoFirmantes.findByCertificado_IdOrderByOrdenAsc(c.getId());
+        var curso = c.getLogro().getMatricula().getCurso();
+        String verificacion = frontendBaseUrl + "/verificar-certificado?codigo=" + c.getCodigo();
+        String logoEntidad = curso.getEntidadCertificadora() != null ? curso.getEntidadCertificadora().getLogoUrl() : null;
+        c.setArchivoPdfUrl(archivos.guardarBytes("certificados", c.getCodigo() + ".pdf",
+                pdf.generar(c, firmantes, verificacion, imagenes::cargar, logoEntidad)));
+        certificados.save(c);
+        return archivos.cargar(c.getArchivoPdfUrl());
     }
 
     public record Descarga(Resource archivo, String nombre) {
@@ -337,6 +359,18 @@ public class CertificacionService {
                 "Emisión manual administrativa.", false, null, base.espera(), base.condicionesActivas(), base.nota(),
                 base.nivel());
         return emitir(s, "MANUAL", motivo, administradorId);
+    }
+
+    /**
+     * Confirma, en nombre del alumno, los nombres y apellidos que se imprimirán. Solo la usa la emisión excepcional
+     * de administración cuando el alumno no los confirmó: no toca los datos de su cuenta, solo lo que se imprime.
+     */
+    void confirmarNombresAdministrativos(Matricula matricula, String nombres) {
+        LogroCertificacion logro = logroDe(matricula);
+        logro.setNombresConfirmados(limpiar(nombres));
+        logro.setDatosConfirmadosEn(clock.instant());
+        logro.setModificadoEn(clock.instant());
+        logros.save(logro);
     }
 
     private void emitir(Situacion s, String tipoEmision) {

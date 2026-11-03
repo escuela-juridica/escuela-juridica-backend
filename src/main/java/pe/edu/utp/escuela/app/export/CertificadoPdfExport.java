@@ -24,6 +24,7 @@ import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.apache.pdfbox.util.Matrix;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import pe.edu.utp.escuela.app.entity.Certificado;
@@ -55,6 +56,15 @@ public class CertificadoPdfExport {
      */
     public byte[] generar(Certificado certificado, List<CertificadoFirmante> firmantes, String urlVerificacion,
             Function<String, byte[]> imagenes, String logoEntidadUrl) {
+        return generar(certificado, firmantes, urlVerificacion, imagenes, logoEntidadUrl, false);
+    }
+
+    /**
+     * Igual que {@link #generar(Certificado, List, String, Function, String)}; con {@code vistaPrevia} dibuja al
+     * fondo la marca «VISTA PREVIA — NO VÁLIDO» para que un borrador nunca se confunda con el certificado vigente.
+     */
+    public byte[] generar(Certificado certificado, List<CertificadoFirmante> firmantes, String urlVerificacion,
+            Function<String, byte[]> imagenes, String logoEntidadUrl, boolean vistaPrevia) {
         try (PDDocument documento = new PDDocument(); ByteArrayOutputStream salida = new ByteArrayOutputStream()) {
             PDRectangle tamano = new PDRectangle(PDRectangle.A4.getHeight(), PDRectangle.A4.getWidth());
             PDPage pagina = new PDPage(tamano);
@@ -64,6 +74,9 @@ public class CertificadoPdfExport {
 
             try (PDPageContentStream c = new PDPageContentStream(documento, pagina)) {
                 marco(c, ancho, alto);
+                if (vistaPrevia) {
+                    marcaDeAgua(c, ancho, alto);
+                }
 
                 logo(documento, c, ancho, alto);
                 texto(c, negrita, 26, AZUL, "ESCUELA JURÍDICA", ancho, alto - 110);
@@ -123,6 +136,27 @@ public class CertificadoPdfExport {
     }
 
     // ----------------------------------------------------------------- dibujo --
+
+    /** Marca diagonal clara al fondo: queda debajo del contenido, que se dibuja después. */
+    private void marcaDeAgua(PDPageContentStream c, float ancho, float alto) throws IOException {
+        double angulo = Math.toRadians(24);
+        dibujarDiagonal(c, negrita, 78, "VISTA PREVIA", ancho, alto, angulo, 0);
+        dibujarDiagonal(c, negrita, 24, "NO VÁLIDO · BORRADOR SIN EFECTO", ancho, alto, angulo, 78);
+    }
+
+    private void dibujarDiagonal(PDPageContentStream c, PDFont fuente, float tamano, String valor, float ancho, float alto,
+            double angulo, float desplazamientoY) throws IOException {
+        String limpio = seguro(fuente, valor);
+        float w = fuente.getStringWidth(limpio) / 1000 * tamano;
+        float x = (float) (ancho / 2 - (w / 2) * Math.cos(angulo) + desplazamientoY * Math.sin(angulo));
+        float y = (float) (alto / 2 - (w / 2) * Math.sin(angulo) - desplazamientoY * Math.cos(angulo) - tamano / 3);
+        c.beginText();
+        c.setFont(fuente, tamano);
+        c.setNonStrokingColor(new Color(0xE4, 0xE8, 0xEF));
+        c.setTextMatrix(Matrix.getRotateInstance(angulo, x, y));
+        c.showText(limpio);
+        c.endText();
+    }
 
     /** Logo institucional centrado arriba. Si el recurso no está disponible, el certificado sale igual solo con texto. */
     private void logo(PDDocument documento, PDPageContentStream c, float ancho, float alto) {

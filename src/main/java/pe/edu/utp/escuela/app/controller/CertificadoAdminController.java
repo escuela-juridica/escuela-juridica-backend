@@ -5,6 +5,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,6 +24,7 @@ import pe.edu.utp.escuela.app.dto.CorregirCertificadoRequest;
 import pe.edu.utp.escuela.app.dto.EmisionManualSituacionResponse;
 import pe.edu.utp.escuela.app.dto.EmitirCertificadoManualRequest;
 import pe.edu.utp.escuela.app.dto.PageResponse;
+import pe.edu.utp.escuela.app.dto.VistaPreviaCertificadoRequest;
 import pe.edu.utp.escuela.app.service.CertificadoAdminService;
 
 /** HU-035/HU-036 — Gestión administrativa de certificados (solo administrador). */
@@ -69,6 +74,19 @@ public class CertificadoAdminController {
     public CertificadoDetalleResponse corregir(@PathVariable Long certificadoId,
             @Valid @RequestBody CorregirCertificadoRequest peticion) {
         return service.corregir(certificadoId, peticion);
+    }
+
+    @PostMapping("/{certificadoId}/vista-previa")
+    @Operation(summary = "HU-036 · Vista previa del PDF con los cambios propuestos",
+            description = "Dibuja el certificado con los datos indicados y la marca VISTA PREVIA. No guarda ni modifica nada.")
+    public ResponseEntity<byte[]> vistaPrevia(@PathVariable Long certificadoId,
+            @Valid @RequestBody VistaPreviaCertificadoRequest peticion) {
+        byte[] pdf = service.vistaPrevia(certificadoId, peticion);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .cacheControl(CacheControl.noStore())
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline().filename("vista-previa.pdf").build().toString())
+                .body(pdf);
     }
 
     @PostMapping("/{certificadoId}/anular")
