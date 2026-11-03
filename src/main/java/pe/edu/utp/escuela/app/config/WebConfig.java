@@ -11,7 +11,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * pueda abrir el enlace directo de un curso de pago) es trabajo de HU-022/HU-023, no de esta
  * historia; por ahora esa ruta es pública.
  *
- * <p>HU-009/HU-032: también sirve las imágenes de firmas y logos de entidades. Solo se publican
+ * <p>HU-009/HU-032: también sirve las imágenes de firmas, logos de entidades y fotos de docentes. Solo se publican
  * esas carpetas: {@code /uploads/certificados/} (los PDF) nunca se expone como archivo estático,
  * porque el certificado es privado y se entrega únicamente a su dueño desde su endpoint. */
 @Configuration
@@ -27,7 +27,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         String ubicacion = Path.of(directorioAlmacenamiento).toAbsolutePath().normalize().toUri().toString();
         String base = ubicacion.endsWith("/") ? ubicacion : ubicacion + "/";
-        for (String carpeta : new String[] {"cursos", "firmas", "entidades"}) {
+        for (String carpeta : new String[] {"cursos", "firmas", "entidades", "docentes"}) {
             registry.addResourceHandler("/uploads/" + carpeta + "/**").addResourceLocations(base + carpeta + "/");
         }
     }

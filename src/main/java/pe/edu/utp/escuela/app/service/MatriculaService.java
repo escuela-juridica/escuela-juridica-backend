@@ -23,6 +23,7 @@ import pe.edu.utp.escuela.app.dto.MatriculaAdministrativaResponse;
 import pe.edu.utp.escuela.app.dto.MatriculaDetalleAdministrativaResponse;
 import pe.edu.utp.escuela.app.dto.MatriculaResponse;
 import pe.edu.utp.escuela.app.dto.PagoMatriculaDetalleResponse;
+import pe.edu.utp.escuela.app.dto.ReactivarMatriculaRequest;
 import pe.edu.utp.escuela.app.dto.ReenvioMatriculaResponse;
 import pe.edu.utp.escuela.app.dto.ReporteMatriculaResponse;
 import pe.edu.utp.escuela.app.entity.Curso;
@@ -232,7 +233,7 @@ public class MatriculaService {
                         pago.getId(), pago.getOrigen(), pago.getEstado(), pago.getImporte(), pago.getMoneda(),
                         pago.getMedio(), pago.getReferenciaExterna(), pago.getMotivo(),
                         pago.getRegistradoPorUsuarioId(), nombreUsuario(pago.getRegistradoPorUsuarioId()),
-                        pago.getResultadoEn()))
+                        pago.getResultadoEn(), pago.getComprobanteUrl() != null))
                 .toList();
         List<HistorialEstadoMatriculaResponse> estadosRespuesta = historial
                 .findByMatricula_IdOrderByRealizadoEnDesc(matriculaId)
@@ -270,6 +271,39 @@ public class MatriculaService {
         matricula.setCanceladaEn(clock.instant());
         matricula.setCanceladaPorUsuarioId(administradorId);
         registrarCambio(matricula, estadoAnterior, "CANCELADA", motivo, administradorId);
+        return respuesta(matricula, null);
+    }
+
+    /**
+     * Devuelve a ACTIVA una matrícula cancelada (p. ej. cancelada por error). Reutiliza la misma fila, porque un alumno
+     * tiene una sola matrícula por curso. Exige que el curso aún admita matrículas y tenga cupo; conserva el vencimiento
+     * original si todavía no pasó y, si ya pasó, lo recalcula desde hoy. El motivo queda en el historial.
+     */
+    @Transactional
+    public MatriculaResponse reactivar(Long matriculaId, ReactivarMatriculaRequest peticion) {
+        procesarVencimientos();
+        exigirAdministrador();
+        Matricula matricula = matriculas.findWithDetalleById(matriculaId)
+                .orElseThrow(() -> new ResourceNotFoundException("La matrícula no existe."));
+        if (!"CANCELADA".equals(matricula.getEstado())) {
+            throw new BusinessValidationException("Solo puedes reactivar una matrícula cancelada.");
+        }
+        Curso curso = cursos.bloquearParaMatricula(matricula.getCurso().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("El curso no existe."));
+        validarCurso(curso, false);
+        validarCupo(curso);
+
+        String motivo = peticion.motivo().strip();
+        Instant ahora = clock.instant();
+        Long administradorId = actual.get().userId();
+        matricula.setEstado("ACTIVA");
+        matricula.setMotivoCancelacion(null);
+        matricula.setCanceladaEn(null);
+        matricula.setCanceladaPorUsuarioId(null);
+        if (matricula.getFechaVencimiento() != null && !ahora.isBefore(matricula.getFechaVencimiento())) {
+            matricula.setFechaVencimiento(vencimiento(curso, ahora));
+        }
+        registrarCambio(matricula, "CANCELADA", "ACTIVA", motivo, administradorId);
         return respuesta(matricula, null);
     }
 
@@ -366,6 +400,10 @@ public class MatriculaService {
                 .orElseThrow(() -> new ResourceNotFoundException("La matrícula no existe."));
         if (!actual.get().hasRole("ADMINISTRADOR") && !m.getUsuario().getId().equals(actual.get().userId())) {
             throw new ForbiddenException();
+        }
+        // El correo anuncia «Matrícula confirmada» con acceso inmediato: solo tiene sentido si la matrícula está activa.
+        if (!"ACTIVA".equals(m.getEstado())) {
+            throw new BusinessValidationException("Solo se puede reenviar la confirmación de una matrícula activa.");
         }
         String estado = enviarConfirmacion(m, m.getFormaIngreso().equals("GRATUITA")
                 ? "El curso es gratuito; no se realizó ningún cobro."

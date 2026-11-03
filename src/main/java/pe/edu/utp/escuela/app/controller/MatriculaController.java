@@ -14,6 +14,7 @@ import pe.edu.utp.escuela.app.dto.MatriculaAdministrativaResponse;
 import pe.edu.utp.escuela.app.dto.MatriculaDetalleAdministrativaResponse;
 import pe.edu.utp.escuela.app.dto.MatriculaResponse;
 import pe.edu.utp.escuela.app.dto.PageResponse;
+import pe.edu.utp.escuela.app.dto.ReactivarMatriculaRequest;
 import pe.edu.utp.escuela.app.dto.ReenvioMatriculaResponse;
 import pe.edu.utp.escuela.app.service.MatriculaService;
 import java.time.LocalDate;
@@ -75,6 +76,13 @@ public class MatriculaController {
             @PathVariable Long matriculaId,
             @Valid @RequestBody CancelarMatriculaRequest peticion) {
         return ResponseEntity.ok(service.cancelar(matriculaId, peticion));
+    }
+
+    @PatchMapping("/admin/matriculas/{matriculaId}/reactivacion")
+    public ResponseEntity<MatriculaResponse> reactivar(
+            @PathVariable Long matriculaId,
+            @Valid @RequestBody ReactivarMatriculaRequest peticion) {
+        return ResponseEntity.ok(service.reactivar(matriculaId, peticion));
     }
 
     @PostMapping("/matriculas/{matriculaId}/reenviar-confirmacion")

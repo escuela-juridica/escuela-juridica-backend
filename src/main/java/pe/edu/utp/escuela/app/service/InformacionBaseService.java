@@ -80,7 +80,7 @@ public class InformacionBaseService {
     @Transactional
     public TipoCursoResponse crearTipoCurso(TipoCursoRequest p) {
         exigirAdministrador();
-        if (tiposCurso.existsByCodigo(p.codigo())) {
+        if (tiposCurso.existsByCodigo(textos.requireText(p.codigo(), "Código"))) {
             throw new DuplicateResourceException("Ese código ya está en uso.");
         }
         TipoCurso tipo = new TipoCurso();
@@ -97,7 +97,7 @@ public class InformacionBaseService {
         exigirAdministrador();
         TipoCurso tipo = tiposCurso.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("El tipo de curso ya no existe."));
-        if (tiposCurso.existsByCodigoAndIdNot(p.codigo(), id)) {
+        if (tiposCurso.existsByCodigoAndIdNot(textos.requireText(p.codigo(), "Código"), id)) {
             throw new DuplicateResourceException("Ese código ya está en uso.");
         }
         tipo.setCodigo(textos.requireText(p.codigo(), "Código"));
@@ -131,7 +131,7 @@ public class InformacionBaseService {
     @Transactional
     public CategoriaResponse crearCategoria(CategoriaRequest p) {
         exigirAdministrador();
-        if (categorias.existsByCodigo(p.codigo())) {
+        if (categorias.existsByCodigo(textos.requireText(p.codigo(), "Código"))) {
             throw new DuplicateResourceException("Ese código ya está en uso.");
         }
         CategoriaTematica categoria = new CategoriaTematica();
@@ -148,7 +148,7 @@ public class InformacionBaseService {
         exigirAdministrador();
         CategoriaTematica categoria = categorias.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("La categoría ya no existe."));
-        if (categorias.existsByCodigoAndIdNot(p.codigo(), id)) {
+        if (categorias.existsByCodigoAndIdNot(textos.requireText(p.codigo(), "Código"), id)) {
             throw new DuplicateResourceException("Ese código ya está en uso.");
         }
         categoria.setCodigo(textos.requireText(p.codigo(), "Código"));
@@ -245,7 +245,7 @@ public class InformacionBaseService {
     @Transactional
     public EntidadResponse crearEntidad(EntidadRequest p) {
         exigirAdministrador();
-        if (entidades.existsByNombreIgnoreCase(p.nombre())) {
+        if (entidades.existsByNombreIgnoreCase(textos.requireText(p.nombre(), "Nombre"))) {
             throw new DuplicateResourceException("Ya existe una entidad con ese nombre.");
         }
         EntidadCertificadora entidad = new EntidadCertificadora();
@@ -261,7 +261,7 @@ public class InformacionBaseService {
         exigirAdministrador();
         EntidadCertificadora entidad = entidades.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("La entidad ya no existe."));
-        if (entidades.existsByNombreIgnoreCaseAndIdNot(p.nombre(), id)) {
+        if (entidades.existsByNombreIgnoreCaseAndIdNot(textos.requireText(p.nombre(), "Nombre"), id)) {
             throw new DuplicateResourceException("Ya existe una entidad con ese nombre.");
         }
         entidad.setNombre(textos.requireText(p.nombre(), "Nombre"));
@@ -282,14 +282,15 @@ public class InformacionBaseService {
         return new EntidadResponse(e.getId(), e.getNombre(), e.getLogoUrl(), e.isActivo());
     }
 
-    /** Sube la imagen de una firma ({@code FIRMA}) o el logo de una entidad ({@code LOGO}). */
+    /** Sube la imagen de una firma ({@code FIRMA}), el logo de una entidad ({@code LOGO}) o la foto de un docente ({@code FOTO}). */
     @Transactional(readOnly = true)
     public ImagenSubidaResponse subirImagenCertificado(String tipo, MultipartFile archivo) {
         exigirAdministrador();
         String carpeta = switch (tipo == null ? "" : tipo) {
             case "FIRMA" -> "firmas";
             case "LOGO" -> "entidades";
-            default -> throw new BusinessValidationException("Indica si la imagen es una firma o un logo.");
+            case "FOTO" -> "docentes";
+            default -> throw new BusinessValidationException("Indica si la imagen es una firma, un logo o la foto de un docente.");
         };
         return new ImagenSubidaResponse(almacenamiento.guardarImagen(carpeta, archivo));
     }
@@ -363,7 +364,7 @@ public class InformacionBaseService {
     @Transactional
     public TipoMaterialResponse crearTipoMaterial(TipoMaterialRequest p) {
         exigirAdministrador();
-        if (tiposMaterial.findByCodigo(p.codigo()).isPresent()) {
+        if (tiposMaterial.findByCodigo(textos.requireText(p.codigo(), "Código")).isPresent()) {
             throw new DuplicateResourceException("Ese código ya está en uso.");
         }
         TipoMaterial tipo = new TipoMaterial();
@@ -380,7 +381,7 @@ public class InformacionBaseService {
         exigirAdministrador();
         TipoMaterial tipo = tiposMaterial.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("El tipo de material ya no existe."));
-        tiposMaterial.findByCodigo(p.codigo())
+        tiposMaterial.findByCodigo(textos.requireText(p.codigo(), "Código"))
                 .filter(existente -> !existente.getId().equals(id))
                 .ifPresent(existente -> {
                     throw new DuplicateResourceException("Ese código ya está en uso.");
@@ -472,7 +473,7 @@ public class InformacionBaseService {
     @Transactional
     public ConfiguracionResponse crearConfiguracion(ConfiguracionRequest p) {
         exigirAdministrador();
-        if (configuraciones.existsByCodigo(p.codigo())) {
+        if (configuraciones.existsByCodigo(textos.requireText(p.codigo(), "Código"))) {
             throw new DuplicateResourceException("Ese código ya está en uso.");
         }
         ConfiguracionInstitucional configuracion = new ConfiguracionInstitucional();

@@ -888,6 +888,7 @@ CREATE TABLE pago (
     atendido_en timestamptz,
     atendido_por_usuario_id bigint,
     registrado_por_usuario_id bigint,
+    comprobante_url varchar(255),
     iniciado_en timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
     creado_en timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
     modificado_en timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -923,6 +924,7 @@ COMMENT ON COLUMN pago.detalle_atencion IS 'Descripcion de la incidencia.';
 COMMENT ON COLUMN pago.atendido_en IS 'Momento de atencion de la incidencia.';
 COMMENT ON COLUMN pago.atendido_por_usuario_id IS 'Administrador que atendio la incidencia.';
 COMMENT ON COLUMN pago.registrado_por_usuario_id IS 'Administrador que registro pago manual o exoneracion.';
+COMMENT ON COLUMN pago.comprobante_url IS 'Boleta o captura opcional que respalda un pago manual; archivo privado, solo lo descarga la administracion.';
 COMMENT ON COLUMN pago.iniciado_en IS 'Momento de inicio del intento.';
 COMMENT ON COLUMN pago.creado_en IS 'Fecha y hora de creacion.';
 COMMENT ON COLUMN pago.modificado_en IS 'Fecha y hora de ultima modificacion.';
@@ -1586,12 +1588,19 @@ VALUES
 ('Gabriel Antonio', 'Mayanga', 'Cabrera', '999 100 102', NULL, NULL, NULL),
 ('Joel Anthony', 'Saldana', 'Chavez', '999 100 103', NULL, NULL, NULL),
 ('Juan Jose', 'Morales', 'Velasquez', '999 100 104', NULL, NULL, NULL),
-('Miguel Bryan', 'Saldivar', 'Davalos', NULL, 'img/instructores/miguel.jpg',
+('Miguel Bryan', 'Saldivar', 'Davalos', NULL, NULL,
  'Docente especialista en Derecho Publico', 'Docente con experiencia en derecho administrativo, registral y gestion estatal.'),
-('Ariana Fiorella', 'Lazaro', 'Maza', NULL, 'img/instructores/ariana.jpg',
+('Ariana Fiorella', 'Lazaro', 'Maza', NULL, NULL,
  'Docente especialista en Litigacion', 'Docente con experiencia en litigacion oral, derecho penal y redaccion juridica.'),
-('Lilia Mercedes', 'Guerra', 'Macedo', NULL, NULL, 'Directora academica', NULL),
-('Yourka Lisbeth', 'Lucich', 'Berrio', NULL, NULL, 'Directora institucional', NULL);
+('Lilia Mercedes', 'Guerra', 'Macedo', NULL, NULL, NULL, NULL),
+('Yourka Lisbeth', 'Lucich', 'Berrio', NULL, NULL, NULL, NULL);
+
+INSERT INTO persona
+    (nombres, apellido_paterno, apellido_materno, telefono, foto_url, cargo_profesional, biografia_profesional)
+VALUES
+('Rosa Elena', 'Quispe', 'Valdivia', NULL, NULL, 'Docente especialista en Derecho Laboral', 'Abogada con experiencia en asesoria laboral de empresas y patrocinio en procesos laborales.'),
+('Carlos Alberto', 'Mendoza', 'Rios', NULL, NULL, 'Docente especialista en Derecho Tributario y Arbitraje', 'Abogado con experiencia en fiscalizacion tributaria, contrataciones del Estado y arbitraje administrativo.'),
+('Patricia Lucia', 'Cardenas', 'Huaman', NULL, NULL, 'Docente especialista en Derecho Notarial y Registral', 'Abogada con experiencia en procedimientos registrales, saneamiento de propiedad y practica notarial.');
 
 -- Las cuatro cuentas usan Marco1415@ en el ambiente de demostracion.
 INSERT INTO usuario
@@ -1640,22 +1649,24 @@ FROM (VALUES
 ) v(nombres, apellido, cargo, imagen)
 JOIN persona p ON p.nombres = v.nombres AND p.apellido_paterno = v.apellido;
 
-WITH datos(slug,titulo,descripcion,imagen,tipo,categoria,entidad,modalidad,venta,estado,destacado,precio,promocion,inicio,fin,cierre,cupo,horas) AS (VALUES
-('derecho-registral-notarial','Diplomado en Derecho Registral y Notarial','Formacion aplicada en procedimientos registrales y notariales.','https://images.unsplash.com/photo-1589578527966-fdac0f44566c?q=80&w=1200','DIPLOMADO','DERECHO_REGISTRAL','Colegio de Abogados de Lima','VIRTUAL','PAGADO','PUBLICADO',true,650.00,450.00,NULL::date,NULL::date,NULL::date,NULL::integer,120.00),
-('contrataciones-estado','Especializacion en Contrataciones del Estado','Procedimientos y responsabilidades en contratacion publica.','https://images.unsplash.com/photo-1593115057322-e94b77572f20?q=80&w=1200','ESPECIALIZACION','CONTRATACIONES_ESTADO','Colegio de Abogados de Lima','HIBRIDO','PAGADO','PUBLICADO',true,380.00,NULL::numeric,DATE '2026-10-15',DATE '2027-01-20',DATE '2026-10-14',40,96.00),
-('litigacion-penal','Curso de Litigacion Oral en el Proceso Penal','Argumentacion, interrogatorio y actuacion oral.','https://images.unsplash.com/photo-1521587760476-6c12a4b040da?q=80&w=1200','CURSO','DERECHO_PENAL',NULL,'EN_VIVO','PAGADO','PUBLICADO',false,290.00,NULL::numeric,DATE '2026-10-20',DATE '2026-12-20',DATE '2026-10-19',35,48.00),
-('derecho-laboral','Diplomado en Derecho Laboral y Procesal Laboral','Relacion laboral y actuaciones del proceso laboral.','https://images.unsplash.com/photo-1450101499163-c8848c66ca85?q=80&w=1200','DIPLOMADO','DERECHO_LABORAL','Colegio de Abogados de Lima Sur','VIRTUAL','PAGADO','EN_CURSO',true,700.00,520.00,NULL::date,NULL::date,NULL::date,NULL::integer,132.00),
-('procedimiento-administrativo','Seminario de Procedimiento Administrativo General','Actualizacion practica en procedimiento administrativo.','https://images.unsplash.com/photo-1556761175-b413da4baf72?q=80&w=1200','SEMINARIO','DERECHO_ADMINISTRATIVO',NULL,'EN_VIVO','GRATUITO','PUBLICADO',false,0.00,NULL::numeric,DATE '2026-11-05',DATE '2026-11-06',DATE '2026-11-04',100,16.00),
-('gestion-publica','Diplomado en Gestion Publica y Modernizacion del Estado','Gestion publica orientada a resultados y modernizacion.','https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?q=80&w=1200','DIPLOMADO','GESTION_PUBLICA','Ilustre Colegio de Abogados de Canete','HIBRIDO','PAGADO','PUBLICADO',true,620.00,490.00,DATE '2026-11-10',DATE '2027-02-20',DATE '2026-11-09',50,120.00),
-('funcion-notarial','Curso de Derecho Notarial y Funcion Notarial','Funcion notarial, instrumentos publicos y responsabilidad.','https://images.unsplash.com/photo-1455390582262-044cdead277a?q=80&w=1200','CURSO','DERECHO_NOTARIAL',NULL,'VIRTUAL','PAGADO','PUBLICADO',false,320.00,NULL::numeric,NULL::date,NULL::date,NULL::date,NULL::integer,32.00),
-('saneamiento-inmuebles','Especializacion en Saneamiento Fisico Legal de Inmuebles','Saneamiento y regularizacion de la propiedad inmueble.','https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1200','ESPECIALIZACION','DERECHO_INMOBILIARIO','Colegio de Abogados de Lima','VIRTUAL','PAGADO','PUBLICADO',true,360.00,290.00,NULL::date,NULL::date,NULL::date,NULL::integer,72.00),
-('redaccion-juridica','Taller de Redaccion Juridica Profesional','Tecnicas para redactar documentos juridicos claros.','https://images.unsplash.com/photo-1456324504439-367cee3b3c32?q=80&w=1200','TALLER','DERECHO_ADMINISTRATIVO',NULL,'VIRTUAL','GRATUITO','PUBLICADO',false,0.00,NULL::numeric,NULL::date,NULL::date,NULL::date,NULL::integer,20.00)
-,('tributacion-empresarial','Programa de Actualizacion en Tributacion Empresarial','Actualizacion practica sobre obligaciones y contingencias tributarias.','https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=1200','PROGRAMA_ACTUALIZACION','DERECHO_TRIBUTARIO',NULL,'VIRTUAL','PAGADO','PUBLICADO',false,280.00,NULL::numeric,NULL::date,NULL::date,NULL::date,NULL::integer,40.00)
-,('arbitraje-contrataciones','Curso de Arbitraje en Contrataciones Publicas','Fundamentos y casos aplicados de arbitraje con el Estado.','https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=1200','CURSO','ARBITRAJE','Colegio de Abogados de Lima','HIBRIDO','PAGADO','PUBLICADO',false,410.00,350.00,DATE '2026-12-01',DATE '2027-02-15',DATE '2026-11-30',45,64.00)
-,('derecho-urbanistico','Especializacion en Derecho Urbanistico','Regulacion urbana, habilitaciones y gestion del suelo.','https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1200','ESPECIALIZACION','DERECHO_URBANISTICO','Colegio de Abogados de Lima Sur','VIRTUAL','PAGADO','PUBLICADO',true,390.00,NULL::numeric,NULL::date,NULL::date,NULL::date,NULL::integer,72.00)
-,('argumentacion-juridica','Taller de Argumentacion Juridica','Herramientas para construir argumentos claros y persuasivos.','https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=1200','TALLER_CASOS_PRACTICOS','HABILIDADES_PROFESIONALES',NULL,'VIRTUAL','GRATUITO','PUBLICADO',false,0.00,NULL::numeric,NULL::date,NULL::date,NULL::date,NULL::integer,18.00)
-,('congreso-gestion-publica','Congreso de Innovacion y Gestion Publica','Conferencias sobre modernizacion, integridad e innovacion publica.','https://images.unsplash.com/photo-1505373877841-8d25f7d46678?q=80&w=1200','CONGRESO_CONFERENCIA','GESTION_PUBLICA',NULL,'EN_VIVO','PAGADO','PUBLICADO',false,180.00,NULL::numeric,DATE '2027-01-16',DATE '2027-01-17',DATE '2027-01-15',200,16.00)
-,('in-house-procedimiento','Programa In-house de Procedimiento Administrativo','Oferta demostrativa con configuracion ordinaria y etiqueta comercial In-house.','https://images.unsplash.com/photo-1556761175-b413da4baf72?q=80&w=1200','IN_HOUSE','DERECHO_ADMINISTRATIVO',NULL,'VIRTUAL','PAGADO','BORRADOR',false,900.00,NULL::numeric,NULL::date,NULL::date,NULL::date,30,24.00)
+-- Catalogo: fechas relativas al dia de ejecucion, para que siempre queden coherentes (cursos en marcha,
+-- proximos a iniciar y con matricula abierta).
+WITH datos(slug,titulo,descripcion,imagen,tipo,categoria,entidad,modalidad,venta,estado,destacado,precio,promocion,inicio,fin,cierre,cupo,horas,beneficios) AS (VALUES
+('derecho-registral-notarial','Diplomado en Derecho Registral y Notarial','Programa integral que articula la funcion registral y la funcion notarial: calificacion de titulos, principios registrales, publicidad registral, escrituras publicas y responsabilidad del notario. Incluye el analisis de resoluciones del Tribunal Registral y casos practicos de inscripcion.','https://images.unsplash.com/photo-1589578527966-fdac0f44566c?q=80&w=1200','DIPLOMADO','DERECHO_REGISTRAL','Colegio de Abogados de Lima','VIRTUAL','PAGADO','PUBLICADO',true,650.00,450.00,NULL::date,NULL::date,NULL::date,NULL::integer,120.00,ARRAY['Acceso inmediato a todos los materiales','Casos practicos con resoluciones del Tribunal Registral','Acompanamiento academico durante el programa','Certificado refrendado por el Colegio de Abogados de Lima']::text[]),
+('contrataciones-estado','Especializacion en Contrataciones del Estado','Formacion aplicada sobre la Ley de Contrataciones del Estado y su reglamento: planificacion, procedimientos de seleccion, ejecucion contractual, controversias y responsabilidad del funcionario. Combina clases grabadas con sesiones en vivo de analisis de casos.','https://images.unsplash.com/photo-1593115057322-e94b77572f20?q=80&w=1200','ESPECIALIZACION','CONTRATACIONES_ESTADO','Colegio de Abogados de Lima','HIBRIDO','PAGADO','PUBLICADO',true,380.00,NULL::numeric,(CURRENT_DATE-18),(CURRENT_DATE+78),(CURRENT_DATE+4),40,96.00,ARRAY['Clases grabadas y sesiones en vivo con el docente','Analisis de bases estandar y casos de procedimientos de seleccion','Acompanamiento academico','Certificado refrendado por el Colegio de Abogados de Lima']::text[]),
+('litigacion-penal','Curso de Litigacion Oral en el Proceso Penal','Entrenamiento practico en litigacion oral para el proceso penal acusatorio: construccion de la teoria del caso, alegatos, interrogatorio y contraexamen, y manejo de objeciones. Las sesiones en vivo se desarrollan como simulaciones de audiencia.','https://images.unsplash.com/photo-1521587760476-6c12a4b040da?q=80&w=1200','CURSO','DERECHO_PENAL',NULL::text,'EN_VIVO','PAGADO','PUBLICADO',false,290.00,NULL::numeric,(CURRENT_DATE+10),(CURRENT_DATE+66),(CURRENT_DATE+9),35,48.00,ARRAY['Sesiones en vivo con simulacion de audiencias','Retroalimentacion individual del docente','Material de apoyo y guias de practica','Certificado de participacion segun cumplimiento']::text[]),
+('derecho-laboral','Diplomado en Derecho Laboral y Procesal Laboral','Diplomado que recorre la relacion individual de trabajo y el proceso laboral: contratacion, derechos y beneficios, extincion del vinculo, y las etapas y audiencias de la Nueva Ley Procesal del Trabajo, con modelos de escritos y casos resueltos.','https://images.unsplash.com/photo-1450101499163-c8848c66ca85?q=80&w=1200','DIPLOMADO','DERECHO_LABORAL','Colegio de Abogados de Lima Sur','VIRTUAL','PAGADO','EN_CURSO',true,700.00,520.00,NULL::date,NULL::date,NULL::date,NULL::integer,132.00,ARRAY['Acceso inmediato a los materiales','Modelos de demandas y escritos laborales','Casos resueltos por modulo','Certificado refrendado por el Colegio de Abogados de Lima Sur']::text[]),
+('procedimiento-administrativo','Seminario de Procedimiento Administrativo General','Seminario de dos jornadas sobre el procedimiento administrativo general: principios, validez y eficacia del acto administrativo, recursos y silencio administrativo, con casos practicos de la gestion publica. Actividad gratuita con cupos limitados.','https://images.unsplash.com/photo-1556761175-b413da4baf72?q=80&w=1200','SEMINARIO','DERECHO_ADMINISTRATIVO',NULL::text,'EN_VIVO','GRATUITO','PUBLICADO',false,0.00,NULL::numeric,(CURRENT_DATE+6),(CURRENT_DATE+7),(CURRENT_DATE+5),100,16.00,ARRAY['Participacion gratuita','Dos jornadas en vivo de ocho horas','Casos practicos de entidades publicas','Constancia de participacion']::text[]),
+('gestion-publica','Diplomado en Gestion Publica y Modernizacion del Estado','Diplomado orientado a funcionarios y profesionales del sector publico: gestion por resultados, planeamiento y presupuesto, politica de modernizacion, integridad publica y gobierno digital. Combina clases grabadas con talleres en vivo.','https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?q=80&w=1200','DIPLOMADO','GESTION_PUBLICA','Ilustre Colegio de Abogados de Canete','HIBRIDO','PAGADO','PUBLICADO',true,620.00,490.00,(CURRENT_DATE+21),(CURRENT_DATE+120),(CURRENT_DATE+20),50,120.00,ARRAY['Clases grabadas y talleres en vivo','Herramientas de planeamiento y seguimiento de resultados','Acompanamiento academico','Certificado refrendado por el Colegio de Abogados de Canete']::text[]),
+('funcion-notarial','Curso de Derecho Notarial y Funcion Notarial','Curso sobre la funcion notarial y sus instrumentos: naturaleza de la fe publica, actos que requieren escritura publica, actas notariales y asuntos no contenciosos de competencia notarial. Orientado a abogados, asistentes y personal de notarias.','https://images.unsplash.com/photo-1455390582262-044cdead277a?q=80&w=1200','CURSO','DERECHO_NOTARIAL',NULL::text,'VIRTUAL','PAGADO','PUBLICADO',false,320.00,NULL::numeric,NULL::date,NULL::date,NULL::date,NULL::integer,32.00,ARRAY['Acceso inmediato a los materiales','Modelos de instrumentos publicos','Acompanamiento academico','Certificado de aprobacion']::text[]),
+('saneamiento-inmuebles','Especializacion en Saneamiento Fisico Legal de Inmuebles','Especializacion para regularizar la situacion fisica y legal de predios: estudio de titulos, cargas y gravamenes, prescripcion adquisitiva, rectificacion de areas y linderos, y formalizacion de la propiedad ante el registro.','https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1200','ESPECIALIZACION','DERECHO_INMOBILIARIO','Colegio de Abogados de Lima','VIRTUAL','PAGADO','PUBLICADO',true,360.00,290.00,NULL::date,NULL::date,NULL::date,NULL::integer,72.00,ARRAY['Acceso inmediato a los materiales','Lista de verificacion para estudios de titulos','Casos de saneamiento resueltos','Certificado refrendado por el Colegio de Abogados de Lima']::text[]),
+('redaccion-juridica','Taller de Redaccion Juridica Profesional','Taller practico para escribir con claridad, precision y orden: estructura de escritos, resoluciones y opiniones legales, correccion de estilo y errores frecuentes. Participacion gratuita con acceso inmediato.','https://images.unsplash.com/photo-1456324504439-367cee3b3c32?q=80&w=1200','TALLER','DERECHO_ADMINISTRATIVO',NULL::text,'VIRTUAL','GRATUITO','PUBLICADO',false,0.00,NULL::numeric,NULL::date,NULL::date,NULL::date,NULL::integer,20.00,ARRAY['Participacion gratuita','Ejercicios con correccion modelo','Plantillas de escritos','Constancia de participacion']::text[]),
+('tributacion-empresarial','Programa de Actualizacion en Tributacion Empresarial','Programa de actualizacion sobre las obligaciones tributarias de la empresa: Impuesto a la Renta, IGV y comprobantes de pago, procedimiento de fiscalizacion, reclamaciones y planificacion tributaria para reducir contingencias.','https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=1200','PROGRAMA_ACTUALIZACION','DERECHO_TRIBUTARIO',NULL::text,'VIRTUAL','PAGADO','PUBLICADO',false,280.00,NULL::numeric,NULL::date,NULL::date,NULL::date,NULL::integer,40.00,ARRAY['Acceso inmediato a los materiales','Casos de fiscalizacion y contingencias','Esquemas de cumplimiento tributario','Certificado de aprobacion']::text[]),
+('arbitraje-contrataciones','Curso de Arbitraje en Contrataciones Publicas','Curso sobre el arbitraje en las controversias derivadas de contratos con el Estado: convenio arbitral, constitucion del tribunal, desarrollo del proceso, laudo, anulacion y ejecucion, con casos y modelos de escritos.','https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=1200','CURSO','ARBITRAJE','Colegio de Abogados de Lima','HIBRIDO','PAGADO','PUBLICADO',false,410.00,350.00,(CURRENT_DATE+35),(CURRENT_DATE+105),(CURRENT_DATE+34),45,64.00,ARRAY['Clases grabadas y sesiones en vivo','Modelos de escritos arbitrales','Casos de laudos y anulaciones','Certificado refrendado por el Colegio de Abogados de Lima']::text[]),
+('derecho-urbanistico','Especializacion en Derecho Urbanistico','Especializacion sobre el regimen juridico del suelo y la ciudad: planeamiento y zonificacion, parametros urbanisticos, habilitaciones urbanas, licencias de edificacion y conformidad de obra, con casos de gobiernos locales.','https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1200','ESPECIALIZACION','DERECHO_URBANISTICO','Colegio de Abogados de Lima Sur','VIRTUAL','PAGADO','PUBLICADO',true,390.00,NULL::numeric,NULL::date,NULL::date,NULL::date,NULL::integer,72.00,ARRAY['Acceso inmediato a los materiales','Casos de licencias y habilitaciones','Acompanamiento academico','Certificado refrendado por el Colegio de Abogados de Lima Sur']::text[]),
+('argumentacion-juridica','Taller de Argumentacion Juridica','Taller de casos practicos para construir y evaluar argumentos juridicos: estructura de un argumento, falacias frecuentes, argumentacion en escritos y audiencias, y refutacion de contraargumentos. Participacion gratuita.','https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=1200','TALLER_CASOS_PRACTICOS','HABILIDADES_PROFESIONALES',NULL::text,'VIRTUAL','GRATUITO','PUBLICADO',false,0.00,NULL::numeric,NULL::date,NULL::date,NULL::date,NULL::integer,18.00,ARRAY['Participacion gratuita','Casos practicos con solucion comentada','Guia de falacias frecuentes','Constancia de participacion']::text[]),
+('congreso-gestion-publica','Congreso de Innovacion y Gestion Publica','Congreso de dos jornadas con conferencias sobre modernizacion, innovacion, integridad y gobierno digital en el sector publico, a cargo de especialistas y funcionarios con experiencia en gestion.','https://images.unsplash.com/photo-1505373877841-8d25f7d46678?q=80&w=1200','CONGRESO_CONFERENCIA','GESTION_PUBLICA',NULL::text,'EN_VIVO','PAGADO','PUBLICADO',false,180.00,NULL::numeric,(CURRENT_DATE+45),(CURRENT_DATE+46),(CURRENT_DATE+44),200,16.00,ARRAY['Dos jornadas de conferencias en vivo','Presentaciones de los ponentes','Espacio de preguntas con los expositores','Certificado de asistencia']::text[]),
+('in-house-procedimiento','Programa In-house de Procedimiento Administrativo','Programa in-house disenado a la medida de una entidad: aplicacion del procedimiento administrativo general a sus propios tramites, gestion de expedientes y notificaciones, con casos tomados de la operacion de la institucion.','https://images.unsplash.com/photo-1556761175-b413da4baf72?q=80&w=1200','IN_HOUSE','DERECHO_ADMINISTRATIVO',NULL::text,'VIRTUAL','PAGADO','BORRADOR',false,900.00,NULL::numeric,NULL::date,NULL::date,NULL::date,30,24.00,ARRAY['Contenido adaptado a la entidad','Casos de la propia institucion','Grupo reducido','Certificado de participacion']::text[])
 )
 INSERT INTO curso
     (url_amigable,titulo,descripcion,imagen_portada_url,tipo_curso_id,categoria_tematica_id,
@@ -1669,7 +1680,7 @@ SELECT d.slug,d.titulo,d.descripcion,d.imagen,tc.tipo_curso_id,ct.categoria_tema
        CASE WHEN d.promocion IS NULL THEN NULL ELSE CURRENT_TIMESTAMP + interval '60 days' END,
        d.inicio,d.fin,d.cierre,d.cupo,d.horas,
        CASE WHEN d.modalidad='VIRTUAL' THEN NULL ELSE 180 END,
-       ARRAY['Acceso a materiales','Acompanamiento academico','Certificado segun cumplimiento'],
+       d.beneficios,
        u.usuario_id,CURRENT_TIMESTAMP,
        CASE WHEN d.estado='EN_CURSO' THEN CURRENT_TIMESTAMP ELSE NULL END
 FROM datos d
@@ -1683,23 +1694,28 @@ INSERT INTO curso_docente (curso_id, persona_id, orden)
 SELECT c.curso_id, p.persona_id, v.orden
 FROM curso c
 JOIN (VALUES
- ('derecho-registral-notarial','Miguel Bryan','Saldivar',1),
- ('derecho-registral-notarial','Ariana Fiorella','Lazaro',2),
+ ('derecho-registral-notarial','Patricia Lucia','Cardenas',1),
+ ('derecho-registral-notarial','Miguel Bryan','Saldivar',2),
  ('contrataciones-estado','Miguel Bryan','Saldivar',1),
+ ('contrataciones-estado','Carlos Alberto','Mendoza',2),
  ('litigacion-penal','Ariana Fiorella','Lazaro',1),
- ('derecho-laboral','Miguel Bryan','Saldivar',1),
+ ('derecho-laboral','Rosa Elena','Quispe',1),
+ ('derecho-laboral','Ariana Fiorella','Lazaro',2),
  ('procedimiento-administrativo','Miguel Bryan','Saldivar',1),
  ('gestion-publica','Miguel Bryan','Saldivar',1),
- ('gestion-publica','Ariana Fiorella','Lazaro',2),
- ('funcion-notarial','Ariana Fiorella','Lazaro',1),
- ('saneamiento-inmuebles','Miguel Bryan','Saldivar',1),
+ ('gestion-publica','Carlos Alberto','Mendoza',2),
+ ('funcion-notarial','Patricia Lucia','Cardenas',1),
+ ('saneamiento-inmuebles','Patricia Lucia','Cardenas',1),
+ ('saneamiento-inmuebles','Miguel Bryan','Saldivar',2),
  ('redaccion-juridica','Ariana Fiorella','Lazaro',1),
- ('tributacion-empresarial','Miguel Bryan','Saldivar',1),
- ('arbitraje-contrataciones','Ariana Fiorella','Lazaro',1),
+ ('tributacion-empresarial','Carlos Alberto','Mendoza',1),
+ ('arbitraje-contrataciones','Carlos Alberto','Mendoza',1),
+ ('arbitraje-contrataciones','Ariana Fiorella','Lazaro',2),
  ('derecho-urbanistico','Miguel Bryan','Saldivar',1),
  ('argumentacion-juridica','Ariana Fiorella','Lazaro',1),
  ('congreso-gestion-publica','Miguel Bryan','Saldivar',1),
  ('congreso-gestion-publica','Ariana Fiorella','Lazaro',2),
+ ('congreso-gestion-publica','Carlos Alberto','Mendoza',3),
  ('in-house-procedimiento','Miguel Bryan','Saldivar',1)
 ) v(slug,nombres,apellido,orden) ON c.url_amigable=v.slug
 JOIN persona p ON p.nombres=v.nombres AND p.apellido_paterno=v.apellido;
@@ -1720,19 +1736,114 @@ INSERT INTO historial_estado_curso (curso_id,estado_nuevo_id,realizado_por_usuar
 SELECT c.curso_id,c.estado_curso_id,c.creado_por_usuario_id FROM curso c;
 
 INSERT INTO modulo (curso_id,titulo,descripcion,orden)
-SELECT c.curso_id,'Modulo '||g.n,'Contenido academico del modulo '||g.n,g.n
-FROM curso c CROSS JOIN generate_series(1,2) g(n);
+SELECT c.curso_id,v.titulo,v.descripcion,v.orden
+FROM (VALUES
+ ('derecho-registral-notarial',1,'Fundamentos del sistema registral','Principios registrales, organizacion de los Registros Publicos y publicidad registral.'),
+ ('derecho-registral-notarial',2,'Funcion notarial e instrumentos publicos','Organizacion del notariado, escrituras publicas y formalidades del acto.'),
+ ('contrataciones-estado',1,'Planificacion y seleccion','Del plan anual de contrataciones a la buena pro.'),
+ ('contrataciones-estado',2,'Ejecucion contractual y controversias','Gestion del contrato, adicionales, penalidades y solucion de controversias.'),
+ ('litigacion-penal',1,'Teoria del caso y alegatos','Como estructurar el caso y presentarlo ante el juez.'),
+ ('litigacion-penal',2,'Examen y contraexamen','Tecnicas de interrogatorio y manejo de objeciones.'),
+ ('derecho-laboral',1,'Relacion laboral y contrato de trabajo','Elementos de la relacion laboral y modalidades de contratacion.'),
+ ('derecho-laboral',2,'Proceso laboral','Etapas, audiencias y prueba en la Nueva Ley Procesal del Trabajo.'),
+ ('procedimiento-administrativo',1,'Principios y actos administrativos','Reglas generales del procedimiento y requisitos del acto administrativo.'),
+ ('procedimiento-administrativo',2,'Recursos y silencio administrativo','Impugnacion de actos y efectos del silencio.'),
+ ('gestion-publica',1,'Gestion por resultados','Planeamiento, presupuesto e indicadores de desempeno.'),
+ ('gestion-publica',2,'Modernizacion y gobierno digital','Politica de modernizacion, integridad y servicios digitales.'),
+ ('funcion-notarial',1,'La funcion notarial','Naturaleza, principios y alcance de la funcion notarial.'),
+ ('funcion-notarial',2,'Instrumentos publicos notariales','Escrituras, actas y asuntos no contenciosos.'),
+ ('saneamiento-inmuebles',1,'Diagnostico fisico y legal del inmueble','Verificacion registral y revision de titulos.'),
+ ('saneamiento-inmuebles',2,'Regularizacion de la propiedad','Vias para formalizar y rectificar la propiedad.'),
+ ('redaccion-juridica',1,'Claridad y estructura','Principios de la escritura juridica clara.'),
+ ('redaccion-juridica',2,'Practica de redaccion','Escritos reales y correccion de estilo.'),
+ ('tributacion-empresarial',1,'Obligaciones tributarias de la empresa','Impuestos principales y comprobantes de pago.'),
+ ('tributacion-empresarial',2,'Fiscalizacion y contingencias','Procedimientos de la administracion tributaria y defensa del contribuyente.'),
+ ('arbitraje-contrataciones',1,'El arbitraje y el convenio arbitral','Fundamentos del arbitraje y como se inicia.'),
+ ('arbitraje-contrataciones',2,'Arbitraje con el Estado','Particularidades del arbitraje en contratacion publica.'),
+ ('derecho-urbanistico',1,'Planeamiento urbano y uso del suelo','Instrumentos de planeamiento y parametros.'),
+ ('derecho-urbanistico',2,'Habilitaciones y edificaciones','Procedimientos para habilitar y edificar.'),
+ ('argumentacion-juridica',1,'Fundamentos de la argumentacion','Estructura del argumento y errores de razonamiento.'),
+ ('argumentacion-juridica',2,'Argumentar en la practica','Persuasion y refutacion en escritos y audiencias.'),
+ ('congreso-gestion-publica',1,'Innovacion publica','Tendencias y experiencias de innovacion en entidades publicas.'),
+ ('congreso-gestion-publica',2,'Integridad y gobierno digital','Integridad publica y servicios digitales al ciudadano.'),
+ ('in-house-procedimiento',1,'Marco del procedimiento administrativo','Ambito de aplicacion y reglas generales.'),
+ ('in-house-procedimiento',2,'Aplicacion en la entidad','Del expediente a la notificacion.')
+) v(slug,orden,titulo,descripcion) JOIN curso c ON c.url_amigable=v.slug;
 
+-- Las sesiones en vivo (segunda leccion de cada modulo en cursos EN_VIVO/HIBRIDO) se programan a las 19:00 (hora
+-- de Lima) en fechas relativas al dia de ejecucion; el seminario y el congreso duran jornadas de 8 horas.
 INSERT INTO leccion
     (modulo_id,titulo,descripcion,orden,tipo,estado,es_obligatoria,es_vista_previa,
      fecha_hora_inicio,fecha_hora_fin,enlace_reunion)
-SELECT m.modulo_id,'Leccion '||g.n,'Contenido de aprendizaje de la leccion '||g.n,g.n,
-       CASE WHEN c.modalidad IN ('EN_VIVO','HIBRIDO') AND g.n=2 THEN 'EN_VIVO' ELSE 'GRABADA' END,
-       'PROGRAMADA',true,(m.orden=1 AND g.n=1),
-       CASE WHEN c.modalidad IN ('EN_VIVO','HIBRIDO') AND g.n=2 THEN CURRENT_TIMESTAMP+interval '15 days' END,
-       CASE WHEN c.modalidad IN ('EN_VIVO','HIBRIDO') AND g.n=2 THEN CURRENT_TIMESTAMP+interval '15 days 2 hours' END,
-       CASE WHEN c.modalidad IN ('EN_VIVO','HIBRIDO') AND g.n=2 THEN 'https://meet.example.com/esejur-demo' END
-FROM modulo m JOIN curso c ON c.curso_id=m.curso_id CROSS JOIN generate_series(1,2) g(n);
+SELECT m.modulo_id,v.titulo,v.descripcion,v.orden,CASE WHEN v.en_vivo THEN 'EN_VIVO' ELSE 'GRABADA' END,
+       'PROGRAMADA',true,(v.modulo=1 AND v.orden=1),
+       CASE WHEN v.en_vivo THEN (((CURRENT_DATE+v.dia)+v.hora)::timestamp AT TIME ZONE 'America/Lima') END,
+       CASE WHEN v.en_vivo THEN ((((CURRENT_DATE+v.dia)+v.hora)+(v.duracion||' hours')::interval)::timestamp AT TIME ZONE 'America/Lima') END,
+       CASE WHEN v.en_vivo THEN 'https://meet.example.com/esejur-'||v.slug||'-m'||v.modulo END
+FROM (VALUES
+ ('derecho-registral-notarial',1,1,'Principios registrales y publicidad','Legalidad, tracto sucesivo, prioridad y fe publica registral.',false,NULL::integer,NULL::time,NULL::integer),
+ ('derecho-registral-notarial',1,2,'La calificacion registral','Alcance de la calificacion, observaciones, tachas y recursos ante el Tribunal Registral.',false,NULL::integer,NULL::time,NULL::integer),
+ ('derecho-registral-notarial',2,1,'La escritura publica y sus formalidades','Estructura, requisitos y efectos de la escritura publica.',false,NULL::integer,NULL::time,NULL::integer),
+ ('derecho-registral-notarial',2,2,'Responsabilidad del notario y practica de inscripcion','Responsabilidad funcional y flujo del titulo desde la notaria hasta el registro.',false,NULL::integer,NULL::time,NULL::integer),
+ ('contrataciones-estado',1,1,'Planificacion de las contrataciones y plan anual','Necesidad, valor estimado y Plan Anual de Contrataciones.',false,NULL::integer,NULL::time,NULL::integer),
+ ('contrataciones-estado',1,2,'Analisis de casos de procedimientos de seleccion','Revision de bases, consultas, observaciones y otorgamiento de la buena pro.',true,-4,TIME '19:00',2),
+ ('contrataciones-estado',2,1,'Ejecucion, adicionales y penalidades','Obligaciones de las partes, prestaciones adicionales y aplicacion de penalidades.',false,NULL::integer,NULL::time,NULL::integer),
+ ('contrataciones-estado',2,2,'Conciliacion y arbitraje en contratacion publica','Mecanismos de solucion de controversias durante la ejecucion.',true,10,TIME '19:00',2),
+ ('litigacion-penal',1,1,'Construccion de la teoria del caso','Hechos, fundamento juridico y prueba: la teoria del caso en tres planos.',false,NULL::integer,NULL::time,NULL::integer),
+ ('litigacion-penal',1,2,'Taller: alegatos de apertura y de clausura','Practica guiada de alegatos con retroalimentacion en vivo.',true,12,TIME '19:00',2),
+ ('litigacion-penal',2,1,'Tecnicas de interrogatorio directo','Preguntas abiertas, acreditacion de testigos y orden de la informacion.',false,NULL::integer,NULL::time,NULL::integer),
+ ('litigacion-penal',2,2,'Simulacion de juicio oral: contraexamen y objeciones','Ejercicio completo de contraexamen y objeciones frecuentes.',true,26,TIME '19:00',2),
+ ('derecho-laboral',1,1,'Elementos del contrato de trabajo y primacia de la realidad','Prestacion personal, subordinacion y remuneracion; el principio de primacia de la realidad.',false,NULL::integer,NULL::time,NULL::integer),
+ ('derecho-laboral',1,2,'Modalidades contractuales y extincion del vinculo','Contratos sujetos a modalidad, despido y otras causas de extincion.',false,NULL::integer,NULL::time,NULL::integer),
+ ('derecho-laboral',2,1,'La Nueva Ley Procesal del Trabajo: etapas y audiencias','Demanda, audiencia de conciliacion y audiencia de juzgamiento.',false,NULL::integer,NULL::time,NULL::integer),
+ ('derecho-laboral',2,2,'Medios probatorios y sentencia en el proceso laboral','Carga de la prueba, presunciones y contenido de la sentencia.',false,NULL::integer,NULL::time,NULL::integer),
+ ('procedimiento-administrativo',1,1,'Principios del procedimiento administrativo general','Legalidad, debido procedimiento, informalismo y celeridad.',false,NULL::integer,NULL::time,NULL::integer),
+ ('procedimiento-administrativo',1,2,'Jornada 1: validez y eficacia del acto administrativo','Requisitos de validez, motivacion, notificacion y eficacia.',true,6,TIME '09:00',8),
+ ('procedimiento-administrativo',2,1,'Recursos administrativos','Reconsideracion, apelacion y revision: plazos y requisitos.',false,NULL::integer,NULL::time,NULL::integer),
+ ('procedimiento-administrativo',2,2,'Jornada 2: silencio administrativo y casos practicos','Silencio positivo y negativo; resolucion de casos.',true,7,TIME '09:00',8),
+ ('gestion-publica',1,1,'Planeamiento estrategico y presupuesto por resultados','Del plan estrategico al presupuesto articulado a productos.',false,NULL::integer,NULL::time,NULL::integer),
+ ('gestion-publica',1,2,'Taller: indicadores y metas institucionales','Construccion de indicadores y metas verificables.',true,22,TIME '19:00',2),
+ ('gestion-publica',2,1,'Politica de modernizacion de la gestion publica','Pilares de la modernizacion y mejora de servicios al ciudadano.',false,NULL::integer,NULL::time,NULL::integer),
+ ('gestion-publica',2,2,'Integridad publica y transformacion digital en el Estado','Sistemas de integridad y servicios digitales.',true,50,TIME '19:00',2),
+ ('funcion-notarial',1,1,'Naturaleza y principios de la funcion notarial','Fe publica, imparcialidad y legalidad en la funcion notarial.',false,NULL::integer,NULL::time,NULL::integer),
+ ('funcion-notarial',1,2,'Actos y contratos que requieren escritura publica','Formalidad exigida por ley y sus efectos.',false,NULL::integer,NULL::time,NULL::integer),
+ ('funcion-notarial',2,1,'Escrituras publicas y actas notariales','Estructura, contenido y diferencias entre ambos instrumentos.',false,NULL::integer,NULL::time,NULL::integer),
+ ('funcion-notarial',2,2,'Asuntos no contenciosos de competencia notarial','Sucesion intestada, rectificaciones y otros tramites notariales.',false,NULL::integer,NULL::time,NULL::integer),
+ ('saneamiento-inmuebles',1,1,'Estudio de titulos y verificacion registral','Cadena de transferencias, partida registral y titulos archivados.',false,NULL::integer,NULL::time,NULL::integer),
+ ('saneamiento-inmuebles',1,2,'Cargas, gravamenes y discrepancias de area','Identificacion de cargas y diferencias entre area fisica y registral.',false,NULL::integer,NULL::time,NULL::integer),
+ ('saneamiento-inmuebles',2,1,'Prescripcion adquisitiva y formalizacion de la propiedad','Requisitos de la posesion y vias notarial y judicial.',false,NULL::integer,NULL::time,NULL::integer),
+ ('saneamiento-inmuebles',2,2,'Rectificacion de areas y linderos','Procedimiento de rectificacion y documentos tecnicos requeridos.',false,NULL::integer,NULL::time,NULL::integer),
+ ('redaccion-juridica',1,1,'Principios de la redaccion juridica clara','Precision, brevedad y orden de las ideas.',false,NULL::integer,NULL::time,NULL::integer),
+ ('redaccion-juridica',1,2,'Estructura de escritos y resoluciones','Partes, secuencia argumentativa y conclusiones.',false,NULL::integer,NULL::time,NULL::integer),
+ ('redaccion-juridica',2,1,'Redaccion de escritos y recursos','Elaboracion guiada de escritos y recursos.',false,NULL::integer,NULL::time,NULL::integer),
+ ('redaccion-juridica',2,2,'Revision y correccion de estilo','Errores frecuentes y tecnicas de autocorreccion.',false,NULL::integer,NULL::time,NULL::integer),
+ ('tributacion-empresarial',1,1,'Impuesto a la Renta de tercera categoria','Renta bruta, deducciones y pagos a cuenta.',false,NULL::integer,NULL::time,NULL::integer),
+ ('tributacion-empresarial',1,2,'IGV y comprobantes de pago','Operaciones gravadas, credito fiscal y sustento documentario.',false,NULL::integer,NULL::time,NULL::integer),
+ ('tributacion-empresarial',2,1,'El procedimiento de fiscalizacion de la SUNAT','Etapas, requerimientos y resultados de una fiscalizacion.',false,NULL::integer,NULL::time,NULL::integer),
+ ('tributacion-empresarial',2,2,'Reclamaciones, apelaciones y planificacion tributaria','Medios de defensa y prevencion de contingencias.',false,NULL::integer,NULL::time,NULL::integer),
+ ('arbitraje-contrataciones',1,1,'Naturaleza del arbitraje y convenio arbitral','Autonomia de la voluntad, materias arbitrables y contenido del convenio.',false,NULL::integer,NULL::time,NULL::integer),
+ ('arbitraje-contrataciones',1,2,'Constitucion del tribunal y reglas del proceso','Designacion de arbitros, instalacion y reglas procesales.',true,36,TIME '19:00',2),
+ ('arbitraje-contrataciones',2,1,'Controversias en contratacion publica y laudo','Materias arbitrables, medidas cautelares y contenido del laudo.',false,NULL::integer,NULL::time,NULL::integer),
+ ('arbitraje-contrataciones',2,2,'Taller: anulacion de laudo y ejecucion','Causales de anulacion y ejecucion del laudo.',true,63,TIME '19:00',2),
+ ('derecho-urbanistico',1,1,'Zonificacion y planes de desarrollo urbano','Planes urbanos, zonificacion y usos permitidos.',false,NULL::integer,NULL::time,NULL::integer),
+ ('derecho-urbanistico',1,2,'Parametros urbanisticos y edificatorios','Altura, retiros, area libre y densidad.',false,NULL::integer,NULL::time,NULL::integer),
+ ('derecho-urbanistico',2,1,'Habilitaciones urbanas: tipos y procedimiento','Modalidades de aprobacion y recepcion de obras.',false,NULL::integer,NULL::time,NULL::integer),
+ ('derecho-urbanistico',2,2,'Licencias de edificacion y conformidad de obra','Modalidades de licencia, declaratoria de edificacion y conformidad.',false,NULL::integer,NULL::time,NULL::integer),
+ ('argumentacion-juridica',1,1,'Estructura de un argumento: premisas y conclusion','Premisas, inferencias y conclusion.',false,NULL::integer,NULL::time,NULL::integer),
+ ('argumentacion-juridica',1,2,'Falacias argumentativas frecuentes','Reconocer y evitar falacias comunes.',false,NULL::integer,NULL::time,NULL::integer),
+ ('argumentacion-juridica',2,1,'Argumentacion en escritos y audiencias','Adaptar el argumento al medio y al auditorio.',false,NULL::integer,NULL::time,NULL::integer),
+ ('argumentacion-juridica',2,2,'Persuasion y refutacion de contraargumentos','Anticipar y responder objeciones.',false,NULL::integer,NULL::time,NULL::integer),
+ ('congreso-gestion-publica',1,1,'Tendencias de innovacion en el sector publico','Panorama de innovacion y mejora de servicios.',false,NULL::integer,NULL::time,NULL::integer),
+ ('congreso-gestion-publica',1,2,'Jornada 1: innovacion y datos abiertos','Conferencias y panel sobre datos abiertos.',true,45,TIME '09:00',8),
+ ('congreso-gestion-publica',2,1,'Sistemas de integridad y control interno','Prevencion de la corrupcion y control interno.',false,NULL::integer,NULL::time,NULL::integer),
+ ('congreso-gestion-publica',2,2,'Jornada 2: gobierno digital y servicios al ciudadano','Conferencias sobre gobierno digital.',true,46,TIME '09:00',8),
+ ('in-house-procedimiento',1,1,'Ambito de aplicacion y principios','A quien se aplica la ley y principios rectores.',false,NULL::integer,NULL::time,NULL::integer),
+ ('in-house-procedimiento',1,2,'Actos administrativos y plazos','Actos, plazos y computo.',false,NULL::integer,NULL::time,NULL::integer),
+ ('in-house-procedimiento',2,1,'Gestion de expedientes y notificaciones','Tramite documentario y validez de las notificaciones.',false,NULL::integer,NULL::time,NULL::integer),
+ ('in-house-procedimiento',2,2,'Casos practicos de la entidad','Analisis de tramites reales de la institucion.',false,NULL::integer,NULL::time,NULL::integer)
+) v(slug,modulo,orden,titulo,descripcion,en_vivo,dia,hora,duracion)
+JOIN curso c ON c.url_amigable=v.slug
+JOIN modulo m ON m.curso_id=c.curso_id AND m.orden=v.modulo;
 
 INSERT INTO recurso
     (tipo_material_id,tipo,origen,referencia,nombre_archivo,tipo_mime,duracion_segundos,
@@ -1752,19 +1863,43 @@ INSERT INTO examen
     (curso_id,modulo_id,titulo,descripcion,tipo,finalidad,orden,maximo_intentos,
      tiempo_limite_minutos,barajar_preguntas,barajar_opciones,mostrar_respuestas,
      bloquea_siguiente_modulo,dias_revision)
-SELECT c.curso_id,m.modulo_id,'Evaluacion del modulo 1','Responde las preguntas del modulo.',
+SELECT c.curso_id,m.modulo_id,'Evaluacion del modulo 1: '||m.titulo,
+       'Responde las preguntas del primer modulo. Necesitas aprobarlo para continuar con el siguiente.',
        'CALIFICADO','MODULO',1,3,30,true,true,'AL_APROBAR',true,3
 FROM curso c JOIN modulo m ON m.curso_id=c.curso_id AND m.orden=1;
 
+-- Cada examen tiene una pregunta de seleccion unica (correccion automatica) y una de respuesta abierta (revision docente).
+CREATE TEMP TABLE examen_demo ON COMMIT DROP AS
+SELECT * FROM (VALUES
+ ('derecho-registral-notarial','Que principio registral establece que los titulos se inscriben respetando el orden de su ingreso al registro?','Principio de rogacion','Principio de prioridad','Principio de especialidad',2,'Explica el alcance de la calificacion registral y menciona un caso en el que procede una observacion.'),
+ ('contrataciones-estado','Que documento consolida las contrataciones que una entidad preve realizar durante el ano fiscal?','El Cuadro de Necesidades','El Presupuesto Institucional Modificado','El Plan Anual de Contrataciones',3,'Describe en que supuestos procede aplicar una penalidad al contratista y cual es su finalidad.'),
+ ('litigacion-penal','En el interrogatorio directo, que tipo de preguntas debe privilegiar el litigante?','Preguntas sugestivas','Preguntas abiertas que permitan al testigo narrar','Preguntas compuestas',2,'Redacta en tres lineas la teoria del caso para un delito de hurto simple.'),
+ ('derecho-laboral','Segun el principio de primacia de la realidad, que prevalece cuando los documentos difieren de lo ocurrido en los hechos?','Lo que consta en el contrato escrito','Lo que acuerde el empleador','Lo que ocurre en los hechos',3,'Explica los elementos esenciales que configuran una relacion laboral.'),
+ ('procedimiento-administrativo','Que principio obliga a la autoridad a actuar dentro de las facultades que le atribuye la ley?','Principio de informalismo','Principio de celeridad','Principio de legalidad',3,'Menciona dos requisitos de validez del acto administrativo.'),
+ ('gestion-publica','Que enfoque orienta la asignacion de recursos publicos a productos y resultados medibles?','Presupuesto historico','Presupuesto por resultados','Presupuesto de caja',2,'Describe como un indicador de desempeno ayuda a mejorar un servicio publico.'),
+ ('funcion-notarial','Cual es el instrumento publico notarial que contiene un acto juridico con las formalidades de ley?','La constancia de firma','La escritura publica','El certificado notarial',2,'Explica por que el notario da fe publica y que limites tiene su funcion.'),
+ ('saneamiento-inmuebles','Que figura permite adquirir la propiedad por posesion continua, publica y pacifica durante el plazo de ley?','Usufructo','Servidumbre de paso','Prescripcion adquisitiva de dominio',3,'Enumera tres documentos que revisarias en un estudio de titulos.'),
+ ('redaccion-juridica','Que recomendacion favorece la claridad de un escrito juridico?','Acumular citas sin explicarlas','Emplear latinismos en cada parrafo','Usar oraciones breves y vocabulario preciso',3,'Reescribe con mayor claridad: Se solicita se tenga a bien disponer se sirva proveer lo solicitado.'),
+ ('tributacion-empresarial','Que impuesto grava el valor agregado en cada etapa de la comercializacion de bienes y servicios?','Impuesto Predial','Impuesto General a las Ventas (IGV)','Impuesto de Alcabala',2,'Explica la diferencia entre evasion y elusion tributaria.'),
+ ('arbitraje-contrataciones','Que documento contiene la voluntad de las partes de someter sus controversias a arbitraje?','La demanda arbitral','El laudo','El convenio arbitral',3,'Menciona dos ventajas y una limitacion del arbitraje frente al proceso judicial.'),
+ ('derecho-urbanistico','Que instrumento define los usos del suelo permitidos en cada zona de una ciudad?','El catastro tributario','El plano perimetrico','La zonificacion',3,'Explica en que consiste una habilitacion urbana.'),
+ ('argumentacion-juridica','Que es una falacia?','Una premisa verdadera','Un razonamiento que parece valido pero no lo es','Una conclusion probada',2,'Identifica la falacia en: Todos lo hacen, por lo tanto esta permitido.'),
+ ('congreso-gestion-publica','Que busca la politica de integridad publica?','Aumentar los tributos','Prevenir la corrupcion y fortalecer la confianza ciudadana','Reducir el numero de funcionarios',2,'Propone una medida de integridad aplicable a una entidad publica.'),
+ ('in-house-procedimiento','Que principio obliga a la autoridad a actuar dentro de las facultades que le atribuye la ley?','Principio de informalismo','Principio de legalidad','Principio de celeridad',2,'Menciona dos requisitos de validez del acto administrativo.')
+) v(slug,enunciado,op1,op2,op3,correcta,abierta);
+
 INSERT INTO pregunta (examen_id,tipo,enunciado,puntaje,orden)
-SELECT e.examen_id,'SELECCION_UNICA','Selecciona la alternativa correcta.',10,1 FROM examen e
+SELECT e.examen_id,'SELECCION_UNICA',v.enunciado,10,1
+FROM examen e JOIN curso c ON c.curso_id=e.curso_id JOIN examen_demo v ON v.slug=c.url_amigable
 UNION ALL
-SELECT e.examen_id,'RESPUESTA_ABIERTA','Explica brevemente el criterio juridico aplicable.',10,2 FROM examen e;
+SELECT e.examen_id,'RESPUESTA_ABIERTA',v.abierta,10,2
+FROM examen e JOIN curso c ON c.curso_id=e.curso_id JOIN examen_demo v ON v.slug=c.url_amigable;
 
 INSERT INTO opcion_pregunta (pregunta_id,texto,es_correcta,orden)
-SELECT p.pregunta_id,'Alternativa correcta',true,1 FROM pregunta p WHERE p.tipo='SELECCION_UNICA'
-UNION ALL
-SELECT p.pregunta_id,'Alternativa incorrecta',false,2 FROM pregunta p WHERE p.tipo='SELECCION_UNICA';
+SELECT p.pregunta_id,o.texto,o.es_correcta,o.orden
+FROM pregunta p JOIN examen e ON e.examen_id=p.examen_id JOIN curso c ON c.curso_id=e.curso_id
+JOIN examen_demo v ON v.slug=c.url_amigable AND p.tipo='SELECCION_UNICA' AND p.enunciado=v.enunciado
+CROSS JOIN LATERAL (VALUES (v.op1,v.correcta=1,1),(v.op2,v.correcta=2,2),(v.op3,v.correcta=3,3)) o(texto,es_correcta,orden);
 
 -- Tres escenarios de EP03: pago manual, matricula gratuita y exoneracion administrativa.
 INSERT INTO matricula
@@ -2011,7 +2146,7 @@ INSERT INTO respuesta_intento
     (intento_examen_id,pregunta_id,texto_respuesta,puntaje_automatico,puntaje_definitivo,
      estado_revision,fecha_limite_revision)
 SELECT i.intento_examen_id,p.pregunta_id,
-       CASE WHEN p.tipo='RESPUESTA_ABIERTA' THEN 'Se aplica el principio de legalidad y la debida motivacion.' END,
+       CASE WHEN p.tipo='RESPUESTA_ABIERTA' THEN 'La calificacion registral se limita a la legalidad del titulo y a lo que consta en la partida; procede observar cuando falta un requisito formal.' END,
        CASE WHEN p.tipo<>'RESPUESTA_ABIERTA' THEN 10 END,
        CASE WHEN p.tipo='RESPUESTA_ABIERTA' THEN 6 ELSE 10 END,
        CASE WHEN p.tipo='RESPUESTA_ABIERTA' THEN 'REVISADA' ELSE 'NO_APLICA' END,
