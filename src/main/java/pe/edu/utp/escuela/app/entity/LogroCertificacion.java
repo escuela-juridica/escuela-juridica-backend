@@ -75,7 +75,4 @@ public class LogroCertificacion {
 
     @Column(name = "modificado_en", nullable = false)
     private Instant modificadoEn;
-
-    @OneToOne(mappedBy = "logro", fetch = FetchType.LAZY)
-    private Certificado certificado;
 }

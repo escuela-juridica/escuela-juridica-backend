@@ -65,6 +65,7 @@ public class PublicacionService {
     private final EstadoCursoRepository estadosCurso;
     private final HistorialEstadoCursoRepository historial;
     private final CurrentUserService currentUserService;
+    private final CodigoRegistroService codigosRegistro;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -102,6 +103,7 @@ public class PublicacionService {
         EstadoCurso anterior = curso.getEstadoCurso();
         curso.setEstadoCurso(destino);
         curso.setPublicadoEn(clock.instant());
+        codigosRegistro.asignar(curso);
         registrarHistorial(curso, anterior, destino, directoAEnCurso
                 ? "Publicado: al ser virtual sin fecha de inicio, queda EN_CURSO de inmediato."
                 : "Publicado.");

@@ -13,7 +13,16 @@ import org.springframework.data.repository.query.Param;
 import pe.edu.utp.escuela.app.entity.Certificado;
 
 public interface CertificadoRepository extends JpaRepository<Certificado, Long> {
-    Optional<Certificado> findByLogro_Matricula_Id(Long matriculaId);
+    /**
+     * El certificado que cuenta de una matrícula: el VIGENTE y, si no lo hay, el último emitido (anulado). Una matrícula
+     * puede tener varios a lo largo del tiempo (uno anulado y su reemplazo), pero solo uno vigente.
+     */
+    default Optional<Certificado> findByLogro_Matricula_Id(Long matriculaId) {
+        return findFirstByLogro_Matricula_IdOrderByEstadoDescEmitidoEnDescIdDesc(matriculaId);
+    }
+
+    /** «VIGENTE» ordena después de «ANULADO»: en orden descendente el vigente va primero. */
+    Optional<Certificado> findFirstByLogro_Matricula_IdOrderByEstadoDescEmitidoEnDescIdDesc(Long matriculaId);
 
     /** HU-043: certificados de varias matrículas de una vez. */
     List<Certificado> findByLogro_Matricula_IdIn(Collection<Long> matriculaIds);

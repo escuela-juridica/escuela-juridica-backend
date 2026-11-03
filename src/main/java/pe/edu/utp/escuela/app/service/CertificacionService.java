@@ -30,6 +30,8 @@ import pe.edu.utp.escuela.app.entity.CertificadoFirmante;
 import pe.edu.utp.escuela.app.entity.ConfiguracionInstitucional;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.CursoFirmante;
+import pe.edu.utp.escuela.app.entity.Leccion;
+import pe.edu.utp.escuela.app.entity.Modulo;
 import pe.edu.utp.escuela.app.entity.LogroCertificacion;
 import pe.edu.utp.escuela.app.entity.Matricula;
 import pe.edu.utp.escuela.app.entity.Notificacion;
@@ -47,6 +49,8 @@ import pe.edu.utp.escuela.app.repository.CertificadoFirmanteRepository;
 import pe.edu.utp.escuela.app.repository.CertificadoRepository;
 import pe.edu.utp.escuela.app.repository.ConfiguracionInstitucionalRepository;
 import pe.edu.utp.escuela.app.repository.CursoFirmanteRepository;
+import pe.edu.utp.escuela.app.repository.LeccionRepository;
+import pe.edu.utp.escuela.app.repository.ModuloRepository;
 import pe.edu.utp.escuela.app.repository.LogroCertificacionRepository;
 import pe.edu.utp.escuela.app.repository.MatriculaRepository;
 import pe.edu.utp.escuela.app.repository.NotificacionRepository;
@@ -85,6 +89,9 @@ public class CertificacionService {
     private final CertificadoRepository certificados;
     private final CertificadoFirmanteRepository certificadoFirmantes;
     private final CursoFirmanteRepository cursoFirmantes;
+    private final ModuloRepository modulos;
+    private final CodigoRegistroService codigosRegistro;
+    private final LeccionRepository lecciones;
     private final ConfiguracionInstitucionalRepository configuracion;
     private final NotificacionRepository notificaciones;
     private final PersonaRepository personas;
@@ -126,8 +133,11 @@ public class CertificacionService {
     public CertificacionResponse confirmarDatos(Long cursoId, ConfirmarDatosRequest peticion) {
         Matricula matricula = matriculaDelAlumno(cursoId);
         LogroCertificacion logro = logroDe(matricula);
-        if (certificados.findByLogro_Matricula_Id(matricula.getId()).isPresent()) {
-            throw new BusinessValidationException("Tu certificado ya fue emitido: sus datos no se pueden cambiar.");
+        Certificado existente = certificados.findByLogro_Matricula_Id(matricula.getId()).orElse(null);
+        if (existente != null) {
+            throw new BusinessValidationException(Certificado.ANULADO.equals(existente.getEstado())
+                    ? "Tu certificado fue anulado. Si corresponde, la administración puede emitirte uno nuevo."
+                    : "Tu certificado ya fue emitido: sus datos no se pueden cambiar.");
         }
         Persona persona = matricula.getUsuario().getPersona();
         persona.setNombres(limpiar(peticion.nombres()));
@@ -155,7 +165,9 @@ public class CertificacionService {
         Matricula matricula = matriculaDelAlumno(cursoId);
         Situacion s = evaluar(matricula);
         if (s.certificado() != null) {
-            throw new BusinessValidationException("Tu certificado ya fue emitido.");
+            throw new BusinessValidationException(Certificado.ANULADO.equals(s.certificado().getEstado())
+                    ? "Tu certificado fue anulado. Si corresponde, la administración puede emitirte uno nuevo."
+                    : "Tu certificado ya fue emitido.");
         }
         if (!"LISTO_PARA_EMITIR".equals(s.estado())) {
             throw new BusinessValidationException(s.mensaje());
@@ -164,8 +176,12 @@ public class CertificacionService {
         return respuesta(evaluar(matricula));
     }
 
-    /** Entrega el PDF a su dueño (o a un administrador). El PDF nunca viaja por correo. */
-    @Transactional(readOnly = true)
+    /**
+     * Entrega el PDF a su dueño (o a un administrador). El PDF nunca viaja por correo. Si el archivo no existe en el
+     * almacenamiento (p. ej. un certificado cargado por script, o una carpeta restaurada), se vuelve a generar con los
+     * datos congelados del certificado: el documento es el mismo y su código no cambia.
+     */
+    @Transactional
     public Descarga descargar(String codigo) {
         Certificado certificado = certificados.findByCodigo(codigo)
                 .orElseThrow(() -> new ResourceNotFoundException("El certificado no existe."));
@@ -177,7 +193,25 @@ public class CertificacionService {
         if (Certificado.ANULADO.equals(certificado.getEstado())) {
             throw new BusinessValidationException("Este certificado fue anulado y ya no se puede descargar.");
         }
-        return new Descarga(archivos.cargar(certificado.getArchivoPdfUrl()), "certificado-" + certificado.getCodigo() + ".pdf");
+        Resource archivo;
+        try {
+            archivo = archivos.cargar(certificado.getArchivoPdfUrl());
+        } catch (ResourceNotFoundException | BusinessValidationException faltante) {
+            archivo = regenerarPdf(certificado);
+        }
+        return new Descarga(archivo, "certificado-" + certificado.getCodigo() + ".pdf");
+    }
+
+    /** Vuelve a dibujar el PDF de un certificado vigente a partir de lo congelado y lo guarda donde corresponde. */
+    private Resource regenerarPdf(Certificado c) {
+        List<CertificadoFirmante> firmantes = certificadoFirmantes.findByCertificado_IdOrderByOrdenAsc(c.getId());
+        var curso = c.getLogro().getMatricula().getCurso();
+        String verificacion = frontendBaseUrl + "/verificar-certificado?codigo=" + c.getCodigo();
+        String logoEntidad = curso.getEntidadCertificadora() != null ? curso.getEntidadCertificadora().getLogoUrl() : null;
+        c.setArchivoPdfUrl(archivos.guardarBytes("certificados", c.getCodigo() + ".pdf",
+                pdf.generar(c, firmantes, verificacion, imagenes::cargar, logoEntidad)));
+        certificados.save(c);
+        return archivos.cargar(c.getArchivoPdfUrl());
     }
 
     public record Descarga(Resource archivo, String nombre) {
@@ -242,7 +276,9 @@ public class CertificacionService {
         if (certificado != null) {
             String estado = Certificado.ANULADO.equals(certificado.getEstado()) ? "ANULADO" : "VIGENTE";
             return new Situacion(matricula, avance, logro, certificado, estado,
-                    "ANULADO".equals(estado) ? "Este certificado fue anulado." : "Tu certificado fue emitido.",
+                    "ANULADO".equals(estado)
+                            ? "Este certificado fue anulado. Si corresponde, la administración puede emitirte uno nuevo."
+                            : "Tu certificado fue emitido.",
                     false, null, regla.getDiasEsperaCertificado(), condicionesActivas, certificado.getNotaImpresa(),
                     certificado.getNivel());
         }
@@ -339,6 +375,18 @@ public class CertificacionService {
         return emitir(s, "MANUAL", motivo, administradorId);
     }
 
+    /**
+     * Confirma, en nombre del alumno, los nombres y apellidos que se imprimirán. Solo la usa la emisión excepcional
+     * de administración cuando el alumno no los confirmó: no toca los datos de su cuenta, solo lo que se imprime.
+     */
+    void confirmarNombresAdministrativos(Matricula matricula, String nombres) {
+        LogroCertificacion logro = logroDe(matricula);
+        logro.setNombresConfirmados(limpiar(nombres));
+        logro.setDatosConfirmadosEn(clock.instant());
+        logro.setModificadoEn(clock.instant());
+        logros.save(logro);
+    }
+
     private void emitir(Situacion s, String tipoEmision) {
         emitir(s, tipoEmision, null, null);
     }
@@ -348,7 +396,6 @@ public class CertificacionService {
         Curso curso = matricula.getCurso();
         LogroCertificacion logro = s.logro();
         Instant ahora = clock.instant();
-        boolean virtual = "VIRTUAL".equals(curso.getModalidad());
         LocalDate hoy = ahora.atZone(LIMA).toLocalDate();
 
         Certificado c = new Certificado();
@@ -360,12 +407,15 @@ public class CertificacionService {
         c.setNombresImpresos(logro.getNombresConfirmados());
         c.setTituloCursoImpreso(curso.getTitulo());
         c.setTipoCursoImpreso(curso.getTipoCurso() != null ? curso.getTipoCurso().getNombre() : "Curso");
+        c.setTemarioImpreso(temarioDe(curso));
+        // Cursos publicados antes del código de registro lo reciben al emitir su primer certificado.
+        codigosRegistro.asignar(curso);
+        c.setCodigoRegistroImpreso(curso.getCodigoRegistro());
         c.setHorasImpresas(curso.getHorasAcademicas() != null ? curso.getHorasAcademicas() : BigDecimal.ZERO);
-        // En vivo / híbrido: fechas del curso. Virtual sin fin: matrícula y finalización del alumno.
-        LocalDate inicio = !virtual && curso.getFechaInicio() != null ? curso.getFechaInicio()
-                : matricula.getFechaMatricula().atZone(LIMA).toLocalDate();
-        LocalDate fin = !virtual && curso.getFechaFin() != null ? curso.getFechaFin()
-                : logro.getFechaFinalizacion().atZone(LIMA).toLocalDate();
+        // El periodo impreso es el del curso: en vivo e híbrido siempre lo tienen; un virtual puede no tener fechas, tener
+        // solo un inicio o un rango. Nunca se usan las fechas personales del alumno.
+        LocalDate inicio = curso.getFechaInicio();
+        LocalDate fin = curso.getFechaFin();
         c.setFechaInicioImpresa(inicio);
         c.setFechaFinImpresa(fin);
         c.setLugarEmision(configuracion.findByCodigo("LUGAR_EMISION_CERTIFICADO")
@@ -411,6 +461,36 @@ public class CertificacionService {
 
         avisarCertificado(matricula, c);
         return c;
+    }
+
+    /**
+     * Lo que se dictó, tomado del contenido del curso: cada módulo activo es una sesión y sus lecciones activas, las
+     * viñetas. Se congela en el certificado para que cambios posteriores del curso no alteren lo ya emitido.
+     */
+    private String temarioDe(Curso curso) {
+        List<Modulo> modulosActivos = modulos.findByCursoIdAndActivoTrueOrderByOrdenAsc(curso.getId());
+        if (modulosActivos.isEmpty()) {
+            return null;
+        }
+        Map<Long, List<Leccion>> porModulo = new java.util.LinkedHashMap<>();
+        for (Leccion leccion : lecciones.buscarActivasDeModulos(modulosActivos.stream().map(Modulo::getId).toList())) {
+            porModulo.computeIfAbsent(leccion.getModulo().getId(), k -> new java.util.ArrayList<>()).add(leccion);
+        }
+        StringBuilder temario = new StringBuilder();
+        int numero = 1;
+        for (Modulo modulo : modulosActivos) {
+            if (!temario.isEmpty()) {
+                temario.append('\n');
+            }
+            String titulo = modulo.getTitulo().strip();
+            // Un módulo que ya se titula «Sesión 1: …» se imprime tal cual; si no, se numera como «Módulo n: …».
+            temario.append("# ").append(titulo.matches("^\\p{L}+\\s+\\d+\\s*[:.\\-].*") ? titulo : "Módulo " + numero + ": " + titulo).append('\n');
+            numero++;
+            for (Leccion leccion : porModulo.getOrDefault(modulo.getId(), List.of())) {
+                temario.append("- ").append(leccion.getTitulo().strip()).append('\n');
+            }
+        }
+        return temario.toString().strip();
     }
 
     private String nuevoCodigo(int anio) {

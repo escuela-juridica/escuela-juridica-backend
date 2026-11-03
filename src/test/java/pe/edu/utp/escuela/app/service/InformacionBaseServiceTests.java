@@ -99,7 +99,7 @@ class InformacionBaseServiceTests {
         comoAdministrador();
         when(tiposCurso.existsByCodigo("DIPLOMADO")).thenReturn(true);
         assertThrows(DuplicateResourceException.class,
-                () -> service.crearTipoCurso(new TipoCursoRequest("DIPLOMADO", "Diplomado", 10)));
+                () -> service.crearTipoCurso(new TipoCursoRequest("DIPLOMADO", "Diplomado", 10, "DP")));
     }
 
     @Test

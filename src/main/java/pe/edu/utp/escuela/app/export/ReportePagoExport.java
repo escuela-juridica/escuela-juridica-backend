@@ -116,6 +116,10 @@ public class ReportePagoExport {
             case "YAPE" -> "Yape";
             case "BILLETERA" -> "Billetera móvil";
             case "TRANSFERENCIA" -> "Transferencia";
+            case "DEPOSITO" -> "Depósito bancario";
+            case "PLIN" -> "Plin";
+            case "EFECTIVO" -> "Efectivo";
+            case "OTRO" -> "Otro";
             default -> medio;
         };
     }

@@ -49,6 +49,8 @@ public class Pago extends RegistroAuditable {
     @Column(columnDefinition = "text") private String motivo;
     @Column(name = "constancia_numero", unique = true, length = 80) private String constanciaNumero;
     @Column(name = "registrado_por_usuario_id") private Long registradoPorUsuarioId;
+    /** Boleta o captura opcional de un pago manual (referencia privada bajo uploads/comprobantes). */
+    @Column(name = "comprobante_url", length = 255) private String comprobanteUrl;
     @Column(name = "resultado_en") private Instant resultadoEn;
     @Column(name = "requiere_atencion", nullable = false) private boolean requiereAtencion = false;
     @Column(name = "detalle_atencion", columnDefinition = "text") private String detalleAtencion;

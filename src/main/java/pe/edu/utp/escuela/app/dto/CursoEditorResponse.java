@@ -37,5 +37,6 @@ public record CursoEditorResponse(
         boolean tieneMatriculas,
         List<DocenteCursoResponse> docentes,
         List<FirmanteCursoResponse> firmantes,
-        Instant creadoEn) {
+        Instant creadoEn,
+        String codigoRegistro) {
 }

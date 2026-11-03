@@ -105,7 +105,7 @@ public class FichaCursoService {
                 curso.getHorasAcademicas(),
                 List.of(curso.getBeneficios()),
                 curso.getFechaInicio(),
-                esVirtual ? null : curso.getFechaFin(),
+                curso.getFechaFin(),
                 docentes,
                 modulosRespuesta,
                 mapearEstado(estado));
