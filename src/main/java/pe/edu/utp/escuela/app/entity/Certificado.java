@@ -91,6 +91,10 @@ public class Certificado {
     @Column(name = "temario_impreso", columnDefinition = "text")
     private String temarioImpreso;
 
+    /** Código de registro del curso («01-SM_2026») congelado al emitir; vacío en certificados anteriores. */
+    @Column(name = "codigo_registro_impreso", length = 20)
+    private String codigoRegistroImpreso;
+
     @Column(name = "lugar_emision", nullable = false, length = 180)
     private String lugarEmision;
 

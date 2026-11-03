@@ -128,9 +128,8 @@ public class CertificadoPdfExport {
             l.centradoAjustado(c, f.cursiva(), 111f, 1740f, NEGRO, cert.getNombresImpresos(), 971, 500);
 
             String tipo = cert.getTipoCursoImpreso() == null ? "CURSO" : cert.getTipoCursoImpreso().toUpperCase(LOCALE);
-            // Cursos y diplomados (más de 24 horas) se aprueban y llevan nota; los seminarios solo registran participación.
-            boolean conNota = esCursoConNota(cert);
-            String frase = (conNota ? "POR HABER PARTICIPADO Y APROBADO " : "POR SU PARTICIPACIÓN EN ") + articulo(tipo) + " " + tipo + ":";
+            // La misma frase para todos los tipos: «POR HABER PARTICIPADO Y APROBADO EL SEMINARIO…:», «…EL CURSO:», etc.
+            String frase ="POR HABER PARTICIPADO Y APROBADO " + articulo(tipo) + " " + tipo + ":";
             l.centradoAjustado(c, f.normal(), 37.9f, 1700f, NEGRO, frase, 971, 604);
 
             // El título ocupa dos líneas como en la plantilla; si es muy largo se reduce la letra hasta que quepa.
@@ -156,13 +155,14 @@ public class CertificadoPdfExport {
 
             firmas(documento, c, l, f, firmantes, imagenes);
 
-            // QR de verificación (el código del certificado solo va en el reverso, en «Código de registro»).
+            // QR de verificación y, debajo, el código del certificado (también va en el reverso, en «Código de registro»).
             boolean muchas = firmantes.size() >= 4;
             float qrX = muchas ? 1105 : 975;
             float qrLado = muchas ? 200 : 260;
             l.qr(c, urlVerificacion, qrX, 982, qrLado);
+            l.centrado(c, f.normal(), muchas ? 18f : 22f, GRIS, cert.getCodigo(), qrX + qrLado / 2, 982 + qrLado + 26);
             if ("REFRENDADO".equals(cert.getNivel())) {
-                l.imagenBytes(documento, c, imagenes.apply(logoEntidadUrl), qrX + qrLado / 2 - 200, 982 + qrLado + 22, 400, 84);
+                l.imagenBytes(documento, c, imagenes.apply(logoEntidadUrl), qrX + qrLado / 2 - 200, 982 + qrLado + 40, 400, 84);
             }
         }
     }
@@ -294,7 +294,9 @@ public class CertificadoPdfExport {
         l.rectangulo(c, 1647, 571, 1902, 745, 5f);
         l.centrado(c, f.negrita(), 30.9f, NEGRO, "CÓDIGO DE", 1775, 606);
         l.centrado(c, f.negrita(), 30.9f, NEGRO, "REGISTRO", 1775, 648);
-        String codigo = cert.getCodigo();
+        // Código de registro del curso («01-SM_2026»); los certificados anteriores a este código muestran el propio.
+        String codigo = cert.getCodigoRegistroImpreso() != null && !cert.getCodigoRegistroImpreso().isBlank()
+                ? cert.getCodigoRegistroImpreso() : cert.getCodigo();
         float maximo = 225f;
         if (l.ancho(f.normal(), 28.4f, codigo) <= maximo) {
             l.centrado(c, f.normal(), 28.4f, NEGRO, codigo, 1775, 716);
@@ -453,8 +455,12 @@ public class CertificadoPdfExport {
      * cuatro días se nombran uno por uno (agrupados por mes); con más, o si cruzan de año, se usa un rango.
      */
     static String periodo(LocalDate inicio, LocalDate fin) {
-        LocalDate desde = inicio != null ? inicio : fin;
-        LocalDate hasta = fin != null ? fin : inicio;
+        // Una sola fecha (un virtual con solo inicio, o solo fin) se trata como un único día: «el 19 de octubre de 2026».
+        if (inicio == null || fin == null) {
+            return "el " + fechaLarga(inicio != null ? inicio : fin);
+        }
+        LocalDate desde = inicio;
+        LocalDate hasta = fin;
         if (hasta.isBefore(desde)) {
             hasta = desde;
         }

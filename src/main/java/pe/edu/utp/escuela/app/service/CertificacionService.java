@@ -90,6 +90,7 @@ public class CertificacionService {
     private final CertificadoFirmanteRepository certificadoFirmantes;
     private final CursoFirmanteRepository cursoFirmantes;
     private final ModuloRepository modulos;
+    private final CodigoRegistroService codigosRegistro;
     private final LeccionRepository lecciones;
     private final ConfiguracionInstitucionalRepository configuracion;
     private final NotificacionRepository notificaciones;
@@ -395,7 +396,6 @@ public class CertificacionService {
         Curso curso = matricula.getCurso();
         LogroCertificacion logro = s.logro();
         Instant ahora = clock.instant();
-        boolean virtual = "VIRTUAL".equals(curso.getModalidad());
         LocalDate hoy = ahora.atZone(LIMA).toLocalDate();
 
         Certificado c = new Certificado();
@@ -408,13 +408,14 @@ public class CertificacionService {
         c.setTituloCursoImpreso(curso.getTitulo());
         c.setTipoCursoImpreso(curso.getTipoCurso() != null ? curso.getTipoCurso().getNombre() : "Curso");
         c.setTemarioImpreso(temarioDe(curso));
+        // Cursos publicados antes del código de registro lo reciben al emitir su primer certificado.
+        codigosRegistro.asignar(curso);
+        c.setCodigoRegistroImpreso(curso.getCodigoRegistro());
         c.setHorasImpresas(curso.getHorasAcademicas() != null ? curso.getHorasAcademicas() : BigDecimal.ZERO);
-        // Un curso virtual no tiene fechas propias (cada alumno avanza a su ritmo): el certificado no imprime periodo.
-        // En vivo / híbrido: fechas del curso o, si no las tiene, las del propio alumno (matrícula y finalización).
-        LocalDate inicio = virtual ? null : curso.getFechaInicio() != null ? curso.getFechaInicio()
-                : matricula.getFechaMatricula().atZone(LIMA).toLocalDate();
-        LocalDate fin = virtual ? null : curso.getFechaFin() != null ? curso.getFechaFin()
-                : logro.getFechaFinalizacion().atZone(LIMA).toLocalDate();
+        // El periodo impreso es el del curso: en vivo e híbrido siempre lo tienen; un virtual puede no tener fechas, tener
+        // solo un inicio o un rango. Nunca se usan las fechas personales del alumno.
+        LocalDate inicio = curso.getFechaInicio();
+        LocalDate fin = curso.getFechaFin();
         c.setFechaInicioImpresa(inicio);
         c.setFechaFinImpresa(fin);
         c.setLugarEmision(configuracion.findByCodigo("LUGAR_EMISION_CERTIFICADO")

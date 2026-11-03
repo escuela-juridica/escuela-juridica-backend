@@ -83,9 +83,14 @@ public class InformacionBaseService {
         if (tiposCurso.existsByCodigo(textos.requireText(p.codigo(), "Código"))) {
             throw new DuplicateResourceException("Ese código ya está en uso.");
         }
+        String sigla = siglaDe(p.siglaRegistro());
+        if (tiposCurso.existsBySiglaRegistroIgnoreCase(sigla)) {
+            throw new DuplicateResourceException("Esa sigla ya está en uso por otro tipo.");
+        }
         TipoCurso tipo = new TipoCurso();
         tipo.setCodigo(textos.requireText(p.codigo(), "Código"));
         tipo.setNombre(textos.requireText(p.nombre(), "Nombre"));
+        tipo.setSiglaRegistro(sigla);
         tipo.setOrden(p.orden());
         tipo.setActivo(true);
         tiposCurso.saveAndFlush(tipo);
@@ -100,8 +105,14 @@ public class InformacionBaseService {
         if (tiposCurso.existsByCodigoAndIdNot(textos.requireText(p.codigo(), "Código"), id)) {
             throw new DuplicateResourceException("Ese código ya está en uso.");
         }
+        String sigla = siglaDe(p.siglaRegistro());
+        if (tiposCurso.existsBySiglaRegistroIgnoreCaseAndIdNot(sigla, id)) {
+            throw new DuplicateResourceException("Esa sigla ya está en uso por otro tipo.");
+        }
         tipo.setCodigo(textos.requireText(p.codigo(), "Código"));
         tipo.setNombre(textos.requireText(p.nombre(), "Nombre"));
+        // Cambiar la sigla solo afecta a los cursos que se publiquen después: los códigos ya asignados no se tocan.
+        tipo.setSiglaRegistro(sigla);
         tipo.setOrden(p.orden());
         return mapear(tipo);
     }
@@ -116,7 +127,12 @@ public class InformacionBaseService {
     }
 
     private TipoCursoResponse mapear(TipoCurso t) {
-        return new TipoCursoResponse(t.getId(), t.getCodigo(), t.getNombre(), t.isActivo(), t.getOrden());
+        return new TipoCursoResponse(t.getId(), t.getCodigo(), t.getNombre(), t.isActivo(), t.getOrden(), t.getSiglaRegistro());
+    }
+
+    /** La sigla se guarda en mayúsculas. */
+    private String siglaDe(String valor) {
+        return textos.requireText(valor, "Sigla").toUpperCase(java.util.Locale.ROOT);
     }
 
     // ---------------------------------------------------------------- Categorías --

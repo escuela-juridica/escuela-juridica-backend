@@ -232,8 +232,8 @@ public class CicloVidaCursoService {
 
     /** HU-016 — Transiciones que no dependen de una acción administrativa: PUBLICADO pasa a
      * EN_CURSO al llegar su fecha de inicio (incluye VIRTUAL con fecha); EN_CURSO pasa a CERRADO al
-     * pasar su fecha de fin (nunca aplica a VIRTUAL, que no tiene fecha de fin y solo cierra
-     * manualmente). Sin usuario autenticado: no llama exigirAdministrador ni currentUserService. */
+     * pasar su fecha de fin (aplica también a un VIRTUAL si se le indicó fecha de fin; sin ella solo
+     * cierra manualmente). Sin usuario autenticado: no llama exigirAdministrador ni currentUserService. */
     @Transactional
     @Scheduled(cron = "0 5 0 * * *", zone = "${application.time-zone}")
     public void aplicarTransicionesAutomaticas() {

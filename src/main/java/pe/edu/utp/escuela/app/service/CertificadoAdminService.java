@@ -283,6 +283,7 @@ public class CertificadoAdminService {
         copia.setFechaFinImpresa(c.getFechaFinImpresa());
         copia.setLugarEmision(c.getLugarEmision());
         copia.setTemarioImpreso(c.getTemarioImpreso());
+        copia.setCodigoRegistroImpreso(c.getCodigoRegistroImpreso());
         copia.setEntidadImpresa(entidadNueva);
         copia.setNotaImpresa(c.getNotaImpresa());
         copia.setEmitidoEn(c.getEmitidoEn());
@@ -467,22 +468,14 @@ public class CertificadoAdminService {
         return m.getCurso().getTipoCurso() != null ? m.getCurso().getTipoCurso().getNombre() : "Curso";
     }
 
-    /** Mismo criterio que al emitir: virtual no tiene periodo; en vivo/híbrido, el inicio del curso o la matrícula del alumno. */
+    /** Mismo criterio que al emitir: el periodo es el del curso (en un virtual puede faltar el inicio o el fin). */
     private static LocalDate fechaInicio(Matricula m, Certificado c) {
-        if (c != null) {
-            return c.getFechaInicioImpresa();
-        }
-        var curso = m.getCurso();
-        if ("VIRTUAL".equals(curso.getModalidad())) {
-            return null;
-        }
-        return curso.getFechaInicio() != null ? curso.getFechaInicio() : m.getFechaMatricula().atZone(LIMA).toLocalDate();
+        return c != null ? c.getFechaInicioImpresa() : m.getCurso().getFechaInicio();
     }
 
-    /** Fin que impone el curso (en vivo/híbrido); vacío cuando el fin es la finalización del alumno. */
+    /** Fin que fija el curso; vacío si no lo tiene (curso virtual sin rango). */
     private static LocalDate fechaFinDelCurso(Matricula m) {
-        var curso = m.getCurso();
-        return !"VIRTUAL".equals(curso.getModalidad()) ? curso.getFechaFin() : null;
+        return m.getCurso().getFechaFin();
     }
 
     private List<FirmanteVista> firmantesImpresos(Matricula m, Certificado c) {
