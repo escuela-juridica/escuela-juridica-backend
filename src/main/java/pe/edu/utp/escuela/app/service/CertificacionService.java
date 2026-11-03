@@ -409,10 +409,11 @@ public class CertificacionService {
         c.setTipoCursoImpreso(curso.getTipoCurso() != null ? curso.getTipoCurso().getNombre() : "Curso");
         c.setTemarioImpreso(temarioDe(curso));
         c.setHorasImpresas(curso.getHorasAcademicas() != null ? curso.getHorasAcademicas() : BigDecimal.ZERO);
-        // En vivo / híbrido: fechas del curso. Virtual sin fin: matrícula y finalización del alumno.
-        LocalDate inicio = !virtual && curso.getFechaInicio() != null ? curso.getFechaInicio()
+        // Un curso virtual no tiene fechas propias (cada alumno avanza a su ritmo): el certificado no imprime periodo.
+        // En vivo / híbrido: fechas del curso o, si no las tiene, las del propio alumno (matrícula y finalización).
+        LocalDate inicio = virtual ? null : curso.getFechaInicio() != null ? curso.getFechaInicio()
                 : matricula.getFechaMatricula().atZone(LIMA).toLocalDate();
-        LocalDate fin = !virtual && curso.getFechaFin() != null ? curso.getFechaFin()
+        LocalDate fin = virtual ? null : curso.getFechaFin() != null ? curso.getFechaFin()
                 : logro.getFechaFinalizacion().atZone(LIMA).toLocalDate();
         c.setFechaInicioImpresa(inicio);
         c.setFechaFinImpresa(fin);

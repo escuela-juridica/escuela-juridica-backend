@@ -467,15 +467,16 @@ public class CertificadoAdminService {
         return m.getCurso().getTipoCurso() != null ? m.getCurso().getTipoCurso().getNombre() : "Curso";
     }
 
-    /** Mismo criterio que al emitir: en vivo/híbrido, el inicio del curso; si no, la matrícula del alumno. */
+    /** Mismo criterio que al emitir: virtual no tiene periodo; en vivo/híbrido, el inicio del curso o la matrícula del alumno. */
     private static LocalDate fechaInicio(Matricula m, Certificado c) {
         if (c != null) {
             return c.getFechaInicioImpresa();
         }
         var curso = m.getCurso();
-        boolean virtual = "VIRTUAL".equals(curso.getModalidad());
-        return !virtual && curso.getFechaInicio() != null ? curso.getFechaInicio()
-                : m.getFechaMatricula().atZone(LIMA).toLocalDate();
+        if ("VIRTUAL".equals(curso.getModalidad())) {
+            return null;
+        }
+        return curso.getFechaInicio() != null ? curso.getFechaInicio() : m.getFechaMatricula().atZone(LIMA).toLocalDate();
     }
 
     /** Fin que impone el curso (en vivo/híbrido); vacío cuando el fin es la finalización del alumno. */
