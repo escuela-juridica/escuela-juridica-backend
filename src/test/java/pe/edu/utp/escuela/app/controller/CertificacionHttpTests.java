@@ -127,7 +127,7 @@ class CertificacionHttpTests extends HttpIntegracionBase {
         mvc.perform(put("/api/app/cursos/" + curso.getId() + "/certificacion/datos")
                         .with(comoAlumno(alumno.getId())).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"nombres\":\" \",\"apellidoPaterno\":\"Pérez\",\"apellidoMaterno\":\"\"}"))
+                        .content("{\"nombres\":\" \",\"apellidoPaterno\":\" \",\"apellidoMaterno\":\"\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_DATA"))
                 .andExpect(jsonPath("$.fieldErrors.length()").value(2));

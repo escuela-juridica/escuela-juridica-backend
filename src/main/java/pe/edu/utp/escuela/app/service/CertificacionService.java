@@ -122,7 +122,7 @@ public class CertificacionService {
         Persona persona = matricula.getUsuario().getPersona();
         persona.setNombres(limpiar(peticion.nombres()));
         persona.setApellidoPaterno(limpiar(peticion.apellidoPaterno()));
-        persona.setApellidoMaterno(limpiar(peticion.apellidoMaterno()));
+        persona.setApellidoMaterno(limpiarOpcional(peticion.apellidoMaterno()));
         personas.save(persona);
 
         logro.setNombresConfirmados(persona.nombreCompleto());
@@ -534,5 +534,9 @@ public class CertificacionService {
 
     private static String limpiar(String valor) {
         return valor.strip().replaceAll("\\s+", " ");
+    }
+
+    private static String limpiarOpcional(String valor) {
+        return valor == null || valor.isBlank() ? null : limpiar(valor);
     }
 }

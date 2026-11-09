@@ -2048,7 +2048,8 @@ JOIN modulo m ON m.curso_id=c.curso_id AND m.orden=v.modulo;
 INSERT INTO recurso
 (tipo_material_id,tipo,origen,referencia,nombre_archivo,tipo_mime,duracion_segundos,
  duracion_detectada,youtube_no_listado_confirmado,creado_por_usuario_id)
-SELECT tm.tipo_material_id,'VIDEO','YOUTUBE','https://www.youtube.com/watch?v=demo-'||l.leccion_id,
+SELECT tm.tipo_material_id,'VIDEO','YOUTUBE',
+       'https://www.youtube.com/watch?v='||(ARRAY['XBQrVaNEaSQ','_Py4rKyRfhs','ft7bDurQeCw','LqIs_BcFXR0','TpNvLOLaELw','B-YO34e1e3I','p0ezIaA7PhQ'])[1+(l.leccion_id % 7)]||'&leccion='||l.leccion_id,
        NULL,'video/youtube',NULL,false,true,u.usuario_id
 FROM leccion l
          JOIN tipo_material tm ON tm.codigo='VIDEO'
@@ -2057,7 +2058,7 @@ WHERE l.tipo='GRABADA';
 
 INSERT INTO material_leccion (leccion_id,recurso_id,titulo,orden)
 SELECT l.leccion_id,r.recurso_id,'Video de la leccion',1
-FROM leccion l JOIN recurso r ON r.referencia='https://www.youtube.com/watch?v=demo-'||l.leccion_id;
+FROM leccion l JOIN recurso r ON split_part(r.referencia,'&leccion=',2)=l.leccion_id::text;
 
 INSERT INTO examen
 (curso_id,modulo_id,titulo,descripcion,tipo,finalidad,orden,maximo_intentos,
@@ -2677,7 +2678,9 @@ WHERE p.numero_pedido='PED-EP06-0002';
 -- Cuenta:  alumno.demo@escuelajuridica.edu.pe   Contrasena: Marco1415@
 --          (cambia el correo por uno propio si quieres recibir los avisos de matricula y de certificado)
 -- Curso:   "Procedimiento Administrativo Practico" (GRATUITO, virtual, publicado)
---          8 lecciones en 4 modulos + examen final de 4 preguntas de correccion automatica.
+--          8 lecciones en 4 modulos, cada una con su video de YouTube, material descargable en PDF y
+--          lecturas recomendadas, + examen final de 4 preguntas (30 minutos) de correccion automatica.
+--          Los PDF viven en uploads/cursos/31/ (el curso recibe el id 31): copiar esa carpeta junto con el script.
 -- El alumno NO tiene matricula: el recorrido empieza en la ficha del curso con "Matricularme gratis".
 --   1. Se matricula sin pago (matricula gratuita) y entra al aula.
 --   2. Completa las 8 lecciones de los 4 modulos en orden.
@@ -2707,11 +2710,11 @@ INSERT INTO curso
  horas_academicas, beneficios, creado_por_usuario_id, publicado_en)
 SELECT 'procedimiento-administrativo-practico',
        'Procedimiento Administrativo Practico',
-       'Curso gratuito, corto y aplicado, en cuatro modulos: principios, etapas y actos, recursos y silencio administrativo del procedimiento administrativo general, con examen final de correccion automatica y certificado al instante.',
+       'Curso gratuito, corto y aplicado, sobre el procedimiento administrativo general. En cuatro modulos recorres los principios y la competencia, las etapas y los actos administrativos, los recursos administrativos y el silencio administrativo. Cada leccion incluye video, material descargable en PDF y lecturas recomendadas, y al final rindes un examen de 30 minutos con correccion automatica y obtienes tu certificado al instante.',
        '/uploads/portadas/31-1793741001012.jpg',
        tc.tipo_curso_id, ct.categoria_tematica_id, ec.entidad_certificadora_id, 'VIRTUAL', 'GRATUITO',
        es.estado_curso_id, true, 0.00, 8.00,
-       ARRAY['Matricula gratuita con acceso inmediato','Cuatro modulos con lecciones en video','Examen final de correccion automatica','Certificado al instante al aprobar'],
+       ARRAY['Matricula gratuita con acceso inmediato','Cuatro modulos con 8 lecciones en video','Material descargable en PDF y lecturas recomendadas','Examen final de 30 minutos con correccion automatica','Certificado al instante al aprobar'],
        a.usuario_id, CURRENT_TIMESTAMP
 FROM tipo_curso tc, categoria_tematica ct, entidad_certificadora ec, estado_curso es, usuario a
 WHERE tc.codigo = 'CURSO' AND ct.codigo = 'DERECHO_ADMINISTRATIVO'
@@ -2768,43 +2771,109 @@ SELECT m.modulo_id, v.titulo, v.descripcion, v.orden, 'GRABADA', 'PROGRAMADA', t
 FROM modulo m
          JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'procedimiento-administrativo-practico'
          JOIN (VALUES
-                   (1, 'Principios del procedimiento administrativo', 'Legalidad, debido procedimiento e informalismo.', 1, true),
-                   (1, 'Sujetos y competencia', 'Administrados, autoridad administrativa y competencia.', 2, false),
-                   (2, 'Etapas del procedimiento', 'Inicio, instruccion y resolucion del procedimiento.', 1, false),
-                   (2, 'El acto administrativo y su notificacion', 'Requisitos de validez y eficacia del acto administrativo.', 2, false),
-                   (3, 'Recurso de reconsideracion', 'Cuando procede, plazos y nueva prueba.', 1, false),
-                   (3, 'Recursos de apelacion y de revision', 'Diferencias, autoridad competente y plazos.', 2, false),
-                   (4, 'Silencio administrativo positivo y negativo', 'Efectos del silencio segun el tipo de procedimiento.', 1, false),
-                   (4, 'Resolucion de un caso practico', 'Aplicacion de lo aprendido a un caso completo.', 2, false)
+                   (1, 'Principios del procedimiento administrativo', 'Legalidad, debido procedimiento, impulso de oficio, razonabilidad e informalismo: los principios que guian toda actuacion de la autoridad y protegen al administrado. Al terminar sabras reconocerlos en un caso real.', 1, true),
+                   (1, 'Sujetos y competencia', 'Quien es el administrado, quien es la autoridad y como se determina la competencia. Veras por que un acto emitido por una autoridad incompetente puede ser declarado nulo y como se delega la competencia.', 2, false),
+                   (2, 'Etapas del procedimiento', 'Inicio a instancia de parte o de oficio, instruccion con pruebas y alegatos, y resolucion. Descarga el esquema de etapas para repasar cada fase con ejemplos.', 1, false),
+                   (2, 'El acto administrativo y su notificacion', 'Los cinco requisitos de validez del acto administrativo (competencia, objeto, finalidad publica, motivacion y procedimiento regular) y por que la notificacion determina desde cuando produce efectos.', 2, false),
+                   (3, 'Recurso de reconsideracion', 'Cuando conviene presentarlo, por que exige nueva prueba y por que es facultativo. Incluye el cuadro comparativo de recursos y un modelo de escrito para consultar.', 1, false),
+                   (3, 'Recursos de apelacion y de revision', 'Diferencias con la reconsideracion, a quien se dirige cada recurso, el plazo de 15 dias habiles y el efecto de dejarlo vencer. Se revisa tambien el caracter excepcional de la revision.', 2, false),
+                   (4, 'Silencio administrativo positivo y negativo', 'Que ocurre cuando la entidad no responde dentro del plazo. Aprenderas a distinguir el silencio positivo del negativo y que puede hacer el administrado en cada caso.', 1, false),
+                   (4, 'Resolucion de un caso practico', 'Aplica todo lo aprendido con el caso de la licencia de funcionamiento de la panaderia La Espiga. Descarga el caso, resuelvelo y compara con las respuestas orientativas antes del examen final.', 2, false)
 ) v(modulo_orden, titulo, descripcion, orden, vista_previa) ON v.modulo_orden = m.orden;
 
 INSERT INTO recurso
 (tipo_material_id, tipo, origen, referencia, nombre_archivo, tipo_mime, duracion_segundos,
  duracion_detectada, youtube_no_listado_confirmado, creado_por_usuario_id)
-SELECT tm.tipo_material_id, 'VIDEO', 'YOUTUBE', 'https://www.youtube.com/watch?v=demo-flujo-' || l.leccion_id,
+SELECT tm.tipo_material_id, 'VIDEO', 'YOUTUBE', v.url,
        NULL, 'video/youtube', NULL, false, true, a.usuario_id
-FROM leccion l
-         JOIN modulo m ON m.modulo_id = l.modulo_id
-         JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'procedimiento-administrativo-practico'
+FROM (VALUES
+    (1, 'https://www.youtube.com/watch?v=XBQrVaNEaSQ'),
+    (2, 'https://www.youtube.com/watch?v=_Py4rKyRfhs'),
+    (3, 'https://www.youtube.com/watch?v=ft7bDurQeCw'),
+    (4, 'https://www.youtube.com/watch?v=LqIs_BcFXR0'),
+    (5, 'https://www.youtube.com/watch?v=TpNvLOLaELw'),
+    (6, 'https://www.youtube.com/watch?v=B-YO34e1e3I'),
+    (7, 'https://www.youtube.com/watch?v=p0ezIaA7PhQ'),
+    (8, 'https://www.youtube.com/watch?v=XBQrVaNEaSQ&parte=8')
+) v(n, url)
          JOIN tipo_material tm ON tm.codigo = 'VIDEO'
          JOIN usuario a ON a.correo = 'admin@escuelajuridica.edu.pe';
 
 INSERT INTO material_leccion (leccion_id, recurso_id, titulo, orden)
-SELECT l.leccion_id, r.recurso_id, 'Video de la leccion', 1
-FROM leccion l
-         JOIN modulo m ON m.modulo_id = l.modulo_id
-         JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'procedimiento-administrativo-practico'
-         JOIN recurso r ON r.referencia = 'https://www.youtube.com/watch?v=demo-flujo-' || l.leccion_id;
+SELECT x.leccion_id, r.recurso_id, 'Video de la leccion', 1
+FROM (SELECT l.leccion_id, row_number() OVER (ORDER BY m.orden, l.orden) AS n
+      FROM leccion l
+               JOIN modulo m ON m.modulo_id = l.modulo_id
+               JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'procedimiento-administrativo-practico') x
+         JOIN (VALUES
+    (1, 'https://www.youtube.com/watch?v=XBQrVaNEaSQ'),
+    (2, 'https://www.youtube.com/watch?v=_Py4rKyRfhs'),
+    (3, 'https://www.youtube.com/watch?v=ft7bDurQeCw'),
+    (4, 'https://www.youtube.com/watch?v=LqIs_BcFXR0'),
+    (5, 'https://www.youtube.com/watch?v=TpNvLOLaELw'),
+    (6, 'https://www.youtube.com/watch?v=B-YO34e1e3I'),
+    (7, 'https://www.youtube.com/watch?v=p0ezIaA7PhQ'),
+    (8, 'https://www.youtube.com/watch?v=XBQrVaNEaSQ&parte=8')
+) v(n, url) ON v.n = x.n
+         JOIN recurso r ON r.referencia = v.url;
 
--- Examen final: 4 preguntas de seleccion unica (una por modulo, 10 puntos c/u), 3 intentos, sin tiempo limite.
+-- Materiales de apoyo: PDF descargables (archivos en uploads/cursos/<id del curso>/) y lecturas externas.
+INSERT INTO recurso
+(tipo_material_id, tipo, origen, referencia, nombre_archivo, tipo_mime, tamano_bytes, creado_por_usuario_id)
+SELECT tm.tipo_material_id, v.tipo, v.origen,
+       CASE WHEN v.origen = 'SUBIDO' THEN '/uploads/cursos/' || c.curso_id || '/' || v.referencia ELSE v.referencia END,
+       v.nombre, v.mime, v.tamano, a.usuario_id
+FROM (VALUES
+          ('DOCUMENTO', 'ARCHIVO', 'SUBIDO', 'tuo-ley-27444-decreto-supremo-006-2026-jus.pdf', 'TUO de la Ley 27444 - D.S. 006-2026-JUS.pdf', 'application/pdf', 10092715::bigint),
+          ('DOCUMENTO', 'ARCHIVO', 'SUBIDO', 'esquema-etapas-del-procedimiento-administrativo.pdf', 'Esquema de etapas y acto administrativo.pdf', 'application/pdf', 4125::bigint),
+          ('DOCUMENTO', 'ARCHIVO', 'SUBIDO', 'cuadro-recursos-administrativos.pdf', 'Cuadro comparativo de recursos administrativos.pdf', 'application/pdf', 3993::bigint),
+          ('DOCUMENTO', 'ARCHIVO', 'SUBIDO', 'caso-practico-silencio-administrativo.pdf', 'Caso practico - silencio administrativo.pdf', 'application/pdf', 3945::bigint),
+          ('ENLACE', 'ENLACE', 'EXTERNO', 'https://lpderecho.pe/estudio-preliminar-del-tuo-de-la-ley-27444-ley-del-procedimiento-administrativo-general-decreto-supremo-006-2026-jus/', NULL::text, NULL::text, NULL::bigint),
+          ('ENLACE', 'ENLACE', 'EXTERNO', 'https://lpderecho.pe/jurisprudencia-articulo-iv-num-1-1-ley-27444-principio-de-legalidad/', NULL::text, NULL::text, NULL::bigint),
+          ('ENLACE', 'ENLACE', 'EXTERNO', 'https://lpderecho.pe/recursos-administrativos-reconsideracion-apelacion-revision/', NULL::text, NULL::text, NULL::bigint),
+          ('ENLACE', 'ENLACE', 'EXTERNO', 'https://lpderecho.pe/plazos-efectos-recursos-reconsideracion-apelacion/', NULL::text, NULL::text, NULL::bigint),
+          ('ENLACE', 'ENLACE', 'EXTERNO', 'https://lpderecho.pe/modelos-recursos-impugnatorios-administrativos/', NULL::text, NULL::text, NULL::bigint),
+          ('ENLACE', 'ENLACE', 'EXTERNO', 'https://lpderecho.pe/textos-unicos-procedimientos-administrativos-silencios-administrativos-modificaciones-ley-procedimiento-administrativo-general-mediante-decreto-legislativo-1272/', NULL::text, NULL::text, NULL::bigint),
+          ('ENLACE', 'ENLACE', 'EXTERNO', 'https://www.gob.pe/institucion/minjus/noticias/1386239-minjusdh-simplifica-tramites-y-publica-nuevo-texto-unico-de-la-ley-del-procedimiento-administrativo-general', NULL::text, NULL::text, NULL::bigint)
+) v(tipo_material, tipo, origen, referencia, nombre, mime, tamano)
+         JOIN tipo_material tm ON tm.codigo = v.tipo_material
+         JOIN curso c ON c.url_amigable = 'procedimiento-administrativo-practico'
+         JOIN usuario a ON a.correo = 'admin@escuelajuridica.edu.pe';
+
+INSERT INTO material_leccion (leccion_id, recurso_id, titulo, orden, permite_descarga)
+SELECT x.leccion_id, r.recurso_id, v.titulo, v.orden, v.descarga
+FROM (SELECT l.leccion_id, row_number() OVER (ORDER BY m.orden, l.orden) AS n
+      FROM leccion l
+               JOIN modulo m ON m.modulo_id = l.modulo_id
+               JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'procedimiento-administrativo-practico') x
+         JOIN (VALUES
+                   (1, 2, 'TUO de la Ley 27444 (texto oficial vigente)', true, 'tuo-ley-27444-decreto-supremo-006-2026-jus.pdf'),
+                   (1, 3, 'Lectura: estudio preliminar del nuevo TUO', false, 'https://lpderecho.pe/estudio-preliminar-del-tuo-de-la-ley-27444-ley-del-procedimiento-administrativo-general-decreto-supremo-006-2026-jus/'),
+                   (2, 2, 'TUO de la Ley 27444 (texto oficial vigente)', true, 'tuo-ley-27444-decreto-supremo-006-2026-jus.pdf'),
+                   (2, 3, 'Lectura: el principio de legalidad', false, 'https://lpderecho.pe/jurisprudencia-articulo-iv-num-1-1-ley-27444-principio-de-legalidad/'),
+                   (3, 2, 'Esquema: etapas del procedimiento', true, 'esquema-etapas-del-procedimiento-administrativo.pdf'),
+                   (4, 2, 'Esquema: etapas y requisitos del acto administrativo', true, 'esquema-etapas-del-procedimiento-administrativo.pdf'),
+                   (5, 2, 'Cuadro comparativo de recursos administrativos', true, 'cuadro-recursos-administrativos.pdf'),
+                   (5, 3, 'Lectura: recursos administrativos', false, 'https://lpderecho.pe/recursos-administrativos-reconsideracion-apelacion-revision/'),
+                   (5, 4, 'Modelos de recursos impugnatorios', false, 'https://lpderecho.pe/modelos-recursos-impugnatorios-administrativos/'),
+                   (6, 2, 'Cuadro comparativo de recursos administrativos', true, 'cuadro-recursos-administrativos.pdf'),
+                   (6, 3, 'Lectura: plazos y efectos de los recursos', false, 'https://lpderecho.pe/plazos-efectos-recursos-reconsideracion-apelacion/'),
+                   (7, 2, 'Lectura: silencios administrativos tras el D. Leg. 1272', false, 'https://lpderecho.pe/textos-unicos-procedimientos-administrativos-silencios-administrativos-modificaciones-ley-procedimiento-administrativo-general-mediante-decreto-legislativo-1272/'),
+                   (7, 3, 'Noticia: nuevo TUO de la Ley del Procedimiento Administrativo General', false, 'https://www.gob.pe/institucion/minjus/noticias/1386239-minjusdh-simplifica-tramites-y-publica-nuevo-texto-unico-de-la-ley-del-procedimiento-administrativo-general'),
+                   (8, 2, 'Caso practico: la licencia de la panaderia La Espiga', true, 'caso-practico-silencio-administrativo.pdf'),
+                   (8, 3, 'TUO de la Ley 27444 (texto oficial vigente)', true, 'tuo-ley-27444-decreto-supremo-006-2026-jus.pdf')
+) v(n, orden, titulo, descarga, referencia) ON v.n = x.n
+         JOIN recurso r ON r.referencia = v.referencia OR r.referencia LIKE '%/' || v.referencia;
+
+-- Examen final: 4 preguntas de seleccion unica (una por modulo, 10 puntos c/u), 3 intentos, 30 minutos de tiempo limite.
 -- Modo SECUENCIAL: una pregunta por vez con "Siguiente", sin volver atras, y no se puede avanzar sin responder.
 INSERT INTO examen
 (curso_id, modulo_id, titulo, descripcion, tipo, finalidad, orden, maximo_intentos, tiempo_limite_minutos,
  barajar_preguntas, barajar_opciones, mostrar_respuestas, bloquea_siguiente_modulo, dias_revision,
  modo_navegacion, permite_omitir_preguntas)
 SELECT c.curso_id, NULL, 'Examen final del curso',
-       'Responde las cuatro preguntas. La nota se calcula automaticamente al enviar.',
-       'CALIFICADO', 'FINAL', 1, 3, NULL, false, false, 'AL_APROBAR', false, 3, 'SECUENCIAL', false
+       'Responde las cuatro preguntas. Tienes 30 minutos desde que inicias; la nota se calcula automaticamente al enviar.',
+       'CALIFICADO', 'FINAL', 1, 3, 30, false, false, 'AL_APROBAR', false, 3, 'SECUENCIAL', false
 FROM curso c WHERE c.url_amigable = 'procedimiento-administrativo-practico';
 
 INSERT INTO pregunta (examen_id, tipo, enunciado, puntaje, orden)
