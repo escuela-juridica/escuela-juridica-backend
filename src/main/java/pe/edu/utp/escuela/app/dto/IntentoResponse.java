@@ -26,6 +26,8 @@ public record IntentoResponse(
         Instant fechaLimiteRevision,
         boolean respuestasVisibles,
         boolean afectaCertificacion,
+        String modoNavegacion,
+        boolean permiteOmitirPreguntas,
         List<PreguntaIntentoResponse> preguntas) {
 
     public IntentoResponse {

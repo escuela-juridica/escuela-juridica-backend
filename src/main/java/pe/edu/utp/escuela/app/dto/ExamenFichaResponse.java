@@ -30,6 +30,8 @@ public record ExamenFichaResponse(
         Long intentoEnCursoId,
         boolean aprobado,
         BigDecimal mejorNota,
+        String modoNavegacion,
+        boolean permiteOmitirPreguntas,
         List<IntentoResumenResponse> intentos) {
 
     public ExamenFichaResponse {

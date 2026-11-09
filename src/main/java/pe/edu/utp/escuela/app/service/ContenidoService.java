@@ -424,6 +424,8 @@ public class ContenidoService {
             copiaExamen.setMostrarRespuestas(examenOrigen.getMostrarRespuestas());
             copiaExamen.setBloqueaSiguienteModulo(examenOrigen.isBloqueaSiguienteModulo());
             copiaExamen.setDiasRevision(examenOrigen.getDiasRevision());
+            copiaExamen.setModoNavegacion(examenOrigen.getModoNavegacion());
+            copiaExamen.setPermiteOmitirPreguntas(examenOrigen.isPermiteOmitirPreguntas());
             copiaExamen.setActivo(true);
             examenes.saveAndFlush(copiaExamen);
 

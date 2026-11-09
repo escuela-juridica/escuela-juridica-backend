@@ -13,6 +13,7 @@ import pe.edu.utp.escuela.app.dto.CrearOpcionRequest;
 import pe.edu.utp.escuela.app.dto.CrearPreguntaRequest;
 import pe.edu.utp.escuela.app.dto.ExamenResponse;
 import pe.edu.utp.escuela.app.dto.FinalidadExamen;
+import pe.edu.utp.escuela.app.dto.ModoNavegacionExamen;
 import pe.edu.utp.escuela.app.dto.MostrarRespuestas;
 import pe.edu.utp.escuela.app.dto.OpcionResponse;
 import pe.edu.utp.escuela.app.dto.OrdenRequest;
@@ -158,6 +159,8 @@ public class ExamenService {
             copia.setMostrarRespuestas(origen.getMostrarRespuestas());
             copia.setBloqueaSiguienteModulo(origen.isBloqueaSiguienteModulo());
             copia.setDiasRevision(origen.getDiasRevision());
+            copia.setModoNavegacion(origen.getModoNavegacion());
+            copia.setPermiteOmitirPreguntas(origen.isPermiteOmitirPreguntas());
             copia.setActivo(true);
             examenes.saveAndFlush(copia);
 
@@ -320,6 +323,8 @@ public class ExamenService {
         examen.setFechaHabilitacion("VIRTUAL".equals(curso.getModalidad()) ? null : p.fechaHabilitacion());
         examen.setBloqueaSiguienteModulo(!practica && !esFinal && p.bloqueaSiguienteModulo());
         examen.setDiasRevision(diasRevisionSolicitado);
+        examen.setModoNavegacion((p.modoNavegacion() == null ? ModoNavegacionExamen.LIBRE : p.modoNavegacion()).name());
+        examen.setPermiteOmitirPreguntas(Boolean.TRUE.equals(p.permiteOmitirPreguntas()));
     }
 
     private boolean cursoIniciado(Curso curso) {
@@ -443,7 +448,7 @@ public class ExamenService {
                 e.getTipo(), e.getFinalidad(), e.getOrden(), e.getMaximoIntentos(), e.getTiempoLimiteMinutos(),
                 e.isBarajarPreguntas(), e.isBarajarOpciones(), e.getMostrarRespuestas(), e.getFechaHabilitacion(),
                 e.isBloqueaSiguienteModulo(), e.getDiasRevision(), e.isActivo(), e.getExamenOrigenId(),
-                preguntasRespuesta);
+                e.getModoNavegacion(), e.isPermiteOmitirPreguntas(), preguntasRespuesta);
     }
 
     private PreguntaResponse mapearPregunta(Pregunta p, List<OpcionPregunta> opcionesDePregunta) {

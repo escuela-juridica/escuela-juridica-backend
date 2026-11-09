@@ -116,7 +116,8 @@ public class ExamenAlumnoService {
                 examen.isBloqueaSiguienteModulo(), estado.motivoNoHabilitado() == null, puedeIniciar, motivo,
                 estado.agotadoSinAprobar(), ctx.soloLectura(),
                 estado.enProgreso() == null ? null : estado.enProgreso().getId(),
-                estado.aprobado(), estado.mejorNota(), historial);
+                estado.aprobado(), estado.mejorNota(), examen.getModoNavegacion(),
+                examen.isPermiteOmitirPreguntas(), historial);
     }
 
     @Transactional(noRollbackFor = BusinessValidationException.class)
@@ -217,9 +218,38 @@ public class ExamenAlumnoService {
         IntentoExamen intento = intentoDelAlumno(intentoId);
         if (!cerrarSiVencido(intento) && intento.estaEnProgreso()) {
             exigirEscritura(intento.getMatricula());
+            exigirTodasRespondidas(intento);
             calificar(intento, clock.instant());
         }
         return construir(intento, intento.getMatricula());
+    }
+
+    private void exigirTodasRespondidas(IntentoExamen intento) {
+        Examen examen = intento.getExamen();
+        if (examen.isPermiteOmitirPreguntas()) {
+            return;
+        }
+        Map<Long, RespuestaIntento> guardadas = respuestas.findByIntentoExamen_Id(intento.getId()).stream()
+                .collect(Collectors.toMap(r -> r.getPregunta().getId(), r -> r));
+        long faltan = preguntasActivas(examen.getId()).stream()
+                .filter(pregunta -> !estaRespondida(pregunta, guardadas.get(pregunta.getId())))
+                .count();
+        if (faltan > 0) {
+            throw new BusinessValidationException((faltan == 1 ? "Te falta responder 1 pregunta. "
+                    : "Te faltan por responder " + faltan + " preguntas. ")
+                    + "Responde todas las preguntas antes de enviar.");
+        }
+    }
+
+    private static boolean estaRespondida(Pregunta pregunta, RespuestaIntento respuesta) {
+        if (respuesta == null) {
+            return false;
+        }
+        if ("RESPUESTA_ABIERTA".equals(pregunta.getTipo())) {
+            String texto = respuesta.getTextoRespuesta();
+            return texto != null && !texto.isBlank();
+        }
+        return !respuesta.getOpciones().isEmpty();
     }
 
     @Scheduled(fixedDelay = 60_000, initialDelay = 50_000)
@@ -379,7 +409,8 @@ public class ExamenAlumnoService {
                 examen.getTipo(), intento.getNumeroIntento(), intento.getEstado(), intento.getIniciadoEn(),
                 intento.getExpiraEn(), restantes, ahora, intento.getPuntajeTotal(), intento.getPuntajeObtenido(),
                 intento.getNota(), intento.getAprobado(), reglaDe(matricula).getNotaMinima(), intento.getEnviadoEn(),
-                porTiempo, limiteRevision(intento, examen), visibles, "CALIFICADO".equals(examen.getTipo()), filas);
+                porTiempo, limiteRevision(intento, examen), visibles, "CALIFICADO".equals(examen.getTipo()),
+                examen.getModoNavegacion(), examen.isPermiteOmitirPreguntas(), filas);
     }
 
     private boolean respuestasVisibles(Examen examen, Matricula matricula) {

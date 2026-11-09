@@ -731,10 +731,13 @@ CREATE TABLE examen (
                         fecha_habilitacion timestamptz,
                         bloquea_siguiente_modulo boolean NOT NULL DEFAULT false,
                         dias_revision integer NOT NULL DEFAULT 3,
+                        modo_navegacion varchar(12) NOT NULL DEFAULT 'LIBRE',
+                        permite_omitir_preguntas boolean NOT NULL DEFAULT false,
                         activo boolean NOT NULL DEFAULT true,
                         creado_en timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         modificado_en timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         CONSTRAINT pk_examen PRIMARY KEY (examen_id),
+                        CONSTRAINT ck_examen_modo_navegacion CHECK (modo_navegacion IN ('LIBRE','SECUENCIAL')),
                         CONSTRAINT uq_examen_curso_titulo UNIQUE (curso_id, titulo),
                         CONSTRAINT fk_examen_origen FOREIGN KEY (examen_origen_id) REFERENCES examen(examen_id),
                         CONSTRAINT fk_examen_curso FOREIGN KEY (curso_id) REFERENCES curso(curso_id),
@@ -758,6 +761,8 @@ COMMENT ON COLUMN examen.mostrar_respuestas IS 'Momento de mostrar respuestas: A
 COMMENT ON COLUMN examen.fecha_habilitacion IS 'Fecha opcional para habilitarlo en vivo o hibrido.';
 COMMENT ON COLUMN examen.bloquea_siguiente_modulo IS 'Indica si debe aprobarse para continuar.';
 COMMENT ON COLUMN examen.dias_revision IS 'Plazo maximo de calificacion para respuestas abiertas.';
+COMMENT ON COLUMN examen.modo_navegacion IS 'LIBRE muestra todas las preguntas juntas; SECUENCIAL muestra una por una sin permitir volver atras.';
+COMMENT ON COLUMN examen.permite_omitir_preguntas IS 'Si es falso, el alumno debe responder todas las preguntas antes de avanzar o enviar.';
 COMMENT ON COLUMN examen.activo IS 'Indica si permanece disponible.';
 COMMENT ON COLUMN examen.creado_en IS 'Fecha y hora de creacion.';
 COMMENT ON COLUMN examen.modificado_en IS 'Fecha y hora de ultima modificacion.';
@@ -2792,12 +2797,14 @@ FROM leccion l
          JOIN recurso r ON r.referencia = 'https://www.youtube.com/watch?v=demo-flujo-' || l.leccion_id;
 
 -- Examen final: 4 preguntas de seleccion unica (una por modulo, 10 puntos c/u), 3 intentos, sin tiempo limite.
+-- Modo SECUENCIAL: una pregunta por vez con "Siguiente", sin volver atras, y no se puede avanzar sin responder.
 INSERT INTO examen
 (curso_id, modulo_id, titulo, descripcion, tipo, finalidad, orden, maximo_intentos, tiempo_limite_minutos,
- barajar_preguntas, barajar_opciones, mostrar_respuestas, bloquea_siguiente_modulo, dias_revision)
+ barajar_preguntas, barajar_opciones, mostrar_respuestas, bloquea_siguiente_modulo, dias_revision,
+ modo_navegacion, permite_omitir_preguntas)
 SELECT c.curso_id, NULL, 'Examen final del curso',
        'Responde las cuatro preguntas. La nota se calcula automaticamente al enviar.',
-       'CALIFICADO', 'FINAL', 1, 3, NULL, false, false, 'AL_APROBAR', false, 3
+       'CALIFICADO', 'FINAL', 1, 3, NULL, false, false, 'AL_APROBAR', false, 3, 'SECUENCIAL', false
 FROM curso c WHERE c.url_amigable = 'procedimiento-administrativo-practico';
 
 INSERT INTO pregunta (examen_id, tipo, enunciado, puntaje, orden)
