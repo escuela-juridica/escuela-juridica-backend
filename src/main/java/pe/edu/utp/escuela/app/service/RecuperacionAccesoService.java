@@ -70,7 +70,9 @@ public class RecuperacionAccesoService {
         }
 
         Usuario usuario = encontrado.get();
-        if (!usuario.isActivo() || usuario.getContrasenaHash() == null) {
+        boolean tieneContrasena = usuario.getContrasenaHash() != null;
+        boolean soloGoogleVerificada = usuario.getGoogleSubject() != null && usuario.getCorreoVerificadoEn() != null;
+        if (!usuario.isActivo() || !(tieneContrasena || soloGoogleVerificada)) {
             return;
         }
 
