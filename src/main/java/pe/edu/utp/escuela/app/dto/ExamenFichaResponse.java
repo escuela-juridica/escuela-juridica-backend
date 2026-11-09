@@ -3,14 +3,6 @@ package pe.edu.utp.escuela.app.dto;
 import java.math.BigDecimal;
 import java.util.List;
 
-/**
- * HU-028 / HU-029 — Ficha de un examen para el alumno: reglas, intentos y qué puede hacer ahora.
- *
- * <p>{@code intentosMaximos} y {@code intentosRestantes} son {@code null} cuando los intentos son
- * ilimitados. {@code motivoNoPuedeIniciar} explica por qué no hay botón de inicio (examen aún no
- * habilitado, intento pendiente de revisión, intentos agotados, certificado emitido).
- * {@code soloLectura} es cierto en un curso cancelado: se consulta, pero no se rinde.
- */
 public record ExamenFichaResponse(
         Long id,
         Long cursoId,

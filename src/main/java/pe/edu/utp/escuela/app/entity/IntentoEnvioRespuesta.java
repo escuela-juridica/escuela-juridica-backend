@@ -14,7 +14,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** HU-040 — Un intento de enviar la respuesta por correo: destino, resultado y responsable. Solo éxito o fallo. */
 @Getter
 @Setter
 @NoArgsConstructor

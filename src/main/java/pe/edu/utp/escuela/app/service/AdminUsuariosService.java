@@ -48,7 +48,6 @@ import pe.edu.utp.escuela.app.repository.UsuarioRolRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.util.TextNormalizer;
 
-/** HU-008 — Gestionar usuarios administrativamente. */
 @Service
 @RequiredArgsConstructor
 public class AdminUsuariosService {
@@ -91,12 +90,6 @@ public class AdminUsuariosService {
         return detalleDe(buscarOLanzar(usuarioId));
     }
 
-    /**
-     * Pedido explícitamente por el usuario del proyecto tras confirmar que la historia sí
-     * contempla editar los datos personales desde este panel (no solo roles y habilitación).
-     * Reutiliza el mismo DTO y las mismas reglas que HU-005 (mi perfil), aplicadas aquí sobre
-     * una cuenta ajena.
-     */
     @Transactional
     public UsuarioAdminResponse actualizarDatosPersonales(Long usuarioId, ActualizarPerfilRequest p) {
         exigirAdministrador();
@@ -169,15 +162,10 @@ public class AdminUsuariosService {
         return new CrearUsuarioAdminResponse(detalleDe(usuario), false, contrasenaTemporal);
     }
 
-    /** Ya no se pregunta ni se infiere "cuál se guardó primero": con un solo rol, ese es el
-     * principal; con ambos, ADMINISTRADOR siempre gana por ser el de mayor alcance. */
     private RolUsuarioAdmin determinarPrincipal(List<RolUsuarioAdmin> roles) {
         return roles.contains(RolUsuarioAdmin.ADMINISTRADOR) ? RolUsuarioAdmin.ADMINISTRADOR : roles.get(0);
     }
 
-    /** Genera una contraseña temporal aleatoria (no una fija compartida por todas las cuentas),
-     * cumpliendo siempre la política de contraseñas (mayúscula, minúscula y dígito); evita
-     * 0/O/1/l/I para que sea legible al transcribirla desde la pantalla o el correo. */
     private String generarContrasenaTemporal() {
         String mayusculas = "ABCDEFGHJKLMNPQRSTUVWXYZ";
         String minusculas = "abcdefghjkmnpqrstuvwxyz";
@@ -206,13 +194,6 @@ public class AdminUsuariosService {
         return detalleDe(usuario);
     }
 
-    /**
-     * Desviación explícita y deliberada de HU-008: la historia dice literalmente "en esta
-     * versión no se elimina roles" — esto va contra esa regla y solo existe porque se pidió
-     * expresamente. Mantiene las mismas protecciones que {@code cambiarActivo}: no puedes
-     * retirarte tu propio rol de administrador, no puedes dejar al sistema sin al menos un
-     * administrador activo, y nunca puedes dejar una cuenta sin ningún rol.
-     */
     @Transactional
     public UsuarioAdminResponse revocarRol(Long usuarioId, RolUsuarioAdmin rolSolicitado) {
         exigirAdministrador();
@@ -298,9 +279,6 @@ public class AdminUsuariosService {
         }
     }
 
-    /** Resetea la contraseña con una temporal aleatoria nueva (pedido explícitamente: antes no
-     * existía forma de que el administrador restableciera el acceso de alguien). La respuesta la
-     * trae una sola vez, igual que al crear la cuenta; también se envía por correo. */
     @Transactional
     public ResetearContrasenaResponse resetearContrasena(Long usuarioId) {
         exigirAdministrador();
@@ -323,8 +301,6 @@ public class AdminUsuariosService {
                 .orElseThrow(() -> new ResourceNotFoundException("La cuenta ya no existe."));
     }
 
-    /** Concede el rol solo si todavía no lo tiene; conceder el mismo rol de nuevo no duplica la
-     * asignación ni cambia el rol principal. */
     private void concederRolSiFalta(Usuario usuario, RolUsuarioAdmin rolSolicitado) {
         Rol rol = rolPorCodigo(rolSolicitado);
         boolean yaLoTiene = usuarioRoles.buscarPorUsuario(usuario.getId()).stream()
@@ -335,9 +311,6 @@ public class AdminUsuariosService {
         asignarRol(usuario, rolSolicitado, currentUserService.get().userId());
     }
 
-    /** Para conceder un rol suelto sobre una cuenta que ya existe: el primer rol que recibe
-     * queda como principal; cualquier otro se agrega como secundario sin tocar el principal ya
-     * existente. */
     private void asignarRol(Usuario usuario, RolUsuarioAdmin rolSolicitado, Long otorganteId) {
         boolean tieneAlgunRol = !usuarioRoles.buscarPorUsuario(usuario.getId()).isEmpty();
         asignarRol(usuario, rolSolicitado, otorganteId, !tieneAlgunRol);

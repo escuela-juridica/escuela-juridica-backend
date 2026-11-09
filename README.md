@@ -24,17 +24,20 @@ No se usa Flyway ni Liquibase: el esquema se gestiona con un script SQL manual, 
 
 ```
 src/main/java/pe/edu/utp/escuela/app/
-├── controller/   16 controladores REST, uno por área funcional
-├── service/      25 servicios con la lógica de negocio y las reglas de autorización
-├── repository/   29 interfaces Spring Data JPA
-├── entity/       35 entidades JPA (dominio completo)
-├── dto/          ~115 records de petición/respuesta, separados de las entidades
+├── controller/   37 controladores REST, uno por área funcional
+├── service/      ~50 servicios con la lógica de negocio y las reglas de autorización
+├── repository/   ~48 interfaces Spring Data JPA
+├── entity/       ~52 entidades JPA (dominio completo)
+├── dto/          ~190 records de petición/respuesta, separados de las entidades
 ├── config/       SecurityConfig, CorsConfig, WebConfig, PasswordConfig, ClockConfig
 ├── security/     JwtService, SessionCookieService, CurrentUserService, hash/token
-├── export/       ReporteMatriculaExportador (CSV, Excel, PDF)
-├── mail/         MailService, plantillas HTML
+├── integration/  Culqi (real), anti-robot nativo y puntos de integración de Google/registro
+├── event/        Eventos internos (p. ej. reevaluar la certificación de una matrícula)
+├── export/       Exportadores de reportes (matrículas, pagos, asistencia, académico,
+│                 certificados) en CSV/Excel/PDF y el PDF del certificado
+├── mail/         MailService, renderizador y plantillas HTML (resources/mail)
 ├── exception/    Jerarquía de BusinessException + GlobalExceptionHandler
-└── util/         TextNormalizer y utilidades varias
+└── util/         TextNormalizer, VisitanteAntiRobot y utilidades varias
 ```
 
 ## Modelo de dominio
@@ -47,7 +50,13 @@ src/main/java/pe/edu/utp/escuela/app/
 
 **Exámenes** — `Examen`, `Pregunta`, `OpcionPregunta`.
 
-**Matrícula, pagos y progreso** — `Matricula`, `HistorialEstadoMatricula`, `Pago` (registro manual; integración con pasarela de pago planificada para una historia futura), `ProgresoLeccion`, `LogroCertificacion`, `Certificado`.
+**Exámenes del alumno** — `IntentoExamen`, `RespuestaIntento`, `IntentoEnvioRespuesta`, `RevisionRespuesta` (calificación de respuestas abiertas), `ExcepcionAcademica`.
+
+**Matrícula, pagos y progreso** — `Matricula`, `HistorialEstadoMatricula`, `Pago` y `EventoPago` (pago en línea con Culqi y registro manual), `AtencionMatriculaPago` (excepciones de pago), `ProgresoLeccion`, `ProgresoMaterial`, `Asistencia`, `HistorialSesion`.
+
+**Certificación** — `LogroCertificacion`, `Certificado`, `HistorialCertificado`, `CertificadoFirmante`.
+
+**Reclamaciones** — `Reclamacion`, `ReclamacionAdjunto`, `RespuestaReclamacion` (Libro de Reclamaciones).
 
 **Notificaciones** — `Notificacion` (registro de cada correo enviado y su resultado).
 
@@ -78,19 +87,26 @@ Manejo de errores centralizado en `GlobalExceptionHandler` (`@RestControllerAdvi
 - **Gestión de cursos** (admin) — alta/edición, docentes y firmantes, reglas académicas, validar y publicar, adelantar/retrasar inicio, cerrar, destacar, duplicar, eliminar.
 - **Contenido del curso** (admin) — CRUD de módulos y lecciones con reordenación, sesiones en vivo, subida de materiales (archivo o enlace), activar/desactivar.
 - **Exámenes y calificaciones** (admin) — CRUD de exámenes, preguntas y alternativas, reordenación.
-- **Matrícula, pagos y reportes** — matrícula gratuita y administrativa, listado/detalle, advertencias académicas, cancelación, reportes exportables en CSV/Excel/PDF.
+- **Matrícula y pagos** — matrícula gratuita y administrativa, listado/detalle, advertencias académicas, cancelación, pago en línea con Culqi (checkout, webhook, resultado y constancia), excepciones de matrículas y pagos, cancelación completa de un curso.
+- **Aula del alumno** — ingreso y ruta del curso, reproductor de lecciones, materiales protegidos, progreso, calendario y sesiones en vivo con asistencia, exámenes automáticos y con respuesta abierta (intentos, nota, mejor intento).
+- **Administración académica** (admin) — gestión de sesiones en vivo (reprogramar, cancelar, corregir asistencia), calificación de respuestas abiertas, seguimiento y excepciones académicas.
+- **Certificación** — emisión automática con espera y confirmación de datos, certificados del alumno (visor y descarga), emisión manual, corrección y anulación, verificación pública por código o QR.
+- **Libro de Reclamaciones** — formulario público de queja o reclamo con adjuntos, bandeja y respuesta administrativa.
+- **Reportes y dashboard** (admin) — matrículas, pagos, asistencia, académico y certificados, exportables en CSV/Excel/PDF; dashboard con cuatro gráficos.
 - **Administración de usuarios** (admin) — búsqueda, alta, edición, roles, activar/desactivar, resetear contraseña.
 - **Información base** (admin) — catálogos maestros: tipos de curso, categorías, docentes, entidades certificadoras, firmantes, tipos de material, reglas de archivo, configuración institucional.
 
-**Aula virtual / sesiones en vivo / materiales protegidos**: documentado como mapa técnico en `docs/epica-4/`, en construcción. Hoy `/uploads/**` es público como cualquier recurso estático — proteger el acceso real a materiales de cursos de pago es responsabilidad de esas historias, aún no implementadas.
+**Materiales protegidos**: el alumno ve y descarga los materiales por `MaterialAlumnoController`, que revalida matrícula y acceso en cada solicitud. Pero los archivos subidos siguen publicados como estáticos en `/uploads/cursos/**` (público, con nombre UUID): quien conozca el enlace exacto lo abre sin matrícula. Los PDF de certificados (`/uploads/certificados/`) y los comprobantes de pago nunca se publican como estáticos.
+
+**Tareas programadas** (`@Scheduled`): vencimiento de matrículas cuya vigencia de acceso terminó (`MatriculaService`), cierre de asistencias pendientes y recordatorios de sesiones del día siguiente (`SesionAlumnoService`), cierre de intentos de examen vencidos (`ExamenAlumnoService`), reevaluación de certificaciones en espera (`CertificacionService`) y paso automático de cursos a EN_CURSO y CERRADO a las 00:05 (`CicloVidaCursoService`).
 
 ## Base de datos
 
-PostgreSQL 15+. `spring.jpa.hibernate.ddl-auto=validate` — Hibernate valida el esquema contra las entidades pero no lo crea ni migra; el esquema real vive en `sql/script/esejur-base-de-datos-completa.sql` (47 tablas), un script único y **destructivo** (elimina y recrea todo) que además carga datos demostrativos. No hay triggers, funciones ni vistas: toda la lógica vive en los servicios Java. Los tests usan H2 en memoria con `ddl-auto=create-drop`.
+PostgreSQL 15+. `spring.jpa.hibernate.ddl-auto=validate` — Hibernate valida el esquema contra las entidades pero no lo crea ni migra; el esquema real vive en `sql/script/esejur-base-de-datos-completa.sql` (49 tablas), un script único y **destructivo** (elimina y recrea todo) que además carga datos demostrativos. No hay triggers, funciones ni vistas: toda la lógica vive en los servicios Java. Los tests usan H2 en memoria con `ddl-auto=create-drop`.
 
 ## Testing
 
-25 archivos de test (JUnit 5 + Mockito), concentrados en `service/` (19 archivos, uno por cada servicio de negocio relevante), más `security/`, `export/`, `mail/` y `controller/`. Predominan los tests unitarios de servicio (repositorios mockeados, `Clock` fijo para fechas deterministas), con algo de integración ligera contra H2.
+39 archivos de test (JUnit 5 + Mockito) con 372 pruebas, todas en verde en la última corrida (`./mvnw test`, 2026-11-09). Se concentran en `service/` (uno por cada servicio de negocio relevante), más `security/`, `export/`, `mail/` y `controller/`. Predominan los tests unitarios de servicio (repositorios mockeados, `Clock` fijo para fechas deterministas), con algo de integración ligera contra H2.
 
 ```
 ./mvnw test

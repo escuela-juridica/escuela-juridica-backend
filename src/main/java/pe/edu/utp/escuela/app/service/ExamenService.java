@@ -36,9 +36,6 @@ import pe.edu.utp.escuela.app.repository.PreguntaRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.util.TextNormalizer;
 
-/** HU-013 — Configurar exámenes: examen, preguntas y opciones. EP02 no crea intentos ni
- * respuestas de alumnos (eso es HU-029/HU-030); tampoco valida que un examen tenga preguntas
- * antes de publicar el curso, porque esa validación de cierre es HU-015. */
 @Service
 @RequiredArgsConstructor
 public class ExamenService {
@@ -51,16 +48,12 @@ public class ExamenService {
     private final CurrentUserService currentUserService;
     private final TextNormalizer textos;
 
-    // ---------------------------------------------------------------- Lectura --
-
     @Transactional(readOnly = true)
     public List<ExamenResponse> listarPorCurso(Long cursoId) {
         exigirAdministrador();
         buscarCursoOLanzar(cursoId);
         return construirExamenes(examenes.findByCurso_IdOrderByOrdenAsc(cursoId));
     }
-
-    // ---------------------------------------------------------------- Exámenes --
 
     @Transactional
     public ExamenResponse crearExamen(Long cursoId, CrearExamenRequest p) {
@@ -99,8 +92,6 @@ public class ExamenService {
     public ExamenResponse cambiarActivoExamen(Long examenId, boolean activo) {
         exigirAdministrador();
         Examen examen = buscarExamenOLanzar(examenId);
-        // HU-016: una vez iniciada la convocatoria, un examen CALIFICADO ya no se retira (dejaría
-        // sin evaluar a quien ya cursa). Uno PRACTICA sigue pudiendo desactivarse.
         if (!activo && "CALIFICADO".equals(examen.getTipo()) && cursoIniciado(examen.getCurso())) {
             throw new BusinessValidationException(
                     "El curso ya inició: no puedes retirar un examen CALIFICADO de la convocatoria.");
@@ -109,8 +100,6 @@ public class ExamenService {
         return mapearExamen(examen, preguntas.findByExamen_IdOrderByOrdenAsc(examenId));
     }
 
-    /** HU-016 — Borrado real, solo mientras el curso sigue en BORRADOR (ver
-     * ContenidoService.eliminarModulo para la misma regla aplicada ahí). */
     @Transactional
     public void eliminarExamen(Long examenId) {
         exigirAdministrador();
@@ -143,9 +132,6 @@ public class ExamenService {
         return construirExamenes(examenes.findByCurso_IdOrderByOrdenAsc(cursoId));
     }
 
-    /** HU-016 — Al duplicar un curso, los exámenes finales (sin módulo) no viajan con ningún
-     * módulo, así que ContenidoService.copiarModulo no los alcanza; esta es su copia dedicada.
-     * Igual que allí, la fecha de habilitación no se copia (pertenecía al periodo de origen). */
     @Transactional
     public void copiarExamenesFinales(Long cursoDestinoId, Long cursoOrigenId) {
         exigirAdministrador();
@@ -203,8 +189,6 @@ public class ExamenService {
             }
         }
     }
-
-    // ---------------------------------------------------------------- Preguntas --
 
     @Transactional
     public PreguntaResponse crearPregunta(Long examenId, CrearPreguntaRequest p) {
@@ -279,8 +263,6 @@ public class ExamenService {
                 .toList();
     }
 
-    // ---------------------------------------------------------------- Validaciones --
-
     private Modulo resolverModulo(Curso curso, FinalidadExamen finalidad, Long moduloId) {
         if (finalidad == FinalidadExamen.FINAL) {
             if (moduloId != null) {
@@ -336,15 +318,11 @@ public class ExamenService {
         examen.setBarajarOpciones(p.barajarOpciones());
         examen.setMostrarRespuestas(p.mostrarRespuestas().name());
         examen.setFechaHabilitacion("VIRTUAL".equals(curso.getModalidad()) ? null : p.fechaHabilitacion());
-        // Un examen de práctica nunca bloquea, y un final no tiene "siguiente módulo" que bloquear.
         examen.setBloqueaSiguienteModulo(!practica && !esFinal && p.bloqueaSiguienteModulo());
         examen.setDiasRevision(diasRevisionSolicitado);
     }
 
     private boolean cursoIniciado(Curso curso) {
-        // Un borrador virtual puede no tener fecha de inicio; eso no lo convierte en un curso
-        // iniciado. Las reglas quedan congeladas desde EN_CURSO y siguen congeladas en CERRADO
-        // (HU-016: nunca se retrocede).
         if (curso.getEstadoCurso() == null) {
             return false;
         }
@@ -407,7 +385,6 @@ public class ExamenService {
                 .orElseThrow(() -> new ResourceNotFoundException("El curso ya no existe."));
     }
 
-    /** HU-016 — El borrado real solo aplica en BORRADOR (igual que en ContenidoService). */
     private void exigirCursoBorrador(Curso curso) {
         if (!"BORRADOR".equals(curso.getEstadoCurso().getCodigo())) {
             throw new BusinessValidationException(
@@ -435,8 +412,6 @@ public class ExamenService {
         }
         return porId;
     }
-
-    // ---------------------------------------------------------------- Mapeo --
 
     private List<ExamenResponse> construirExamenes(List<Examen> lista) {
         List<Long> examenIds = lista.stream().map(Examen::getId).toList();

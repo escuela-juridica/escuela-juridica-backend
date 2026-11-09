@@ -54,13 +54,6 @@ import pe.edu.utp.escuela.app.repository.UsuarioRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.service.AvanceAcademicoService.AvanceAcademico;
 
-/**
- * HU-035 — Gestión administrativa de certificados: lista matrículas con la situación de su certificado y
- * emite excepcionalmente uno con motivo. Mantiene todas las garantías de un certificado normal: un solo
- * documento por alumno y curso, nombres confirmados (por el alumno o, si no lo hizo, por la administración al emitir),
- * congelamiento de nota, nivel y datos,
- * descarga privada, QR público y cierre de nuevos intentos calificados. Deja evidencia de la excepción.
- */
 @Service
 @RequiredArgsConstructor
 public class CertificadoAdminService {
@@ -86,8 +79,6 @@ public class CertificadoAdminService {
 
     @Value("${application.frontend-base-url}")
     private String frontendBaseUrl;
-
-    // ---------------------------------------------------------------------------------------- listado --
 
     @Transactional(readOnly = true)
     public Page<CertificadoGestionResponse> listar(Long usuarioId, Long cursoId, String estadoCertificado, Pageable pageable) {
@@ -115,8 +106,6 @@ public class CertificadoAdminService {
                 avance.porcentaje(), avance.cumpleTodo(), m.getFechaMatricula());
     }
 
-    // ----------------------------------------------------------------------------------- emisión manual --
-
     @Transactional(readOnly = true)
     public EmisionManualSituacionResponse situacion(Long matriculaId) {
         exigirAdministrador();
@@ -131,11 +120,8 @@ public class CertificadoAdminService {
         if (situacion.bloqueo() != null) {
             throw new BusinessValidationException(situacion.bloqueo());
         }
-        // Si el último certificado fue anulado, este lo reemplaza: el anterior queda anulado y enlazado en el historial.
         Certificado reemplazado = certificados.findByLogro_Matricula_Id(matriculaId).orElse(null);
         boolean reemision = reemplazado != null;
-        // Si el alumno no confirmó los nombres impresos (o es una reemisión, donde pueden corregirse), los confirma la
-        // administración al emitir (queda en la evidencia).
         String nombresPorAdministracion = null;
         if (!situacion.datosConfirmados() || (reemision && p.nombres() != null && !p.nombres().isBlank())) {
             nombresPorAdministracion = p.nombres() == null || p.nombres().isBlank()
@@ -154,7 +140,6 @@ public class CertificadoAdminService {
         return construir(matricula);
     }
 
-    /** La fecha de finalización que falta: la indicada dentro de límites, o la de hoy si no se indica. */
     private Instant fechaFinalizacion(Matricula matricula, LocalDate indicada, EmisionManualSituacionResponse s) {
         Instant ahora = clock.instant();
         if (indicada == null) {
@@ -164,7 +149,6 @@ public class CertificadoAdminService {
             throw new BusinessValidationException("La fecha de finalización debe estar entre la matrícula ("
                     + s.fechaMinimaFinalizacion() + ") y hoy (" + s.fechaMaximaFinalizacion() + ").");
         }
-        // Mediodía de Lima: sin riesgo de caer en el día anterior ni en el futuro al convertir a instante.
         Instant instante = indicada.atTime(12, 0).atZone(LIMA).toInstant();
         return instante.isAfter(ahora) ? ahora : instante;
     }
@@ -201,19 +185,12 @@ public class CertificadoAdminService {
         excepciones.save(e);
     }
 
-    // -------------------------------------------------------------------------- HU-036 corregir y anular --
-
     @Transactional(readOnly = true)
     public CertificadoDetalleResponse detalle(Long certificadoId) {
         exigirAdministrador();
         return detalleDe(certificado(certificadoId));
     }
 
-    /**
-     * Corrige datos documentales (nombres, título, horas, entidad, firmantes) de un certificado VIGENTE. Conserva el
-     * código y el estado, regenera el PDF (la versión anterior deja de descargarse) y guarda en el historial los datos
-     * reemplazados con motivo, responsable y fecha. La nota y el nivel congelados no se tocan.
-     */
     @Transactional
     public CertificadoDetalleResponse corregir(Long certificadoId, CorregirCertificadoRequest p) {
         exigirAdministrador();
@@ -249,7 +226,6 @@ public class CertificadoAdminService {
 
         String verificacion = frontendBaseUrl + "/verificar-certificado?codigo=" + c.getCodigo();
         var entidadCurso = c.getLogro().getMatricula().getCurso().getEntidadCertificadora();
-        // La referencia queda en el certificado: así el PDF regenerado es el que se descarga.
         c.setArchivoPdfUrl(archivos.guardarBytes("certificados", c.getCodigo() + ".pdf",
                 pdf.generar(c, nuevos, verificacion, imagenes::cargar, entidadCurso == null ? null : entidadCurso.getLogoUrl())));
         certificados.save(c);
@@ -258,10 +234,6 @@ public class CertificadoAdminService {
         return detalleDe(c);
     }
 
-    /**
-     * Vista previa de una corrección: dibuja el PDF con los datos propuestos y la marca «VISTA PREVIA», sin guardar nada
-     * ni modificar el certificado (se trabaja sobre una copia en memoria y la transacción es de solo lectura).
-     */
     @Transactional(readOnly = true)
     public byte[] vistaPrevia(Long certificadoId, VistaPreviaCertificadoRequest p) {
         exigirAdministrador();
@@ -296,7 +268,6 @@ public class CertificadoAdminService {
                 entidadCurso == null ? null : entidadCurso.getLogoUrl(), true);
     }
 
-    /** La entidad solo aplica a un certificado refrendado y es obligatoria en ese caso. */
     private static String entidadValida(Certificado c, String entidad) {
         String nueva = entidad == null || entidad.isBlank() ? null : entidad.strip();
         boolean refrendado = "REFRENDADO".equals(c.getNivel());
@@ -309,10 +280,6 @@ public class CertificadoAdminService {
         return nueva;
     }
 
-    /**
-     * Los firmantes que quedarían impresos, en el orden pedido. Quien ya estaba impreso conserva lo congelado al emitir;
-     * un firmante nuevo debe estar activo. No guarda nada: quien llama decide si los persiste o solo los dibuja.
-     */
     private List<CertificadoFirmante> firmantesResultantes(Certificado destino, List<CertificadoFirmante> actuales,
             List<Long> idsSolicitados) {
         List<Long> idsNuevos = idsSolicitados.stream().distinct().toList();
@@ -346,11 +313,6 @@ public class CertificadoAdminService {
         }
         return nuevos;
     }
-    /**
-     * Anula de forma irreversible un certificado VIGENTE: retira el PDF, conserva el certificado, su historial y la
-     * finalización, y deja el código activo para que la verificación pública informe «anulado». Un certificado
-     * anulado nunca vuelve a ser VIGENTE.
-     */
     @Transactional
     public CertificadoDetalleResponse anular(Long certificadoId, AnularCertificadoRequest p) {
         exigirAdministrador();
@@ -426,8 +388,6 @@ public class CertificadoAdminService {
         return certificados.findById(id).orElseThrow(() -> new ResourceNotFoundException("El certificado no existe."));
     }
 
-    // ---------------------------------------------------------------------------------------- situación --
-
     private EmisionManualSituacionResponse construir(Matricula m) {
         AvanceAcademico avance = avanceAcademico.calcular(m);
         LogroCertificacion logro = logros.findByMatricula_Id(m.getId()).orElse(null);
@@ -468,12 +428,10 @@ public class CertificadoAdminService {
         return m.getCurso().getTipoCurso() != null ? m.getCurso().getTipoCurso().getNombre() : "Curso";
     }
 
-    /** Mismo criterio que al emitir: el periodo es el del curso (en un virtual puede faltar el inicio o el fin). */
     private static LocalDate fechaInicio(Matricula m, Certificado c) {
         return c != null ? c.getFechaInicioImpresa() : m.getCurso().getFechaInicio();
     }
 
-    /** Fin que fija el curso; vacío si no lo tiene (curso virtual sin rango). */
     private static LocalDate fechaFinDelCurso(Matricula m) {
         return m.getCurso().getFechaFin();
     }
@@ -487,7 +445,6 @@ public class CertificadoAdminService {
                 .map(f -> new FirmanteVista(f.getFirmante().getPersona().nombreCompleto(), f.getFirmante().getCargoFirma())).toList();
     }
 
-    /** Refrendado solo con nota definitiva que alcanza el umbral del curso y entidad; en cualquier otro caso, Normal. */
     private static String nivelProyectado(Matricula m, AvanceAcademico avance) {
         var regla = avance.ruta().regla();
         boolean refrendado = regla.isRequiereExamenes() && avance.notaFinal() != null
@@ -496,15 +453,11 @@ public class CertificadoAdminService {
         return refrendado ? "REFRENDADO" : "NORMAL";
     }
 
-    /**
-     * Por qué no se puede emitir. Los nombres sin confirmar ya no bloquean: los confirma la administración al emitir.
-     */
     private static String bloqueo(Matricula m, AvanceAcademico avance, Certificado certificado) {
         if (certificado != null && Certificado.VIGENTE.equals(certificado.getEstado())) {
             return "Este alumno ya tiene un certificado vigente en este curso. Para cambiar sus datos usa «Corregir»; "
                     + "si lo anulas, podrás emitirle uno nuevo.";
         }
-        // Una matrícula cancelada ya no da acceso al curso: no se emite un certificado sobre ella (reactívala antes si corresponde).
         if ("CANCELADA".equals(m.getEstado())) {
             return "La matrícula está cancelada: el alumno ya no tiene acceso al curso. Reactívala primero si corresponde emitir su certificado.";
         }

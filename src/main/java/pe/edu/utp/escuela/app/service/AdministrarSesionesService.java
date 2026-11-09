@@ -39,12 +39,6 @@ import pe.edu.utp.escuela.app.repository.MatriculaRepository;
 import pe.edu.utp.escuela.app.repository.NotificacionRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 
-/**
- * HU-027 — Administrar cambios en sesiones en vivo: reprogramar o cancelar una sesión futura
- * (con motivo e historial conservado), y corregir el enlace o una asistencia de una sesión ya
- * realizada. No reemplaza {@code ContenidoService#actualizarSesion} (HU-012): esa es la
- * programación inicial; esta historia cubre los cambios posteriores.
- */
 @Service
 @RequiredArgsConstructor
 public class AdministrarSesionesService {
@@ -79,8 +73,6 @@ public class AdministrarSesionesService {
         Curso curso = l.getModulo().getCurso();
         LocalDate finNuevo = p.nuevaFechaHoraFin().atZone(LIMA).toLocalDate();
         if (curso.getFechaFin() != null && finNuevo.isAfter(curso.getFechaFin())) {
-            // No se guarda nada todavía: el frontend debe ampliar primero la fecha de fin del
-            // curso y volver a llamar a este mismo endpoint.
             return new ReprogramarSesionResultado(false, true, finNuevo);
         }
 
@@ -94,14 +86,11 @@ public class AdministrarSesionesService {
 
         guardarHistorial(l, "REPROGRAMACION", inicioAnterior, finAnterior, enlaceAnterior,
                 p.nuevaFechaHoraInicio(), p.nuevaFechaHoraFin(), enlaceAnterior, p.motivo());
-        // Se avisa aunque el recordatorio del horario anterior ya hubiera salido: no hay
-        // deduplicación aquí (a diferencia del recordatorio de HU-026).
         avisarCambio(l, "Tu sesión fue reprogramada", p.motivo());
 
         return new ReprogramarSesionResultado(true, false, null);
     }
 
-    /** HU-027 — Ampliar primero la fecha de fin del curso cuando una reprogramación la supera. */
     @Transactional
     public void ampliarFinDeCurso(Long cursoId, LocalDate nuevaFechaFin) {
         exigirAdministrador();
@@ -112,7 +101,6 @@ public class AdministrarSesionesService {
         }
         curso.setFechaFin(nuevaFechaFin);
         cursos.save(curso);
-        recalcularFechasCertificadosPendientes(cursoId, nuevaFechaFin);
     }
 
     @Transactional
@@ -129,20 +117,10 @@ public class AdministrarSesionesService {
         l.setEstado("CANCELADA");
         l.setMotivoCancelacion(p.motivo());
         lecciones.save(l);
-        // No se toca curso.horasAcademicas ni curso.fechaFin automáticamente: si la cancelación
-        // reduce lo ofrecido, administración debe revisar esos valores a mano (nunca se
-        // recalculan solos). El recordatorio de HU-026 nunca se dispara para esta sesión porque
-        // su consulta ya filtra estado <> 'CANCELADA'.
 
         avisarCambio(l, "Tu sesión fue cancelada", p.motivo());
     }
 
-    /**
-     * HU-038 — Cancela de una vez las sesiones en vivo futuras de un curso que se cancela por completo. Cada una
-     * queda visible como CANCELADA con su historial, y no envía avisos individuales: el curso comunica un solo
-     * correo consolidado. Devuelve cuántas sesiones se cancelaron. Lo invoca el servicio de cancelación del curso,
-     * que ya verificó que quien llama es administrador.
-     */
     @Transactional
     public int cancelarSesionesFuturasDeCurso(Long cursoId, String motivo) {
         List<Leccion> futuras = lecciones.buscarSesionesFuturasActivas(cursoId, clock.instant());
@@ -180,14 +158,12 @@ public class AdministrarSesionesService {
             throw new BusinessValidationException("El estado de asistencia no es válido.");
         }
         String estadoAnterior = a.getEstado();
-        // Nunca se borra el registro original: el ajuste queda en el mismo campo.
         a.setEstado(p.nuevoEstado());
         a.setMotivoCorreccion(p.motivoCorreccion());
         a.setRegistradaPorUsuarioId(actual.get().userId());
         a.setModificadaEn(clock.instant());
         asistencias.save(a);
 
-        // HU-031: toda corrección conserva quién, cuándo, por qué y el valor anterior.
         ExcepcionAcademica excepcion = new ExcepcionAcademica();
         excepcion.setMatricula(a.getMatricula());
         excepcion.setTipo(ExcepcionAcademica.CORREGIR_ASISTENCIA);
@@ -200,11 +176,9 @@ public class AdministrarSesionesService {
         excepcion.setRealizadoEn(clock.instant());
         excepciones.save(excepcion);
         progresoService.completarPorAsistencia(a.getMatricula(), a.getLeccion(), p.nuevoEstado());
-        // HU-032: la asistencia corregida puede cambiar el cumplimiento del curso.
         eventos.publishEvent(new ReevaluarCertificacionEvent(a.getMatricula().getId()));
     }
 
-    /** HU-027 — Lista la asistencia de una sesión ya realizada, para el modal "Corregir". */
     @Transactional(readOnly = true)
     public List<AsistenciaSesionResponse> listarAsistencias(Long leccionId) {
         exigirAdministrador();
@@ -261,11 +235,6 @@ public class AdministrarSesionesService {
         for (Matricula m : alumnos) {
             Notificacion n = new Notificacion();
             n.setUsuario(m.getUsuario());
-            // A diferencia del recordatorio de HU-026 (que dedupe por tipo fijo), cada
-            // reprogramación/cancelación es un evento nuevo que debe avisar siempre: el tipo
-            // incluye el instante del cambio para no agruparse con avisos anteriores de la misma
-            // lección. clock.millis() (no clock.instant(), más largo) para no exceder el
-            // varchar(40) de notificacion.tipo.
             n.setTipo("CAMBIO_SESION_" + l.getId() + "_" + clock.millis());
             n.setDestinatario(m.getUsuario().getCorreo());
             n.setAsunto(asunto + ": " + l.getTitulo());
@@ -282,14 +251,6 @@ public class AdministrarSesionesService {
             }
             notificaciones.save(n);
         }
-    }
-
-    // TODO: EP05 (Evaluación y Certificación) todavía no define cómo se modela la emisión de
-    // certificados. Por ahora este método solo documenta el punto de extensión: cuando esa épica
-    // exista, aquí se recalcula la fecha programada de los certificados de matrículas con
-    // logroCertificacion != null y aún no emitido, para las matrículas de este curso.
-    private void recalcularFechasCertificadosPendientes(Long cursoId, LocalDate nuevaFechaFin) {
-        // Intencionalmente vacío hasta que EP05 defina la entidad de certificado.
     }
 
     private void exigirAdministrador() {

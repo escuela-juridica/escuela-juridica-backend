@@ -6,8 +6,6 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 
-/** El rol principal no se elige: con un único rol, ese es el principal; con ambos, ADMINISTRADOR
- * siempre gana por ser el de mayor alcance (ver {@code AdminUsuariosService.determinarPrincipal}). */
 public record CrearUsuarioAdminRequest(
         @NotBlank @Size(max = 120) String nombres,
         @NotBlank @Size(max = 80) String apellidoPaterno,

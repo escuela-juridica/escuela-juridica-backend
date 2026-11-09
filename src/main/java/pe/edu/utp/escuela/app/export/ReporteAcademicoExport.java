@@ -19,9 +19,6 @@ import org.springframework.stereotype.Component;
 import pe.edu.utp.escuela.app.dto.CondicionAvanceResponse;
 import pe.edu.utp.escuela.app.dto.ReporteAcademicoResponse;
 
-/** HU-043 — Exportación a Excel del reporte académico. Escribe exactamente las filas que recibe
- * (las mismas de la pantalla con los mismos filtros) y deja visibles el valor real y la meta de
- * cada condición activa; lo que el curso no exige se rotula, nunca se deja como pendiente. */
 @Component
 public class ReporteAcademicoExport {
 
@@ -98,7 +95,6 @@ public class ReporteAcademicoExport {
         return f.condiciones().stream().filter(c -> codigo.equals(c.codigo())).findFirst().orElse(null);
     }
 
-    /** El progreso se muestra siempre; si no es requisito del curso se rotula así. */
     private static String progreso(ReporteAcademicoResponse f) {
         CondicionAvanceResponse c = condicion(f, "PROGRESO");
         return c != null ? c.valorActual() + " (" + c.meta() + ")" : f.progreso() + " % (no es requisito)";

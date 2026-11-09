@@ -11,7 +11,6 @@ public interface RespuestaReclamacionRepository extends JpaRepository<RespuestaR
 
     Optional<RespuestaReclamacion> findByReclamacion_Id(Long reclamacionId);
 
-    /** Respuestas de varios casos a la vez (bandeja), sin una consulta por fila. */
     @EntityGraph(attributePaths = "reclamacion")
     List<RespuestaReclamacion> findByReclamacion_IdIn(Collection<Long> reclamacionIds);
 }

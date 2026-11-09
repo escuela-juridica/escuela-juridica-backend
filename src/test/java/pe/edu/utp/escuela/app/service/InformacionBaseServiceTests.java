@@ -93,7 +93,6 @@ class InformacionBaseServiceTests {
         assertThrows(ForbiddenException.class, () -> service.listarTiposCurso(false, PageRequest.of(0, 20)));
     }
 
-    // ---- Tipos de curso ----
     @Test
     void crearTipoCursoConCodigoDuplicadoLanzaConflicto() {
         comoAdministrador();
@@ -128,7 +127,6 @@ class InformacionBaseServiceTests {
         assertThrows(ResourceNotFoundException.class, () -> service.cambiarActivoTipoCurso(999L, false));
     }
 
-    // ---- Categorías ----
     @Test
     void crearCategoriaConCodigoDuplicadoLanzaConflicto() {
         comoAdministrador();
@@ -137,7 +135,6 @@ class InformacionBaseServiceTests {
                 new CategoriaRequest("DERECHO_REGISTRAL", "Derecho Registral", 10)));
     }
 
-    // ---- Docentes ----
     @Test
     void crearDocenteNoCreaUsuarioDeAcceso() {
         comoAdministrador();
@@ -173,7 +170,6 @@ class InformacionBaseServiceTests {
         org.mockito.Mockito.verify(personas, org.mockito.Mockito.never()).delete(any());
     }
 
-    // ---- Entidades certificadoras ----
     @Test
     void crearEntidadConNombreDuplicadoLanzaConflicto() {
         comoAdministrador();
@@ -198,7 +194,6 @@ class InformacionBaseServiceTests {
         org.mockito.Mockito.verify(entidades, org.mockito.Mockito.never()).delete(any());
     }
 
-    // ---- Firmantes ----
     @Test
     void crearFirmanteCreaPersonaYFirmanteVinculados() {
         comoAdministrador();
@@ -220,7 +215,6 @@ class InformacionBaseServiceTests {
         assertTrue(respuesta.activo());
     }
 
-    // ---- Tipos de material ----
     @Test
     void crearTipoMaterialConCodigoDuplicadoLanzaConflicto() {
         comoAdministrador();
@@ -233,7 +227,6 @@ class InformacionBaseServiceTests {
                 new TipoMaterialRequest("PDF", "Documento PDF", null)));
     }
 
-    // ---- Reglas de archivo ----
     @Test
     void crearReglaArchivoNormalizaExtensionYRechazaDuplicada() {
         comoAdministrador();
@@ -268,7 +261,6 @@ class InformacionBaseServiceTests {
                 () -> service.crearReglaArchivo(new ReglaArchivoRequest(1L, "pdf", 1_000L)));
     }
 
-    // ---- Configuración institucional ----
     @Test
     void crearYActualizarConfiguracionInstitucional() {
         comoAdministrador();

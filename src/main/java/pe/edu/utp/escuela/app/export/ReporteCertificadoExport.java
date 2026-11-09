@@ -18,9 +18,6 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
 import pe.edu.utp.escuela.app.dto.ReporteCertificadoResponse;
 
-/** HU-044 — Exportación a Excel del reporte de certificados. Escribe exactamente las filas que recibe
- * (las mismas de la pantalla con los mismos filtros) y nunca incluye documento de identidad, nota,
- * firmas ni el PDF. */
 @Component
 public class ReporteCertificadoExport {
 

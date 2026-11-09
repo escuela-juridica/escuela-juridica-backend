@@ -19,7 +19,6 @@ import pe.edu.utp.escuela.app.integration.CulqiIntegration.CobroConToken;
 import pe.edu.utp.escuela.app.integration.CulqiIntegration.SolicitudCobro;
 import tools.jackson.databind.json.JsonMapper;
 
-/** Contrato HTTP contra un servidor local que simula Culqi sin efectuar cobros reales. */
 class CulqiSimuladaIntegrationTests {
 
     private HttpServer servidor;

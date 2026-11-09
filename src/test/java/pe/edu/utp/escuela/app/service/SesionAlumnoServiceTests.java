@@ -44,8 +44,6 @@ import pe.edu.utp.escuela.app.repository.UsuarioRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.security.CurrentUserService.CurrentUser;
 
-/** EP04 · HU-026 — Participar en sesiones en vivo: calendario del alumno, ingreso dentro de la ventana con asistencia
- * automática, cierre de asistencias y porcentaje de asistencia. */
 @ExtendWith(MockitoExtension.class)
 class SesionAlumnoServiceTests {
 
@@ -60,7 +58,6 @@ class SesionAlumnoServiceTests {
     @Mock private CurrentUserService actual;
 
     private SesionAlumnoService service;
-    // 2026-09-15 07:00 en Lima.
     private final Clock clock = Clock.fixed(AcademiaFixtures.AHORA, ZoneId.of("America/Lima"));
 
     private Usuario usuario;
@@ -90,8 +87,6 @@ class SesionAlumnoServiceTests {
         sesion.setEnlaceReunion("https://meet.example.com/clase-" + id);
         return sesion;
     }
-
-    // ---------------------------------------------------------------- ingresar --
 
     @Test
     void ingresarDentroDeLaVentanaRegistraAsistenciaPresenteYEntregaElEnlace() {
@@ -172,8 +167,6 @@ class SesionAlumnoServiceTests {
         assertThrows(ForbiddenException.class, () -> service.ingresar(11L));
     }
 
-    // ---------------------------------------------------------------- calendario --
-
     @Test
     void elCalendarioRechazaUnRangoInvertido() {
         comoAlumno();
@@ -217,8 +210,6 @@ class SesionAlumnoServiceTests {
                 calendario.stream().map(SesionCalendarioResponse::grabacionDisponible).toList());
         assertEquals("Derecho Procesal Penal", calendario.getFirst().cursoTitulo());
     }
-
-    // ---------------------------------------------------------------- jobs y porcentaje --
 
     @Test
     void alTerminarLaSesionQuienNoIngresoQuedaAusenteYNoCompletaLaLeccion() {

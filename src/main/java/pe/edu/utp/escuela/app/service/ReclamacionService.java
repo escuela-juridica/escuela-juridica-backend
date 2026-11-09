@@ -34,11 +34,6 @@ import pe.edu.utp.escuela.app.repository.ReclamacionAdjuntoRepository;
 import pe.edu.utp.escuela.app.repository.ReclamacionRepository;
 import pe.edu.utp.escuela.app.repository.UsuarioRepository;
 
-/**
- * HU-039 — Libro de Reclamaciones: registra una queja o reclamo una sola vez, con número correlativo,
- * plazo de quince días hábiles y sus imágenes, y envía la constancia por correo. Un fallo del correo
- * no revierte ni duplica el caso: queda registrado y el expediente permanece.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -64,7 +59,6 @@ public class ReclamacionService {
     @Value("${esejur.reclamaciones.correo-escuela:informes@esejur.pe}")
     private String correoEscuela;
 
-    /** Datos conocidos de la persona con sesión; ella puede revisarlos y corregirlos antes de enviar. */
     public ReclamacionPrecargaResponse precarga(Long usuarioId) {
         Usuario usuario = usuarios.findWithPersonaById(usuarioId)
                 .orElseThrow(() -> new ResourceNotFoundException("La cuenta no existe."));
@@ -75,7 +69,6 @@ public class ReclamacionService {
                 p.getTelefono() == null ? "" : p.getTelefono(), "DNI", documento);
     }
 
-    /** Registra el caso. {@code usuarioId} es nulo cuando quien reclama no inició sesión. */
     public ReclamacionConstanciaResponse presentar(Long usuarioId, PresentarReclamacionRequest p, List<MultipartFile> imagenes) {
         validarDocumento(p.tipoDocumento(), p.numeroDocumento().strip());
         List<MultipartFile> lista = imagenes == null ? List.of()
@@ -128,7 +121,6 @@ public class ReclamacionService {
             return r;
         });
 
-        // El caso ya existe: el correo se envía aparte y su fallo solo se registra.
         boolean enviada = enviarConstancia(creada, lista.size());
         enviarAvisoEscuela(creada, lista.size());
         new TransactionTemplate(transacciones).executeWithoutResult(estado -> {
@@ -138,8 +130,6 @@ public class ReclamacionService {
         });
         return constancia(creada, lista.stream().map(MultipartFile::getOriginalFilename).toList(), enviada);
     }
-
-    // ------------------------------------------------------------------------------------------ correos --
 
     private boolean enviarConstancia(Reclamacion r, int imagenes) {
         try {
@@ -179,8 +169,6 @@ public class ReclamacionService {
                 Map.entry("pedido", r.getPedido()),
                 Map.entry("adjuntos", imagenes == 0 ? "Sin imágenes" : imagenes + (imagenes == 1 ? " imagen" : " imágenes")));
     }
-
-    // ---------------------------------------------------------------------------------------- validación --
 
     private static void validarDocumento(String tipo, String numero) {
         boolean valido = switch (tipo) {

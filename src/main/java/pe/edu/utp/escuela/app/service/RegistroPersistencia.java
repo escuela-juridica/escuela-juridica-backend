@@ -13,7 +13,6 @@ import pe.edu.utp.escuela.app.repository.*;
 import pe.edu.utp.escuela.app.integration.ContextoGoogleRegistroIntegration;
 import pe.edu.utp.escuela.app.util.TextNormalizer;
 
-/** Límite transaccional separado para capturar colisiones después del rollback. */
 @Service @RequiredArgsConstructor
 public class RegistroPersistencia {
     private final PersonaRepository personas;
@@ -36,7 +35,6 @@ public class RegistroPersistencia {
         try {
             hash = encoder.encode(p.contrasena());
         } catch (IllegalArgumentException ex) {
-            // Conserva el codificador compartido; no trunca ni cambia contraseñas.
             throw new CampoRegistroException(HttpStatus.BAD_REQUEST, "CONTRASENA_NO_PROCESABLE",
                     "contrasena", "La contraseña no puede procesarse con el codificador configurado.");
         }

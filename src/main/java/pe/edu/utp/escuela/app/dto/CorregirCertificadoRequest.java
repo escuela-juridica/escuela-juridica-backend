@@ -9,10 +9,6 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.List;
 
-/**
- * HU-036 — Corrección de datos documentales: nombres, título, horas, entidad y firmantes. La nota y el nivel
- * congelados no se corrigen libremente: si llegan y difieren de los vigentes, la corrección se rechaza.
- */
 public record CorregirCertificadoRequest(
         @NotBlank(message = "Explica el motivo de la corrección.")
         @Size(min = 10, max = 2000, message = "Explica el motivo con entre 10 y 2000 caracteres.")

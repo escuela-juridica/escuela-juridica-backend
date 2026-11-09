@@ -49,9 +49,6 @@ import pe.edu.utp.escuela.app.repository.TipoMaterialRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.util.TextNormalizer;
 
-/** HU-009 — Administrar información base: datos maestros reutilizables por HU-010 en adelante.
- * Desactivar nunca borra: las referencias históricas (cursos, certificados ya emitidos) conservan
- * su copia aunque el elemento deje de ofrecerse para nuevas selecciones. */
 @Service
 @RequiredArgsConstructor
 public class InformacionBaseService {
@@ -68,7 +65,6 @@ public class InformacionBaseService {
     private final CurrentUserService currentUserService;
     private final TextNormalizer textos;
 
-    // ---------------------------------------------------------------- Tipos de curso --
     @Transactional(readOnly = true)
     public PageResponse<TipoCursoResponse> listarTiposCurso(boolean incluirInactivos, Pageable pageable) {
         exigirAdministrador();
@@ -111,7 +107,6 @@ public class InformacionBaseService {
         }
         tipo.setCodigo(textos.requireText(p.codigo(), "Código"));
         tipo.setNombre(textos.requireText(p.nombre(), "Nombre"));
-        // Cambiar la sigla solo afecta a los cursos que se publiquen después: los códigos ya asignados no se tocan.
         tipo.setSiglaRegistro(sigla);
         tipo.setOrden(p.orden());
         return mapear(tipo);
@@ -130,12 +125,10 @@ public class InformacionBaseService {
         return new TipoCursoResponse(t.getId(), t.getCodigo(), t.getNombre(), t.isActivo(), t.getOrden(), t.getSiglaRegistro());
     }
 
-    /** La sigla se guarda en mayúsculas. */
     private String siglaDe(String valor) {
         return textos.requireText(valor, "Sigla").toUpperCase(java.util.Locale.ROOT);
     }
 
-    // ---------------------------------------------------------------- Categorías --
     @Transactional(readOnly = true)
     public PageResponse<CategoriaResponse> listarCategorias(boolean incluirInactivos, Pageable pageable) {
         exigirAdministrador();
@@ -186,9 +179,6 @@ public class InformacionBaseService {
         return new CategoriaResponse(c.getId(), c.getCodigo(), c.getNombre(), c.isActivo(), c.getOrden());
     }
 
-    // ---------------------------------------------------------------- Docentes --
-    /** Un docente es solo un perfil público (persona con cargo profesional): nunca crea cuenta,
-     * acceso ni panel. */
     @Transactional(readOnly = true)
     public PageResponse<DocenteResponse> listarDocentes(boolean incluirInactivos, Pageable pageable) {
         exigirAdministrador();
@@ -249,7 +239,6 @@ public class InformacionBaseService {
                 p.getBiografiaProfesional(), p.isActivo());
     }
 
-    // ---------------------------------------------------------------- Entidades certificadoras --
     @Transactional(readOnly = true)
     public PageResponse<EntidadResponse> listarEntidades(boolean incluirInactivos, Pageable pageable) {
         exigirAdministrador();
@@ -298,7 +287,6 @@ public class InformacionBaseService {
         return new EntidadResponse(e.getId(), e.getNombre(), e.getLogoUrl(), e.isActivo());
     }
 
-    /** Sube la imagen de una firma ({@code FIRMA}), el logo de una entidad ({@code LOGO}) o la foto de un docente ({@code FOTO}). */
     @Transactional(readOnly = true)
     public ImagenSubidaResponse subirImagenCertificado(String tipo, MultipartFile archivo) {
         exigirAdministrador();
@@ -311,7 +299,6 @@ public class InformacionBaseService {
         return new ImagenSubidaResponse(almacenamiento.guardarImagen(carpeta, archivo));
     }
 
-    // ---------------------------------------------------------------- Firmantes --
     @Transactional(readOnly = true)
     public PageResponse<FirmanteResponse> listarFirmantes(boolean incluirInactivos, Pageable pageable) {
         exigirAdministrador();
@@ -368,7 +355,6 @@ public class InformacionBaseService {
                 p.getApellidoMaterno(), p.nombreCompleto(), f.getCargoFirma(), f.getImagenFirmaUrl(), f.isActivo());
     }
 
-    // ---------------------------------------------------------------- Tipos de material --
     @Transactional(readOnly = true)
     public PageResponse<TipoMaterialResponse> listarTiposMaterial(boolean incluirInactivos, Pageable pageable) {
         exigirAdministrador();
@@ -421,7 +407,6 @@ public class InformacionBaseService {
         return new TipoMaterialResponse(t.getId(), t.getCodigo(), t.getNombre(), t.getDescripcion(), t.isActivo());
     }
 
-    // ---------------------------------------------------------------- Reglas de archivo --
     @Transactional(readOnly = true)
     public List<ReglaArchivoResponse> listarReglasArchivo(boolean incluirInactivos) {
         exigirAdministrador();
@@ -479,7 +464,6 @@ public class InformacionBaseService {
                 r.getTipoMaterial().getNombre(), r.getExtension(), r.getTamanoMaximoBytes(), r.isActivo());
     }
 
-    // ---------------------------------------------------------------- Configuración institucional --
     @Transactional(readOnly = true)
     public List<ConfiguracionResponse> listarConfiguraciones() {
         exigirAdministrador();

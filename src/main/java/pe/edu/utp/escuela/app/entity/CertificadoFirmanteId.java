@@ -6,7 +6,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** Clave compuesta de {@link CertificadoFirmante}: un firmante aparece una vez por certificado. */
 @Getter
 @Setter
 @NoArgsConstructor

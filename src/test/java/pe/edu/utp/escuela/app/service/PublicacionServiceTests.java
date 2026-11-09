@@ -47,10 +47,6 @@ import pe.edu.utp.escuela.app.repository.ReglaCursoRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.security.CurrentUserService.CurrentUser;
 
-/** HU-015 — Validar y publicar un curso. La convocatoria de referencia es VIRTUAL y gratuita
- * (el camino más corto sin sesiones en vivo ni pagos), con exactamente lo necesario para que
- * {@code evaluar()} no reporte hallazgos; cada prueba negativa rompe un único requisito sobre esa
- * misma base. */
 @ExtendWith(MockitoExtension.class)
 class PublicacionServiceTests {
 
@@ -79,10 +75,6 @@ class PublicacionServiceTests {
                 .thenReturn(new CurrentUser(1L, "admin@escuelajuridica.edu.pe", Set.of("ADMINISTRADOR")));
     }
 
-    /** Arma un BORRADOR virtual y gratuito que cumple cada regla de {@code evaluar()}, y deja
-     * sus piezas (módulo, lección, regla, firmante, docente) listas para que una prueba negativa
-     * rompa una sola de ellas antes de llamar a {@link #stub(Curso, Modulo, Leccion, ReglaCurso,
-     * CursoFirmante, CursoDocente)}. */
     private Curso cursoValidoBase() {
         EstadoCurso borrador = new EstadoCurso();
         borrador.setCodigo("BORRADOR");
@@ -193,7 +185,6 @@ class PublicacionServiceTests {
         return cd;
     }
 
-    /** Conecta los mocks para que {@code evaluar()} recorra exactamente las piezas dadas. */
     private void stub(Curso curso, Modulo modulo, Leccion leccion, ReglaCurso regla,
             CursoFirmante firmante, CursoDocente docente) {
         when(cursos.findWithDetalleById(100L)).thenReturn(Optional.of(curso));
@@ -203,8 +194,6 @@ class PublicacionServiceTests {
         when(lecciones.buscarActivasDeModulos(List.of(10L))).thenReturn(leccionesActivas);
         List<Long> leccionIds = leccion == null ? List.of() : List.of(leccion.getId());
         MaterialLeccion material = leccion == null ? null : materialConContenidoDe(leccion);
-        // Cuando no hay lección (leccionIds vacío), evaluar() nunca llega a invocar estos dos
-        // métodos: quedan en lenient() para no fallar por "stubbing innecesario" en ese caso.
         org.mockito.Mockito.lenient().when(materiales.findByLeccion_IdInOrderByLeccion_IdAscOrdenAsc(leccionIds))
                 .thenReturn(material == null ? List.of() : List.of(material));
         org.mockito.Mockito.lenient().when(materiales.buscarDuraciones(leccionIds)).thenReturn(List.of());
@@ -218,7 +207,6 @@ class PublicacionServiceTests {
 
     @Test
     void validarCursoCompletoNoMuestraBloqueos() {
-        // HU-015 Escenario 1 (validación completa).
         Curso curso = cursoValidoBase();
         Modulo modulo = moduloActivoDe(curso);
         Leccion leccion = leccionCursableDe(modulo);
@@ -233,7 +221,6 @@ class PublicacionServiceTests {
 
     @Test
     void publicarCursoVirtualSinFechaInicioQuedaDirectamenteEnCurso() {
-        // HU-015 Escenario 3 (publicación): virtual sin fecha de inicio pasa directo a EN_CURSO.
         Curso curso = cursoValidoBase();
         Modulo modulo = moduloActivoDe(curso);
         Leccion leccion = leccionCursableDe(modulo);
@@ -253,7 +240,6 @@ class PublicacionServiceTests {
 
     @Test
     void publicarConTituloVacioNoCambiaElEstado() {
-        // HU-015 Escenario 2 (bloqueo de publicación).
         Curso curso = cursoValidoBase();
         curso.setTitulo("   ");
         Modulo modulo = moduloActivoDe(curso);

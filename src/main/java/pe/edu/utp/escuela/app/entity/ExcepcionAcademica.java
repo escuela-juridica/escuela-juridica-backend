@@ -14,8 +14,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** HU-031 — Excepción académica justificada: conserva quién, cuándo, por qué y el valor
- * anterior. Nunca sustituye un resultado: solo corrige asistencia o agrega un intento. */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -25,7 +23,6 @@ public class ExcepcionAcademica {
 
     public static final String REABRIR_INTENTO = "REABRIR_INTENTO";
     public static final String CORREGIR_ASISTENCIA = "CORREGIR_ASISTENCIA";
-    /** HU-035 — Certificado emitido manualmente, aunque no cumpla las condiciones automáticas. */
     public static final String EMITIR_CERTIFICADO = "EMITIR_CERTIFICADO";
 
     @Id
@@ -40,7 +37,6 @@ public class ExcepcionAcademica {
     @Column(nullable = false, length = 30)
     private String tipo;
 
-    /** EXAMEN (intento adicional) o ASISTENCIA (corrección de una sesión). */
     @Column(name = "referencia_tipo", length = 30)
     private String referenciaTipo;
 

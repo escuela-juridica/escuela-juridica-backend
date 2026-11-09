@@ -17,8 +17,6 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
 import pe.edu.utp.escuela.app.dto.ReporteAsistenciaResponse;
 
-/** HU-045 — Exportación a Excel del reporte de asistencia. Escribe exactamente las filas que
- * recibe: el servicio le pasa las mismas que ve la pantalla con los mismos filtros. */
 @Component
 public class ReporteAsistenciaExport {
 

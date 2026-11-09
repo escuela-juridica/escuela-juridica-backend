@@ -81,7 +81,6 @@ public class CertificacionController {
     @Operation(summary = "Descargar el PDF de un certificado",
             description = "Privado: solo lo descarga su dueño (o un administrador). El PDF nunca se envía por correo.")
     @ApiResponse(responseCode = "404", description = "El certificado no existe o no es tuyo")
-    // enLinea=true lo muestra en el visor del navegador (sin descargarlo); sigue siendo privado.
     public ResponseEntity<Resource> descargar(@PathVariable String codigo,
             @RequestParam(name = "enLinea", defaultValue = "false") boolean enLinea) {
         Descarga descarga = service.descargar(codigo);

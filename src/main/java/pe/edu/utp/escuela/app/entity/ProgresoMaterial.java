@@ -15,7 +15,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** HU-024 — Seguimiento reproducido de cada video protegido por matrícula. */
 @Getter
 @Setter
 @NoArgsConstructor

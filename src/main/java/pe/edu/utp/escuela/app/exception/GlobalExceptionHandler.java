@@ -59,7 +59,6 @@ public class GlobalExceptionHandler {
                 "El contenido de la solicitud no es válido", request, List.of());
     }
 
-    /** Una ruta o archivo estático que no existe (o que no se publica) responde 404, no un error interno. */
     @ExceptionHandler(NoResourceFoundException.class)
     ResponseEntity<ApiErrorResponse> handleNoResource(HttpServletRequest request) {
         return response(HttpStatus.NOT_FOUND, "NOT_FOUND", "El recurso solicitado no existe", request, List.of());

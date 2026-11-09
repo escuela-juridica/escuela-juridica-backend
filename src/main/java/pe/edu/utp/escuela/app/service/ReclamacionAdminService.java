@@ -45,12 +45,6 @@ import pe.edu.utp.escuela.app.repository.RespuestaReclamacionRepository;
 import pe.edu.utp.escuela.app.repository.UsuarioRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 
-/**
- * HU-040 — Atención de quejas y reclamos por la administración. La respuesta se conserva <em>antes</em> de intentar el
- * correo y nunca se edita; solo un correo aceptado pasa el caso de PENDIENTE_RESPUESTA a RESPONDIDO. Un fallo deja el
- * caso pendiente con la misma respuesta disponible para reenviar (opcionalmente a un correo corregido), y cada intento
- * queda registrado. El vencimiento del plazo se resalta pero nunca cierra ni bloquea el caso.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -61,7 +55,6 @@ public class ReclamacionAdminService {
             Locale.forLanguageTag("es-PE"));
     private static final Set<String> ESTADOS = Set.of(Reclamacion.PENDIENTE_RESPUESTA, Reclamacion.RESPONDIDO);
     private static final Set<String> TIPOS = Set.of(Reclamacion.QUEJA, Reclamacion.RECLAMO);
-    /** Con tres días hábiles o menos para el límite, el caso se resalta como próximo a vencer. */
     private static final int DIAS_POR_VENCER = 3;
 
     private final ReclamacionRepository reclamaciones;
@@ -75,8 +68,6 @@ public class ReclamacionAdminService {
     private final CurrentUserService actual;
     private final PlatformTransactionManager transacciones;
     private final Clock clock;
-
-    // -------------------------------------------------------------------------------------------- consulta --
 
     @Transactional(readOnly = true)
     public Page<ReclamacionBandejaResponse> bandeja(String estado, String tipo, String texto, Pageable pageable) {
@@ -120,7 +111,6 @@ public class ReclamacionAdminService {
         return construirDetalle(cargar(id));
     }
 
-    /** Imagen adjunta del caso: privada, solo la ve la administración. */
     public record Descarga(Resource archivo, String nombre, String tipoMime) {
     }
 
@@ -132,12 +122,6 @@ public class ReclamacionAdminService {
         return new Descarga(archivos.cargar(a.getReferencia()), a.getNombreArchivo(), a.getTipoMime());
     }
 
-    // ------------------------------------------------------------------------------------------ respuesta --
-
-    /**
-     * Registra la respuesta y la envía. Primero se conserva (confirmando la transacción) y después se intenta el correo,
-     * de modo que un fallo del envío nunca la pierde ni duplica el caso.
-     */
     public ReclamacionDetalleResponse responder(Long reclamacionId, String texto) {
         exigirAdministrador();
         Long adminId = actual.get().userId();
@@ -165,10 +149,6 @@ public class ReclamacionAdminService {
         return detalle(reclamacionId);
     }
 
-    /**
-     * Reenvía la misma respuesta con su fecha original. Mientras el caso siga pendiente se puede indicar un correo
-     * corregido; el destino usado queda en el historial de intentos.
-     */
     public ReclamacionDetalleResponse reenviar(Long reclamacionId, String correo) {
         exigirAdministrador();
         enviar(reclamacionId, correo == null || correo.isBlank() ? null : correo.strip().toLowerCase(Locale.ROOT),
@@ -228,7 +208,7 @@ public class ReclamacionAdminService {
             intento.setRealizadoEn(ahora);
             intentos.save(intento);
             if (respuesta.getEnviadoEn() != null) {
-                return; // Ya estaba enviada: un reenvío solo suma un intento; el caso y su fecha no cambian.
+                return;
             }
             if (resultado) {
                 respuesta.setEstadoEnvio(RespuestaReclamacion.ENVIADO);
@@ -241,8 +221,6 @@ public class ReclamacionAdminService {
             }
         });
     }
-
-    // ----------------------------------------------------------------------------------------- utilidades --
 
     private ReclamacionDetalleResponse construirDetalle(Reclamacion r) {
         LocalDate hoy = clock.instant().atZone(LIMA).toLocalDate();

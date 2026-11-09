@@ -13,33 +13,21 @@ import org.springframework.data.repository.query.Param;
 import pe.edu.utp.escuela.app.entity.Certificado;
 
 public interface CertificadoRepository extends JpaRepository<Certificado, Long> {
-    /**
-     * El certificado que cuenta de una matrícula: el VIGENTE y, si no lo hay, el último emitido (anulado). Una matrícula
-     * puede tener varios a lo largo del tiempo (uno anulado y su reemplazo), pero solo uno vigente.
-     */
     default Optional<Certificado> findByLogro_Matricula_Id(Long matriculaId) {
         return findFirstByLogro_Matricula_IdOrderByEstadoDescEmitidoEnDescIdDesc(matriculaId);
     }
 
-    /** «VIGENTE» ordena después de «ANULADO»: en orden descendente el vigente va primero. */
     Optional<Certificado> findFirstByLogro_Matricula_IdOrderByEstadoDescEmitidoEnDescIdDesc(Long matriculaId);
 
-    /** HU-043: certificados de varias matrículas de una vez. */
     List<Certificado> findByLogro_Matricula_IdIn(Collection<Long> matriculaIds);
 
     Optional<Certificado> findByCodigo(String codigo);
 
     boolean existsByCodigo(String codigo);
 
-    /** HU-033: certificados del alumno, del más reciente al más antiguo. */
     @EntityGraph(attributePaths = {"logro", "logro.matricula", "logro.matricula.curso"})
     List<Certificado> findByLogro_Matricula_Usuario_IdOrderByEmitidoEnDesc(Long usuarioId);
 
-    /**
-     * HU-044 — Universo y filtros del reporte de certificados, compartidos por la página y la
-     * exportación para que pantalla y Excel nunca discrepen. El rango se aplica a {@code emitido_en}.
-     * Los datos mostrados son los del certificado ya congelado.
-     */
     String ALCANCE_REPORTE = """
             from Certificado c
             join c.logro l join l.matricula m join m.curso cu

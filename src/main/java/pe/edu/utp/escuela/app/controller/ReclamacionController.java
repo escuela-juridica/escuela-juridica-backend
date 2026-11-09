@@ -18,7 +18,6 @@ import pe.edu.utp.escuela.app.dto.ReclamacionPrecargaResponse;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.service.ReclamacionService;
 
-/** HU-039 — Libro de Reclamaciones: se presenta con o sin sesión; con sesión el caso queda ligado a la cuenta. */
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor

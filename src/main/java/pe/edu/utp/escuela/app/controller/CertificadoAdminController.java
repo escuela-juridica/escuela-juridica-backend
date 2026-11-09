@@ -27,7 +27,6 @@ import pe.edu.utp.escuela.app.dto.PageResponse;
 import pe.edu.utp.escuela.app.dto.VistaPreviaCertificadoRequest;
 import pe.edu.utp.escuela.app.service.CertificadoAdminService;
 
-/** HU-035/HU-036 — Gestión administrativa de certificados (solo administrador). */
 @RestController
 @RequestMapping("/api/admin/certificados")
 @RequiredArgsConstructor

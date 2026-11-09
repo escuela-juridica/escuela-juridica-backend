@@ -32,7 +32,6 @@ import pe.edu.utp.escuela.app.dto.TipoMaterialRequest;
 import pe.edu.utp.escuela.app.dto.TipoMaterialResponse;
 import pe.edu.utp.escuela.app.service.InformacionBaseService;
 
-/** HU-009 — Administrar información base: datos maestros reutilizados por HU-010 en adelante. */
 @RestController
 @RequestMapping("/api/admin/informacion-base")
 @RequiredArgsConstructor
@@ -41,7 +40,6 @@ public class InformacionBaseController {
 
     private final InformacionBaseService service;
 
-    // ---- Tipos de curso ----
     @GetMapping("/tipos-curso")
     public ResponseEntity<PageResponse<TipoCursoResponse>> listarTiposCurso(
             @RequestParam(defaultValue = "false") boolean incluirInactivos,
@@ -67,7 +65,6 @@ public class InformacionBaseController {
         return ResponseEntity.ok(service.cambiarActivoTipoCurso(id, p.activo()));
     }
 
-    // ---- Categorías temáticas ----
     @GetMapping("/categorias")
     public ResponseEntity<PageResponse<CategoriaResponse>> listarCategorias(
             @RequestParam(defaultValue = "false") boolean incluirInactivos,
@@ -93,7 +90,6 @@ public class InformacionBaseController {
         return ResponseEntity.ok(service.cambiarActivoCategoria(id, p.activo()));
     }
 
-    // ---- Docentes ----
     @GetMapping("/docentes")
     public ResponseEntity<PageResponse<DocenteResponse>> listarDocentes(
             @RequestParam(defaultValue = "false") boolean incluirInactivos,
@@ -119,7 +115,6 @@ public class InformacionBaseController {
         return ResponseEntity.ok(service.cambiarActivoDocente(id, p.activo()));
     }
 
-    // ---- Entidades certificadoras ----
     @GetMapping("/entidades")
     public ResponseEntity<PageResponse<EntidadResponse>> listarEntidades(
             @RequestParam(defaultValue = "false") boolean incluirInactivos,
@@ -145,14 +140,12 @@ public class InformacionBaseController {
         return ResponseEntity.ok(service.cambiarActivoEntidad(id, p.activo()));
     }
 
-    // ---- Imágenes del certificado (firmas y logos) ----
     @PostMapping(value = "/imagenes-certificado", consumes = "multipart/form-data")
     public ResponseEntity<ImagenSubidaResponse> subirImagenCertificado(
             @RequestParam("tipo") String tipo, @RequestParam("archivo") MultipartFile archivo) {
         return ResponseEntity.ok(service.subirImagenCertificado(tipo, archivo));
     }
 
-    // ---- Firmantes ----
     @GetMapping("/firmantes")
     public ResponseEntity<PageResponse<FirmanteResponse>> listarFirmantes(
             @RequestParam(defaultValue = "false") boolean incluirInactivos,
@@ -178,7 +171,6 @@ public class InformacionBaseController {
         return ResponseEntity.ok(service.cambiarActivoFirmante(id, p.activo()));
     }
 
-    // ---- Tipos de material ----
     @GetMapping("/tipos-material")
     public ResponseEntity<PageResponse<TipoMaterialResponse>> listarTiposMaterial(
             @RequestParam(defaultValue = "false") boolean incluirInactivos,
@@ -204,7 +196,6 @@ public class InformacionBaseController {
         return ResponseEntity.ok(service.cambiarActivoTipoMaterial(id, p.activo()));
     }
 
-    // ---- Reglas de archivo ----
     @GetMapping("/reglas-archivo")
     public ResponseEntity<List<ReglaArchivoResponse>> listarReglasArchivo(
             @RequestParam(defaultValue = "false") boolean incluirInactivos) {
@@ -228,7 +219,6 @@ public class InformacionBaseController {
         return ResponseEntity.ok(service.cambiarActivoReglaArchivo(id, p.activo()));
     }
 
-    // ---- Configuración institucional ----
     @GetMapping("/configuracion")
     public ResponseEntity<List<ConfiguracionResponse>> listarConfiguraciones() {
         return sinCache(service.listarConfiguraciones());

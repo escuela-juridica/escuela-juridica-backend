@@ -26,8 +26,6 @@ import pe.edu.utp.escuela.app.entity.Usuario;
 import pe.edu.utp.escuela.app.exception.MailDeliveryException;
 import pe.edu.utp.escuela.app.repository.ReclamacionRepository;
 
-/** EP06 · HU-039 / HU-040 — Libro de reclamaciones: presentar una queja o reclamo (con o sin sesión), validaciones,
- * constancia, aviso a la Escuela y atención por parte del administrador. */
 class ReclamacionHttpTests extends HttpIntegracionBase {
 
     @Autowired ReclamacionRepository reclamaciones;
@@ -73,7 +71,6 @@ class ReclamacionHttpTests extends HttpIntegracionBase {
         assertEquals("ENVIADO", guardada.getEstadoEnvioConstancia());
         assertTrue(guardada.getFechaLimiteRespuesta().isAfter(LocalDate.now()),
                 "El plazo de respuesta (15 días hábiles) debe quedar en el futuro");
-        // Una constancia para quien reclama y un aviso para la Escuela.
         verify(correo, times(2)).sendHtml(any());
     }
 
@@ -166,7 +163,6 @@ class ReclamacionHttpTests extends HttpIntegracionBase {
                 .andExpect(jsonPath("$.items[0].estado").value("PENDIENTE_RESPUESTA"))
                 .andExpect(jsonPath("$.items[0].estadoRespuesta").value("SIN_RESPUESTA"));
 
-        // Una respuesta demasiado corta no se acepta.
         mvc.perform(post("/api/admin/reclamaciones/" + pendiente.getId() + "/responder")
                         .with(comoAdministrador(1L)).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"respuesta\":\"Gracias\"}"))
@@ -183,7 +179,6 @@ class ReclamacionHttpTests extends HttpIntegracionBase {
         assertEquals(Reclamacion.RESPONDIDO, respondida.getEstado());
         assertTrue(respondida.getRespondidoEn() != null);
 
-        // Una vez registrada, la respuesta no se vuelve a registrar.
         mvc.perform(post("/api/admin/reclamaciones/" + pendiente.getId() + "/responder")
                         .with(comoAdministrador(1L)).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)

@@ -18,7 +18,6 @@ import pe.edu.utp.escuela.app.dto.PagoTokenRequest;
 import pe.edu.utp.escuela.app.dto.PagosCursoResponse;
 import pe.edu.utp.escuela.app.service.PagoEnLineaService;
 
-/** HU-047 — Pago de un curso con Culqi: iniciar, cobrar el token, ver el resultado y la constancia. */
 @RestController
 @RequestMapping("/api/app")
 @RequiredArgsConstructor

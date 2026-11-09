@@ -45,16 +45,6 @@ import pe.edu.utp.escuela.app.service.AvanceAcademicoService.AvanceAcademico;
 import pe.edu.utp.escuela.app.service.RutaAcademicaService.EstadoExamen;
 import pe.edu.utp.escuela.app.service.RutaAcademicaService.RutaAcademica;
 
-/**
- * HU-031 — Atender excepciones académicas. Administración consulta el desempeño completo de un
- * alumno en un curso (solo lectura) y puede corregir una asistencia o conceder UN intento
- * adicional, siempre con motivo. Nada se borra ni se sobrescribe en silencio: el intento fallido
- * se conserva, la corrección de asistencia guarda el valor anterior y cada excepción queda con
- * responsable y fecha. No existe forma de editar una nota ni el progreso directamente.
- *
- * <p>Un certificado ya emitido queda congelado: no se concede un intento CALIFICADO adicional y
- * las correcciones posteriores no recalculan su nota ni su nivel.
- */
 @Service
 @RequiredArgsConstructor
 public class SeguimientoAcademicoService {
@@ -122,7 +112,6 @@ public class SeguimientoAcademicoService {
                 modulos, examenes, sesiones, certificado, excepcionesDto);
     }
 
-    /** La frase del avance está redactada para el alumno ("Te falta…"); el administrador lee sobre otra persona. */
     static String enTerceraPersona(String frase) {
         if (frase == null) {
             return null;
@@ -135,7 +124,6 @@ public class SeguimientoAcademicoService {
                 .replace("(llevas ", "(lleva ");
     }
 
-    /** Concede exactamente un intento adicional: no toca los intentos existentes ni la nota. */
     @Transactional
     public void otorgarIntento(Long matriculaId, OtorgarIntentoRequest peticion) {
         exigirAdministrador();
@@ -166,7 +154,6 @@ public class SeguimientoAcademicoService {
         excepciones.save(excepcion);
     }
 
-    /** Corrige la asistencia de UNA sesión del alumno indicado; delega en HU-027, que conserva el valor anterior. */
     @Transactional
     public void corregirAsistencia(Long matriculaId, Long asistenciaId, CorregirAsistenciaRequest peticion) {
         exigirAdministrador();
@@ -180,8 +167,6 @@ public class SeguimientoAcademicoService {
         }
         administrarSesiones.corregirAsistencia(asistenciaId, peticion);
     }
-
-    // ------------------------------------------------------------------ helpers --
 
     private ExamenSeguimiento examenDe(EstadoExamen estado) {
         Examen examen = estado.examen();
@@ -198,7 +183,6 @@ public class SeguimientoAcademicoService {
                 motivoNo == null, motivoNo, intentos);
     }
 
-    /** {@code null} si se puede conceder un intento adicional; si no, la causa en palabras. */
     private static String motivoNoPuedeOtorgar(EstadoExamen estado) {
         if (!estado.esCalificado()) {
             return "Los exámenes de práctica no tienen límite de intentos.";

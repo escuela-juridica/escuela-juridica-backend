@@ -30,14 +30,6 @@ import pe.edu.utp.escuela.app.repository.LeccionRepository;
 import pe.edu.utp.escuela.app.repository.ReglaCursoRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 
-/**
- * HU-045 — Reporte de asistencia (administrador). Solo cursos EN_VIVO e HIBRIDO. La tabla y la
- * exportación a Excel salen de la misma consulta y el mismo cálculo por alumno: el porcentaje
- * acumulado es el de {@link SesionAlumnoService#porcentajeAsistencia(Long)} (sesiones asistidas
- * entre sesiones elegibles, excluyendo canceladas y las anteriores a una matrícula tardía), el
- * mismo que ve el alumno en su avance, así que nunca divergen. Las sesiones canceladas no
- * aparecen en el reporte porque no entran al denominador.
- */
 @Service
 @RequiredArgsConstructor
 public class ReporteAsistenciaService {
@@ -53,7 +45,6 @@ public class ReporteAsistenciaService {
     private final SesionAlumnoService sesionAlumno;
     private final CurrentUserService actual;
 
-    /** Filtros del reporte (todos opcionales); las cadenas vacías significan "sin filtro". */
     public record Filtro(
             String texto, Long cursoId, Long sesionId, String modalidad,
             LocalDate desde, LocalDate hasta, String asistencia, String origen, String cumplimiento) {
@@ -85,7 +76,6 @@ public class ReporteAsistenciaService {
         return filas.stream().map(enriquecedor(filas)).toList();
     }
 
-    /** Cursos que ofrece el filtro: nunca un curso VIRTUAL. */
     @Transactional(readOnly = true)
     public List<OpcionAsistenciaResponse> cursosDisponibles() {
         exigirAdministrador();
@@ -107,8 +97,6 @@ public class ReporteAsistenciaService {
                         l.getModulo().getTitulo(), l.getFechaHoraInicio()))
                 .toList();
     }
-
-    // ------------------------------------------------------------------ internos --
 
     private record Consulta(
             boolean sinResultados, String texto, String modalidad, String asistencia, String origen,
@@ -154,8 +142,6 @@ public class ReporteAsistenciaService {
         if (cumplimiento.isEmpty()) {
             return new Consulta(false, texto, modalidad, asistencia, origen, desde, hasta, false, List.of(-1L));
         }
-        // El cumplimiento depende del porcentaje de cada alumno, que no es una columna: se calcula
-        // para las matrículas en alcance y la consulta se restringe a las que lo cumplen o no.
         List<MatriculaAlcanceRow> enAlcance = asistencias.matriculasEnAlcance(texto, filtro.cursoId(), modalidad);
         Map<Long, ReglaCurso> reglas = reglasPorCurso(
                 enAlcance.stream().map(MatriculaAlcanceRow::cursoId).distinct().toList());
@@ -202,8 +188,6 @@ public class ReporteAsistenciaService {
                 .collect(Collectors.toMap(r -> r.getCurso().getId(), r -> r, (a, b) -> a));
     }
 
-    /** CUMPLE/NO_CUMPLE solo si el curso exige asistencia mínima; "No aplica" (sin sesiones
-     * elegibles) nunca se considera cumplido. {@code null} si no es condición del curso. */
     private static String cumplimiento(ReglaCurso regla, Integer porcentaje) {
         if (regla == null || !regla.isRequiereAsistencia()) {
             return null;

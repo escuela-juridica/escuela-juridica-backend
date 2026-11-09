@@ -10,7 +10,6 @@ import pe.edu.utp.escuela.app.dto.*;
 import pe.edu.utp.escuela.app.exception.BusinessException;
 import pe.edu.utp.escuela.app.repository.*;
 
-/** Contexto real sin mocks: no hay bypass del anti-robot ni de HU-001. */
 @SpringBootTest
 @ActiveProfiles("test")
 class RegistroSinIntegracionesTests {

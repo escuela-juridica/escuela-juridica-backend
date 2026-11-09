@@ -21,7 +21,6 @@ import pe.edu.utp.escuela.app.mail.MailService;
 import pe.edu.utp.escuela.app.repository.*;
 import tools.jackson.databind.json.JsonMapper;
 
-/** Backend real, anti-robot real, H2 aislado y correo simulado. No usa la BD compartida. */
 @SpringBootTest @ActiveProfiles("test")
 class AntiRobotRegistroHttpTests {
     @Autowired WebApplicationContext contexto;

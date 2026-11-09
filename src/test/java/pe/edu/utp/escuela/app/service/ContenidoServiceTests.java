@@ -43,8 +43,6 @@ import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.security.CurrentUserService.CurrentUser;
 import pe.edu.utp.escuela.app.util.TextNormalizer;
 
-/** HU-011 (organizar módulos/lecciones/materiales) y HU-012 (programar sesiones en vivo), ambas
- * implementadas por {@link ContenidoService}. */
 @ExtendWith(MockitoExtension.class)
 class ContenidoServiceTests {
 
@@ -110,8 +108,6 @@ class ContenidoServiceTests {
         return leccion;
     }
 
-    // ---------------------------------------------------------------- Módulos (HU-011) --
-
     @Test
     void crearModuloConTituloValidoLoCreaOrdenadoComoSiguiente() {
         comoAdministrador();
@@ -159,7 +155,6 @@ class ContenidoServiceTests {
 
     @Test
     void cambiarActivoModuloARetirarConCursoYaIniciadoLanzaValidacion() {
-        // HU-011 Escenario 3 (conservación histórica): un módulo en uso no se retira tras iniciar.
         comoAdministrador();
         Curso curso = cursoEnEstado("EN_CURSO");
         Modulo modulo = moduloDe(curso);
@@ -184,7 +179,6 @@ class ContenidoServiceTests {
 
     @Test
     void reordenarModulosConListaCompletaConservaSecuenciaUnica() {
-        // HU-011 Escenario 1 (estructura ordenada).
         comoAdministrador();
         Curso curso = cursoEnEstado("BORRADOR");
         when(cursos.findById(100L)).thenReturn(Optional.of(curso));
@@ -214,11 +208,8 @@ class ContenidoServiceTests {
                 () -> service.reordenarModulos(100L, new OrdenRequest(List.of(10L))));
     }
 
-    // ---------------------------------------------------------------- Lecciones (HU-011) --
-
     @Test
     void crearLeccionGrabadaSoloPideLosDatosDeSuTipo() {
-        // HU-011 Escenario 2 (tipos de lección): una lección GRABADA no exige datos de sesión.
         comoAdministrador();
         Curso curso = cursoEnEstado("BORRADOR");
         Modulo modulo = moduloDe(curso);
@@ -293,11 +284,8 @@ class ContenidoServiceTests {
         assertThrows(BusinessValidationException.class, () -> service.cambiarActivoLeccion(20L, false));
     }
 
-    // ---------------------------------------------------------------- Sesiones (HU-012) --
-
     @Test
     void actualizarSesionConDatosValidosQuedaProgramada() {
-        // HU-012 Escenario 1 (programación válida).
         comoAdministrador();
         Curso curso = cursoEnEstado("PUBLICADO");
         Leccion leccion = leccionEnVivoDe(moduloDe(curso));
@@ -316,7 +304,6 @@ class ContenidoServiceTests {
 
     @Test
     void actualizarSesionReprogramaConservaLaNuevaProgramacion() {
-        // HU-012 Escenario 2 (reprogramación).
         comoAdministrador();
         Curso curso = cursoEnEstado("PUBLICADO");
         Leccion leccion = leccionEnVivoDe(moduloDe(curso));
@@ -337,7 +324,6 @@ class ContenidoServiceTests {
 
     @Test
     void actualizarSesionSobreLeccionNoEnVivoLanzaValidacion() {
-        // HU-012 Escenario 3 (datos obligatorios / operación rechazada).
         comoAdministrador();
         Curso curso = cursoEnEstado("PUBLICADO");
         Modulo modulo = moduloDe(curso);
@@ -382,13 +368,10 @@ class ContenidoServiceTests {
         Leccion leccion = leccionEnVivoDe(moduloDe(curso));
         when(lecciones.findById(20L)).thenReturn(Optional.of(leccion));
 
-        // El curso va del 1 de septiembre al 1 de octubre; esta sesión cae en noviembre.
         assertThrows(BusinessValidationException.class, () -> service.actualizarSesion(20L,
                 new ActualizarSesionRequest(Instant.parse("2026-11-05T18:00:00Z"),
                         Instant.parse("2026-11-05T20:00:00Z"), "https://meet.example.com/sesion")));
     }
-
-    // ---------------------------------------------------------------- Eliminar (HU-016 apoyo) --
 
     @Test
     void eliminarModuloConCursoEnBorradorLoElimina() {

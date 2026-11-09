@@ -9,11 +9,6 @@ import java.nio.charset.StandardCharsets;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-/**
- * HU-039 — El Libro de Reclamaciones recibe envíos sin sesión. El límite general de subida de la aplicación es alto
- * (videos de cursos), así que aquí se corta antes de leer el cuerpo cualquier envío que no pueda ser válido: hasta
- * 10 imágenes de 5 MB más el texto del formulario. Los archivos se siguen validando uno a uno en el servicio.
- */
 @Component
 public class LimiteCargaReclamacionFilter extends OncePerRequestFilter {
 

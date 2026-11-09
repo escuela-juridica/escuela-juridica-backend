@@ -21,7 +21,6 @@ import pe.edu.utp.escuela.app.entity.ReglaCurso;
 import pe.edu.utp.escuela.app.entity.Usuario;
 import pe.edu.utp.escuela.app.service.RutaAcademicaService.RutaAcademica;
 
-/** Datos de prueba compartidos por las pruebas de las épicas 4, 5 y 6 (aula, certificación y pagos). */
 final class AcademiaFixtures {
 
     static final Instant AHORA = Instant.parse("2026-09-15T12:00:00Z");
@@ -123,7 +122,6 @@ final class AcademiaFixtures {
         return examen;
     }
 
-    /** Ruta ya calculada con las lecciones dadas (en orden) y cuáles están completadas. */
     static RutaAcademica ruta(ReglaCurso regla, List<Modulo> modulos, List<Leccion> lecciones,
             Map<Long, Boolean> completadas, Map<Long, String> bloqueos, List<Examen> calificados,
             Map<Long, BigDecimal> mejoresNotas, java.util.Set<Long> aprobados) {

@@ -36,23 +36,6 @@ import pe.edu.utp.escuela.app.repository.ModuloRepository;
 import pe.edu.utp.escuela.app.repository.ProgresoLeccionRepository;
 import pe.edu.utp.escuela.app.repository.ReglaCursoRepository;
 
-/**
- * HU-025 — Ruta académica: única fuente de verdad del orden del curso y de qué lecciones están
- * bloqueadas y por qué. La consumen el aula (para pintar el temario) y el registro de progreso
- * (para no dejar completar una lección bloqueada llamando a la API directo), de modo que el
- * índice, el botón "Siguiente" y el acceso directo respeten siempre el mismo orden y los mismos
- * bloqueos. Nada de esto se guarda como "módulo desbloqueado": se calcula en cada consulta desde
- * las reglas del curso y los resultados reales del alumno.
- *
- * <p>Con la secuencia activa una lección se bloquea por (1) una lección obligatoria previa, no
- * cancelada, sin completar, o (2) un examen calificado de módulo, configurado como bloqueante, sin
- * aprobar en un módulo anterior (si hay varios, todos deben aprobarse). Las prácticas y el examen
- * final nunca bloquean. Con la secuencia apagada nada bloquea. Una sesión CANCELADA queda libre.
- * Lo ya completado siempre queda accesible.
- *
- * <p>HU-028 — La misma ruta decide si un examen está habilitado y cuántos intentos le quedan al
- * alumno: el aula, la ficha del examen y el inicio del intento comparten este cálculo.
- */
 @Service
 @RequiredArgsConstructor
 public class RutaAcademicaService {
@@ -71,10 +54,6 @@ public class RutaAcademicaService {
     private final CertificadoRepository certificados;
     private final Clock clock;
 
-    /**
-     * Situación de un alumno frente a un examen: intentos usados y permitidos, resultado y si
-     * puede iniciar otro. {@code permitidos == null} significa intentos ilimitados.
-     */
     public record EstadoExamen(
             Examen examen,
             List<IntentoExamen> intentos,
@@ -95,7 +74,6 @@ public class RutaAcademicaService {
             return "CALIFICADO".equals(examen.getTipo());
         }
 
-        /** Texto que explica por qué no puede iniciar otro intento, o {@code null} si puede. */
         public String motivoNoPuedeIniciar() {
             if (motivoNoHabilitado != null) {
                 return motivoNoHabilitado;
@@ -127,7 +105,6 @@ public class RutaAcademicaService {
             return permitidos == null ? null : Math.max(0, permitidos - usados);
         }
 
-        /** PENDIENTE | EN_CURSO | EN_REVISION | APROBADO | NO_APROBADO */
         public String codigo() {
             if (enProgreso != null) {
                 return "EN_CURSO";
@@ -142,7 +119,6 @@ public class RutaAcademicaService {
         }
     }
 
-    /** Resultado del cálculo para una matrícula. */
     public record RutaAcademica(
             ReglaCurso regla,
             List<Modulo> modulos,
@@ -157,7 +133,6 @@ public class RutaAcademicaService {
             Map<Long, BigDecimal> mejoresNotas,
             Map<Long, EstadoExamen> estadoExamenes) {
 
-        /** Motivo por el que la lección no puede trabajarse todavía, o {@code null} si está libre. */
         public String motivoBloqueo(Long leccionId) {
             return bloqueos.get(leccionId);
         }
@@ -187,7 +162,6 @@ public class RutaAcademicaService {
         List<Examen> activos = examenes.findByCurso_IdOrderByOrdenAsc(cursoId).stream()
                 .filter(Examen::isActivo).toList();
 
-        // HU-028: intentos de la matrícula agrupados por examen y excepciones de intento adicional.
         Map<Long, List<IntentoExamen>> intentosPorExamen = intentos
                 .findByMatricula_IdOrderByIniciadoEnAsc(matricula.getId()).stream()
                 .collect(Collectors.groupingBy(i -> i.getExamen().getId()));
@@ -239,7 +213,6 @@ public class RutaAcademicaService {
                             bloqueos.put(leccion.getId(), motivoExamenes(examenesPendientes));
                         }
                     }
-                    // Una sesión CANCELADA se excluye y libera la secuencia: no cuenta como previa.
                     if (leccion.isEsObligatoria() && !"CANCELADA".equals(leccion.getEstado())) {
                         previaObligatoria = leccion;
                     }
@@ -267,7 +240,6 @@ public class RutaAcademicaService {
         BigDecimal mejor = ordenados.stream()
                 .filter(i -> IntentoExamen.CALIFICADO.equals(i.getEstado()) && i.getNota() != null)
                 .map(IntentoExamen::getNota).max(Comparator.naturalOrder()).orElse(null);
-        // La práctica siempre es ilimitada; un examen calificado sin máximo también.
         Integer permitidos = "PRACTICA".equals(examen.getTipo()) || examen.getMaximoIntentos() == null
                 ? null : examen.getMaximoIntentos() + extras;
         return new EstadoExamen(examen, ordenados, ordenados.size(), permitidos, enProgreso, pendiente, aprobado,
@@ -276,7 +248,6 @@ public class RutaAcademicaService {
 
     private static ExamenAulaResponse filaAula(EstadoExamen e) {
         Examen examen = e.examen();
-        // Fecha límite prometida para calificar: envío + días de revisión del examen (HU-029).
         Instant limite = e.pendienteRevision() == null || e.pendienteRevision().getEnviadoEn() == null ? null
                 : e.pendienteRevision().getEnviadoEn().plus(examen.getDiasRevision(), java.time.temporal.ChronoUnit.DAYS);
         return new ExamenAulaResponse(examen.getId(), examen.getTitulo(), examen.getTipo(), examen.getFinalidad(),
@@ -284,12 +255,6 @@ public class RutaAcademicaService {
                 e.motivoNoHabilitado(), e.usados(), e.permitidos(), limite);
     }
 
-    /**
-     * Habilitación de un examen (HU-028): con secuencia, el de módulo abre al completar las
-     * lecciones obligatorias de su módulo y el final al completar todos los módulos; sin secuencia
-     * abre con la matrícula. En EN_VIVO / HIBRIDO una fecha configurada se SUMA al avance exigido.
-     * Devuelve {@code null} si está habilitado.
-     */
     private String motivoNoHabilitado(Examen examen, Matricula matricula, ReglaCurso regla,
             Map<Long, List<Leccion>> leccionesPorModulo, Map<Long, Boolean> completadas, Instant ahora) {
         if (regla.isSecuenciaObligatoria()) {
@@ -321,8 +286,6 @@ public class RutaAcademicaService {
         return leccion.isEsObligatoria() && !"CANCELADA".equals(leccion.getEstado());
     }
 
-    /** Solo un examen CALIFICADO de MÓDULO configurado como bloqueante frena el siguiente módulo;
-     * la práctica y el examen final no, aunque tengan la bandera encendida. */
     private static boolean esBloqueante(Examen examen) {
         return examen.isBloqueaSiguienteModulo() && "CALIFICADO".equals(examen.getTipo())
                 && "MODULO".equals(examen.getFinalidad()) && examen.getModulo() != null;

@@ -12,7 +12,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** HU-032 — Copia congelada de un firmante tal como aparece impreso en un certificado. */
 @Getter
 @Setter
 @NoArgsConstructor

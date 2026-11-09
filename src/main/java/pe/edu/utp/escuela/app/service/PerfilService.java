@@ -71,9 +71,6 @@ public class PerfilService {
         usuario.setContrasenaHash(passwordEncoder.encode(entrada.contrasena()));
     }
 
-    /** Para cuentas que ya tienen contraseña propia (con o sin vínculo Google): exige la actual
-     * para confirmar identidad antes de reemplazarla. No es el mismo recorrido que HU-004
-     * (recuperación por correo, para cuando no la recuerdas). */
     @Transactional
     public void cambiarContrasena(CambiarContrasenaRequest entrada) {
         Usuario usuario = usuarioActual();

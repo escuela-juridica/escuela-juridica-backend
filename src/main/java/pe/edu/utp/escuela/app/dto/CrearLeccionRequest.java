@@ -4,9 +4,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-/** Crea solo el contenido de la lección. Una lección EN_VIVO nace sin programar: su fecha, hora
- * y enlace se registran aparte con {@link ActualizarSesionRequest} (HU-012), una vez que existe
- * la lección sobre la cual programar la sesión. */
 public record CrearLeccionRequest(
         @NotBlank @Size(max = 220) String titulo,
         String descripcion,

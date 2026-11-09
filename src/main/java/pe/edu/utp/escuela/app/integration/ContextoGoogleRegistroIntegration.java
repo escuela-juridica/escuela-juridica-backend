@@ -2,12 +2,6 @@ package pe.edu.utp.escuela.app.integration;
 
 import java.time.Instant;
 
-/**
- * HU-001 entrega identidad comprobada; HU-002 no inicia OAuth ni valida ID tokens.
- * El adaptador debe comprobar autenticidad e integridad de la referencia y
- * rechazar referencias canceladas, desconocidas o alteradas.
- * Esta interfaz interna no impone formato JWT, proveedor, almacenamiento ni TTL.
- */
 public interface ContextoGoogleRegistroIntegration {
     Identidad obtenerVerificada(String referencia);
 

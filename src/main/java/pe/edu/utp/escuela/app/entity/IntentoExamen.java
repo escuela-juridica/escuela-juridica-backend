@@ -15,10 +15,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * Intento de un alumno en un examen (HU-028 / HU-029). El backend es la única fuente de tiempo,
- * puntaje y estado: el navegador nunca informa el tiempo restante ni la nota.
- */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -46,15 +42,12 @@ public class IntentoExamen {
     @Column(name = "numero_intento", nullable = false)
     private Integer numeroIntento;
 
-    /** EN_PROGRESO | PENDIENTE_REVISION | CALIFICADO | VENCIDO */
     @Column(nullable = false, length = 25)
     private String estado;
 
-    /** Suma definitiva; vacío mientras exista una respuesta abierta sin revisar. */
     @Column(name = "puntaje_obtenido", precision = 8, scale = 2)
     private BigDecimal puntajeObtenido;
 
-    /** Puntaje total congelado al iniciar el intento. */
     @Column(name = "puntaje_total", nullable = false, precision = 8, scale = 2)
     private BigDecimal puntajeTotal;
 
@@ -67,7 +60,6 @@ public class IntentoExamen {
     @Column(name = "iniciado_en", nullable = false)
     private Instant iniciadoEn;
 
-    /** Límite calculado al iniciar cuando el examen tiene tiempo máximo. */
     @Column(name = "expira_en")
     private Instant expiraEn;
 

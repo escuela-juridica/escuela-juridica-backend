@@ -61,7 +61,6 @@ public class RecuperacionAccesoService {
         this.frontendBaseUrl = frontendBaseUrl;
     }
 
-    /** Nunca revela si el correo existe: el controlador responde igual pase lo que pase aquí. */
     @Transactional
     public void solicitar(String correoRecibido) {
         String correo = textos.normalizeEmail(correoRecibido);

@@ -13,8 +13,6 @@ import pe.edu.utp.escuela.app.entity.CursoDocenteId;
 
 public interface CursoDocenteRepository extends JpaRepository<CursoDocente, CursoDocenteId> {
 
-    /** Para el editor administrativo: incluye docentes aunque ya no estén activos (igual que el
-     * resto de HU-009, desactivar nunca borra ni oculta lo ya asignado). */
     @EntityGraph(attributePaths = "persona")
     List<CursoDocente> findByCurso_IdOrderByOrdenAsc(Long cursoId);
 

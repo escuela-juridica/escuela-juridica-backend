@@ -10,11 +10,6 @@ import pe.edu.utp.escuela.app.exception.ForbiddenException;
 import pe.edu.utp.escuela.app.repository.CertificadoRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 
-/**
- * HU-033 — Mis certificados: lista únicamente los del alumno autenticado, con lo impreso en cada uno
- * (la versión vigente). Un certificado ANULADO sigue listado como no válido y sin descarga. Vencer o
- * cancelar la matrícula no elimina nada: el listado sale de los certificados emitidos, no de la matrícula.
- */
 @Service
 @RequiredArgsConstructor
 public class MisCertificadosService {

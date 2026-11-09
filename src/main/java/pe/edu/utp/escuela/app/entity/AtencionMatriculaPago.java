@@ -14,11 +14,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * HU-037/HU-047 — Caso de soporte económico o de acceso que requiere una decisión externa de la Escuela: pago
- * aprobado después de cancelar el curso o la matrícula, aprobación tardía o contradictoria, y sobrecupo.
- * ESEJUR solo lo registra; nunca revierte ni devuelve dinero automáticamente.
- */
 @Getter
 @Setter
 @NoArgsConstructor

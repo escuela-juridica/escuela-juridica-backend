@@ -6,9 +6,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 
-/** {@code moduloId}: obligatorio cuando {@code finalidad=MODULO}, debe ser nulo cuando
- * {@code finalidad=FINAL}. {@code maximoIntentos}/{@code tiempoLimiteMinutos}: nulo significa sin
- * límite. {@code fechaHabilitacion}: no admitida en cursos VIRTUAL. */
 public record CrearExamenRequest(
         Long moduloId,
         @NotBlank @Size(max = 220) String titulo,

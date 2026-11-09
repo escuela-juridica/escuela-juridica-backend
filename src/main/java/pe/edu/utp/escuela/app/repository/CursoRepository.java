@@ -30,14 +30,10 @@ public interface CursoRepository extends JpaRepository<Curso, Long> {
 
     boolean existsByUrlAmigableAndIdNot(String urlAmigable, Long id);
 
-    /** Indica si otro curso usa la misma imagen de portada (p. ej. una copia del curso). */
     boolean existsByImagenPortadaUrlAndIdNot(String imagenPortadaUrl, Long id);
 
-    /** HU-016 — Candidatos a pasar de PUBLICADO a EN_CURSO: llegó su fecha de inicio. */
     List<Curso> findByEstadoCurso_CodigoAndFechaInicioLessThanEqual(String codigoEstado, LocalDate hoy);
 
-    /** HU-016 — Candidatos a pasar de EN_CURSO a CERRADO: ya pasó su fecha de fin (nunca aplica a
-     * VIRTUAL, que no tiene fecha de fin). */
     List<Curso> findByEstadoCurso_CodigoAndFechaFinLessThan(String codigoEstado, LocalDate hoy);
 
     @EntityGraph(attributePaths = {
@@ -57,9 +53,6 @@ public interface CursoRepository extends JpaRepository<Curso, Long> {
             """)
     Page<Curso> buscarAdministrativos(@Param("texto") String texto, Pageable pageable);
 
-    /** Beneficios ya usados en otros cursos, para sugerir mientras se escribe uno nuevo (no hay
-     * tabla maestra de beneficios: siguen siendo texto libre por curso, pero reutilizar redacciones
-     * ya existentes evita variantes casi idénticas una al lado de la otra). */
     @Query(value = """
             select distinct beneficio
             from curso c, unnest(c.beneficios) as beneficio
@@ -115,7 +108,6 @@ public interface CursoRepository extends JpaRepository<Curso, Long> {
             @Param("hoy") LocalDate hoy,
             Pageable pageable);
 
-    /** Mayor número de registro ya usado por los cursos de un tipo en un año (0 si no hay ninguno). */
     @Query("select coalesce(max(c.numeroRegistro), 0) from Curso c where c.tipoCurso.id = :tipoId and c.anioRegistro = :anio")
     int maximoNumeroRegistro(@Param("tipoId") Long tipoId, @Param("anio") int anio);
 }

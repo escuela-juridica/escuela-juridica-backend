@@ -12,7 +12,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 
-/** Interoperabilidad SMTP contra un servidor aislado: no envía mensajes a Internet. */
 class SmtpSimuladoIntegrationTests {
 
     private GreenMail smtp;

@@ -15,7 +15,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** Reglas académicas y de certificación configurables por curso (HU-014). */
 @Getter
 @Setter
 @NoArgsConstructor

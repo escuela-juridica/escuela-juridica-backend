@@ -51,11 +51,6 @@ import pe.edu.utp.escuela.app.repository.TipoMaterialRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.util.TextNormalizer;
 
-/** HU-011 — Organizar el contenido de un curso: módulos, lecciones y materiales. HU-012 agrega
- * la programación inicial de la sesión de una lección EN_VIVO ({@link #actualizarSesion}); la
- * reprogramación, cancelación y asistencia quedan para HU-027. La copia de un módulo también
- * duplica los exámenes de módulo configurados en HU-013 (no su fecha de habilitación, por la
- * misma razón que no copia la sesión en vivo). */
 @Service
 @RequiredArgsConstructor
 public class ContenidoService {
@@ -73,8 +68,6 @@ public class ContenidoService {
     private final CurrentUserService currentUserService;
     private final TextNormalizer textos;
     private final Clock clock;
-
-    // ---------------------------------------------------------------- Lectura --
 
     @Transactional(readOnly = true)
     public List<ModuloResponse> obtenerEstructura(Long cursoId) {
@@ -98,8 +91,6 @@ public class ContenidoService {
                 .limit(15)
                 .toList();
     }
-
-    // ---------------------------------------------------------------- Módulos --
 
     @Transactional
     public ModuloResponse crearModulo(Long cursoId, CrearModuloRequest p) {
@@ -128,8 +119,6 @@ public class ContenidoService {
     public ModuloResponse cambiarActivoModulo(Long moduloId, boolean activo) {
         exigirAdministrador();
         Modulo modulo = buscarModuloOLanzar(moduloId);
-        // HU-016: un módulo ya no se retira después de iniciar la convocatoria (quien ya cursa
-        // perdería contenido en medio del curso). Reactivarlo no está restringido.
         if (!activo && cursoIniciado(modulo.getCurso())) {
             throw new BusinessValidationException("El curso ya inició: no puedes retirar un módulo de la convocatoria.");
         }
@@ -156,14 +145,10 @@ public class ContenidoService {
         return construirModulos(modulos.findByCurso_IdOrderByOrdenAsc(cursoId));
     }
 
-    // ---------------------------------------------------------------- Lecciones --
-
     @Transactional
     public LeccionResponse crearLeccion(Long moduloId, CrearLeccionRequest p) {
         exigirAdministrador();
         Modulo modulo = buscarModuloOLanzar(moduloId);
-        // HU-016: tras iniciar, se puede agregar contenido complementario, pero no exigencias
-        // nuevas; una lección obligatoria nueva sí las agrega.
         if (p.esObligatoria() && cursoIniciado(modulo.getCurso())) {
             throw new BusinessValidationException(
                     "El curso ya inició: una lección nueva no puede ser obligatoria. Agrégala como complementaria.");
@@ -189,14 +174,11 @@ public class ContenidoService {
         leccion.setTitulo(textos.requireText(p.titulo(), "Título"));
         leccion.setDescripcion(textos.trimToNull(p.descripcion()));
         if (!p.tipo().name().equals(leccion.getTipo()) && p.tipo() != TipoLeccion.EN_VIVO) {
-            // Dejó de ser EN_VIVO: una sesión programada para otro tipo de lección ya no aplica.
             leccion.setFechaHoraInicio(null);
             leccion.setFechaHoraFin(null);
             leccion.setEnlaceReunion(null);
         }
         leccion.setTipo(p.tipo().name());
-        // HU-016: puede corregirse una lección existente, pero no convertirse en obligatoria recién
-        // después de iniciar (sí puede relajarse, de obligatoria a complementaria).
         if (p.esObligatoria() && !leccion.isEsObligatoria() && cursoIniciado(leccion.getModulo().getCurso())) {
             throw new BusinessValidationException(
                     "El curso ya inició: no puedes volver obligatoria una lección complementaria.");
@@ -206,8 +188,6 @@ public class ContenidoService {
         return mapearLeccion(leccion, materiales.findByLeccion_IdOrderByOrdenAsc(leccionId));
     }
 
-    /** HU-012 — Programa (o reprograma dentro de esta misma historia) la sesión de una lección
-     * EN_VIVO: ventana horaria y enlace de reunión. No crea la reunión ni valida el proveedor. */
     @Transactional
     public LeccionResponse actualizarSesion(Long leccionId, ActualizarSesionRequest p) {
         exigirAdministrador();
@@ -237,8 +217,6 @@ public class ContenidoService {
     public LeccionResponse cambiarActivoLeccion(Long leccionId, boolean activo) {
         exigirAdministrador();
         Leccion leccion = buscarLeccionOLanzar(leccionId);
-        // HU-016: igual que un módulo, una lección ya no se retira tras iniciar; ocultar contenido
-        // problemático temporalmente se hace desde su propio material, no desactivando la lección.
         if (!activo && cursoIniciado(leccion.getModulo().getCurso())) {
             throw new BusinessValidationException("El curso ya inició: no puedes retirar una lección de la convocatoria.");
         }
@@ -266,8 +244,6 @@ public class ContenidoService {
                 .map(l -> mapearLeccion(l, materiales.findByLeccion_IdOrderByOrdenAsc(l.getId())))
                 .toList();
     }
-
-    // ---------------------------------------------------------------- Materiales --
 
     @Transactional
     public MaterialResponse crearMaterialEnlace(Long leccionId, CrearMaterialEnlaceRequest p) {
@@ -380,10 +356,6 @@ public class ContenidoService {
         return materiales.findByLeccion_IdOrderByOrdenAsc(leccionId).stream().map(this::mapearMaterial).toList();
     }
 
-    // ---------------------------------------------------------------- Copiar módulo --
-
-    /** Copia módulo, lecciones, materiales y exámenes de módulo; los materiales de la copia
-     * reutilizan el mismo recurso físico (no se duplica el archivo). */
     @Transactional
     public ModuloResponse copiarModulo(Long cursoId, Long moduloOrigenId) {
         exigirAdministrador();
@@ -413,8 +385,6 @@ public class ContenidoService {
             copiaLeccion.setEstado("PROGRAMADA");
             copiaLeccion.setEsObligatoria(leccionOrigen.isEsObligatoria());
             copiaLeccion.setEsVistaPrevia(leccionOrigen.isEsVistaPrevia());
-            // La sesión (fecha, hora, enlace) queda sin programar: pertenecía al periodo del curso
-            // de origen y no tiene por qué encajar en el del curso destino (HU-012).
             copiaLeccion.setActivo(true);
             lecciones.saveAndFlush(copiaLeccion);
 
@@ -446,16 +416,12 @@ public class ContenidoService {
             copiaExamen.setDescripcion(examenOrigen.getDescripcion());
             copiaExamen.setTipo(examenOrigen.getTipo());
             copiaExamen.setFinalidad(examenOrigen.getFinalidad());
-            // No se copia literal: el curso destino puede ya tener otros exámenes (p. ej. al
-            // duplicar un curso completo), así que el orden se recalcula igual que crearExamen.
             copiaExamen.setOrden((int) examenes.countByCurso_Id(cursoId) + 1);
             copiaExamen.setMaximoIntentos(examenOrigen.getMaximoIntentos());
             copiaExamen.setTiempoLimiteMinutos(examenOrigen.getTiempoLimiteMinutos());
             copiaExamen.setBarajarPreguntas(examenOrigen.isBarajarPreguntas());
             copiaExamen.setBarajarOpciones(examenOrigen.isBarajarOpciones());
             copiaExamen.setMostrarRespuestas(examenOrigen.getMostrarRespuestas());
-            // La fecha de habilitación, igual que la sesión en vivo, pertenecía al periodo del
-            // curso de origen: la copia queda sin programar hasta que administración la revise.
             copiaExamen.setBloqueaSiguienteModulo(examenOrigen.isBloqueaSiguienteModulo());
             copiaExamen.setDiasRevision(examenOrigen.getDiasRevision());
             copiaExamen.setActivo(true);
@@ -493,12 +459,6 @@ public class ContenidoService {
         return construirModulos(List.of(copia)).get(0);
     }
 
-    // ---------------------------------------------------------------- Eliminar --
-
-    /** HU-016 — Borrado real (no "desactivar"), solo mientras el curso sigue en BORRADOR: ahí
-     * nunca hubo ni puede haber actividad de un alumno. Publicado el curso, lo único disponible
-     * vuelve a ser activar/desactivar. Arrastra lecciones, materiales (no el recurso físico, que
-     * puede estar compartido) y los exámenes de módulo con sus preguntas y opciones. */
     @Transactional
     public void eliminarModulo(Long moduloId) {
         exigirAdministrador();
@@ -541,10 +501,6 @@ public class ContenidoService {
         materiales.delete(material);
     }
 
-    // ---------------------------------------------------------------- Soporte --
-
-    /** "Vista previa pública definida por lección, nunca por examen ni sesión en vivo": una
-     * lección EN_VIVO nunca puede marcarse como vista previa. */
     private boolean validarVistaPrevia(TipoLeccion tipo, boolean esVistaPrevia) {
         if (esVistaPrevia && tipo == TipoLeccion.EN_VIVO) {
             throw new BusinessValidationException("Una sesión en vivo no puede marcarse como vista previa pública.");
@@ -558,8 +514,6 @@ public class ContenidoService {
         }
     }
 
-    /** HU-016 — Desde EN_CURSO (y aún en CERRADO, que nunca retrocede) ya no se retiran módulos ni
-     * lecciones, ni se agregan nuevas obligatorias. */
     private boolean cursoIniciado(Curso curso) {
         if (curso.getEstadoCurso() == null) {
             return false;
@@ -568,8 +522,6 @@ public class ContenidoService {
         return "EN_CURSO".equals(codigo) || "CERRADO".equals(codigo);
     }
 
-    /** HU-016 — El borrado real solo aplica en BORRADOR; publicado, ni siquiera PUBLICADO sin
-     * iniciar admite esto (ya puede tener matrículas), solo activar/desactivar. */
     private void exigirCursoBorrador(Curso curso) {
         if (!"BORRADOR".equals(curso.getEstadoCurso().getCodigo())) {
             throw new BusinessValidationException(

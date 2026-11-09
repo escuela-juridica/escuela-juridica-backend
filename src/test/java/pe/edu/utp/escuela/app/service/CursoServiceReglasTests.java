@@ -39,9 +39,6 @@ import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.security.CurrentUserService.CurrentUser;
 import pe.edu.utp.escuela.app.util.TextNormalizer;
 
-/** HU-014 — Configurar requisitos académicos y de certificación ({@link
- * CursoService#actualizarReglas}). El resto de {@link CursoService} (HU-010) ya tiene su propia
- * cobertura funcional en EP02; esta clase se limita a HU-014. */
 @ExtendWith(MockitoExtension.class)
 class CursoServiceReglasTests {
 
@@ -100,13 +97,11 @@ class CursoServiceReglasTests {
 
     @Test
     void actualizarReglasConCondicionesActivasSoloExigeLosUmbralesSeleccionados() {
-        // HU-014 Escenario 1 (condiciones activas).
         Curso curso = cursoVirtualEnEstado("BORRADOR");
         when(cursos.findWithDetalleById(100L)).thenReturn(Optional.of(curso));
         when(reglasCurso.findByCurso_Id(100L)).thenReturn(Optional.of(reglaDe(curso)));
         when(examenes.existsByCurso_IdAndActivoTrueAndTipo(100L, "CALIFICADO")).thenReturn(false);
 
-        // Solo exige progreso: ni examen ni asistencia.
         ActualizarReglasCursoRequest peticion = new ActualizarReglasCursoRequest(false, true, false,
                 BigDecimal.valueOf(12), BigDecimal.valueOf(14),
                 BigDecimal.valueOf(80), BigDecimal.valueOf(50), BigDecimal.valueOf(80),
@@ -121,7 +116,6 @@ class CursoServiceReglasTests {
 
     @Test
     void actualizarReglasConNotaRefrendadoMenorOIgualQueNotaMinimaLanzaValidacion() {
-        // HU-014 Escenario 2 (umbral fuera de rango / relación inválida).
         Curso curso = cursoVirtualEnEstado("BORRADOR");
         when(cursos.findWithDetalleById(100L)).thenReturn(Optional.of(curso));
         when(reglasCurso.findByCurso_Id(100L)).thenReturn(Optional.of(reglaDe(curso)));
@@ -185,7 +179,6 @@ class CursoServiceReglasTests {
 
     @Test
     void actualizarReglasConEsperaYSecuenciaObligatoriaQuedanDisponibles() {
-        // HU-014 Escenario 3 (emisión y recorrido).
         Curso curso = cursoVirtualEnEstado("BORRADOR");
         when(cursos.findWithDetalleById(100L)).thenReturn(Optional.of(curso));
         when(reglasCurso.findByCurso_Id(100L)).thenReturn(Optional.of(reglaDe(curso)));

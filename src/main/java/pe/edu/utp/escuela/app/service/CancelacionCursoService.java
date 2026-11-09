@@ -40,14 +40,6 @@ import pe.edu.utp.escuela.app.repository.NotificacionRepository;
 import pe.edu.utp.escuela.app.repository.PagoRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 
-/**
- * HU-038 — Cancelación completa de un curso (administrador). En una sola transacción: el curso pasa a CANCELADO
- * (lo que detiene de inmediato nuevas matrículas y pagos), se cancelan las sesiones futuras y queda registrado un
- * aviso por cada alumno con acceso. Nada se borra: matrículas, pagos, progreso, intentos, asistencia y certificados
- * se conservan, y quienes ya tenían acceso mantienen la consulta de lo que estuvo disponible. Los correos se envían
- * después de confirmar la transacción: un fallo no revierte la cancelación, queda por alumno y se puede reintentar.
- * ESEJUR no devuelve dinero; un APROBADO posterior de Culqi se registra sin dar acceso y se atiende en HU-037.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -72,9 +64,6 @@ public class CancelacionCursoService {
     @Value("${esejur.reclamaciones.correo-escuela:informes@esejur.pe}")
     private String canalAtencion;
 
-    // ---------------------------------------------------------------------------------------- consulta --
-
-    /** Resume lo que se afectaría (o, si el curso ya está cancelado, lo que se afectó) y el estado de los avisos. */
     @Transactional(readOnly = true)
     public CancelacionCursoResponse impacto(Long cursoId) {
         exigirAdministrador();
@@ -95,7 +84,6 @@ public class CancelacionCursoService {
                 curso.getMotivoCancelacion(), avisos, enviados, avisos - enviados);
     }
 
-    /** Alumnos con acceso previo y el estado de su aviso, paginados; los avisos fallidos aparecen primero. */
     @Transactional(readOnly = true)
     public Page<CancelacionAfectadoResponse> afectados(Long cursoId, Pageable pageable) {
         exigirAdministrador();
@@ -116,12 +104,6 @@ public class CancelacionCursoService {
         });
     }
 
-    // ----------------------------------------------------------------------------------------- cancelar --
-
-    /**
-     * Cancela el curso con motivo. Solo PUBLICADO o EN_CURSO; el curso se bloquea mientras se decide para que un pago
-     * o una matrícula simultáneos no se cuelen. Los avisos se registran dentro de la transacción y se envían después.
-     */
     public CancelacionCursoResponse cancelar(Long cursoId, String motivo) {
         exigirAdministrador();
         Long adminId = actual.get().userId();
@@ -153,7 +135,6 @@ public class CancelacionCursoService {
 
             sesiones.cancelarSesionesFuturasDeCurso(cursoId, "Curso cancelado: " + motivoLimpio);
 
-            // Un solo aviso por alumno con acceso (no uno por sesión): queda registrado antes de intentar el correo.
             for (Matricula m : matriculas.findByEstadoAndCurso_Id("ACTIVA", cursoId)) {
                 Notificacion n = new Notificacion();
                 n.setUsuario(m.getUsuario());
@@ -167,7 +148,6 @@ public class CancelacionCursoService {
         return impacto(cursoId);
     }
 
-    /** Reintenta los avisos que fallaron o no llegaron a enviarse, sin duplicar los ya enviados. */
     public CancelacionCursoResponse reenviarAvisos(Long cursoId) {
         exigirAdministrador();
         Curso curso = cursos.findWithDetalleById(cursoId)

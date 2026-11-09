@@ -2,7 +2,6 @@ package pe.edu.utp.escuela.app.dto;
 
 import java.time.Instant;
 
-/** Proyección de una fila de usuario_rol con el código del rol ya resuelto. */
 public record UsuarioRolRow(
         Long usuarioId,
         String rolCodigo,

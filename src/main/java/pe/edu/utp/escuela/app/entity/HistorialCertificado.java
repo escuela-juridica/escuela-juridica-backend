@@ -14,7 +14,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** HU-035/HU-036 — Evidencia administrativa de un certificado: quién, cuándo, por qué y qué cambió. */
 @Getter
 @Setter
 @NoArgsConstructor

@@ -30,7 +30,6 @@ public class CodigoVerificacionService {
     private final Clock clock;
     private final SecureRandom random = new SecureRandom();
 
-    /** Debe participar en la misma transacción que crea la cuenta. */
     @Transactional(propagation = Propagation.MANDATORY)
     public boolean emitirPara(Usuario usuario) {
         codigos.invalidarAnteriores(usuario.getId(), clock.instant());

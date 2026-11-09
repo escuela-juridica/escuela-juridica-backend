@@ -34,15 +34,6 @@ import org.springframework.stereotype.Component;
 import pe.edu.utp.escuela.app.entity.Certificado;
 import pe.edu.utp.escuela.app.entity.CertificadoFirmante;
 
-/**
- * HU-032 — PDF del certificado con el diseño institucional: una página de anverso (nombre, curso, fechas, firmas y
- * un QR que lleva a la verificación pública) y, si el certificado conserva un temario, una página de reverso con lo
- * dictado y el código de registro. Solo imprime lo que está en el {@link Certificado} ya congelado; nunca consulta
- * datos vivos del alumno ni del curso, y no incluye el documento de identidad.
- *
- * <p>Las medidas se expresan en un lienzo de 2000 × 1414 unidades (el de la plantilla de diseño) y se convierten a
- * puntos de una página A4 horizontal; así se pueden contrastar una a una con la plantilla.</p>
- */
 @Component
 public class CertificadoPdfExport {
 
@@ -53,7 +44,6 @@ public class CertificadoPdfExport {
     private static final Color GRIS = new Color(0x55, 0x5E, 0x6B);
     private static final String INSTITUCION = "Escuela Jurídica";
 
-    /** Ancho del lienzo de la plantilla: todas las medidas del dibujo están en estas unidades. */
     private static final float LIENZO = 2000f;
 
     private static final byte[] OSWALD = recurso("certificado/fuentes/Oswald-Bold.ttf");
@@ -62,28 +52,17 @@ public class CertificadoPdfExport {
     private static final byte[] ARCHIVO_NEGRO = recurso("certificado/fuentes/ArchivoBlack-Regular.ttf");
     private static final byte[] CURSIVA = recurso("certificado/fuentes/GreatVibes-Regular.ttf");
 
-    /** RUC de la institución que se imprime en el reverso. */
     @Value("${application.certificado.ruc:20600418204}")
     private String ruc = "20600418204";
 
-    /** Fuentes de un documento: las embebidas se crean por documento (PDFBox las ata a quien las carga). */
     private record Fuentes(PDFont oswald, PDFont normal, PDFont negrita, PDFont archivo, PDFont cursiva, PDFont marca) {
     }
 
-    /**
-     * @param imagenes resuelve la referencia de una imagen (firma o logo) a sus bytes; devuelve {@code null}
-     *                 si no está disponible, y entonces el certificado sale solo con el texto
-     * @param logoEntidadUrl referencia del logo de la entidad refrendante, o {@code null}
-     */
     public byte[] generar(Certificado certificado, List<CertificadoFirmante> firmantes, String urlVerificacion,
             Function<String, byte[]> imagenes, String logoEntidadUrl) {
         return generar(certificado, firmantes, urlVerificacion, imagenes, logoEntidadUrl, false);
     }
 
-    /**
-     * Igual que {@link #generar(Certificado, List, String, Function, String)}; con {@code vistaPrevia} dibuja al
-     * fondo la marca «VISTA PREVIA — NO VÁLIDO» para que un borrador nunca se confunda con el certificado vigente.
-     */
     public byte[] generar(Certificado certificado, List<CertificadoFirmante> firmantes, String urlVerificacion,
             Function<String, byte[]> imagenes, String logoEntidadUrl, boolean vistaPrevia) {
         try (PDDocument documento = new PDDocument(); ByteArrayOutputStream salida = new ByteArrayOutputStream()) {
@@ -107,8 +86,6 @@ public class CertificadoPdfExport {
         }
     }
 
-    // ================================================================== anverso ==
-
     private void anverso(PDDocument documento, Lienzo l, Fuentes f, PDImageXObject logo, Certificado cert,
             List<CertificadoFirmante> firmantes, String urlVerificacion, Function<String, byte[]> imagenes,
             String logoEntidadUrl, boolean vistaPrevia) throws IOException, WriterException {
@@ -128,11 +105,9 @@ public class CertificadoPdfExport {
             l.centradoAjustado(c, f.cursiva(), 111f, 1740f, NEGRO, cert.getNombresImpresos(), 971, 500);
 
             String tipo = cert.getTipoCursoImpreso() == null ? "CURSO" : cert.getTipoCursoImpreso().toUpperCase(LOCALE);
-            // La misma frase para todos los tipos: «POR HABER PARTICIPADO Y APROBADO EL SEMINARIO…:», «…EL CURSO:», etc.
             String frase ="POR HABER PARTICIPADO Y APROBADO " + articulo(tipo) + " " + tipo + ":";
             l.centradoAjustado(c, f.normal(), 37.9f, 1700f, NEGRO, frase, 971, 604);
 
-            // El título ocupa dos líneas como en la plantilla; si es muy largo se reduce la letra hasta que quepa.
             String titulo = cert.getTituloCursoImpreso().toUpperCase(LOCALE);
             float tamanoTitulo = 59.2f;
             List<String> lineasTitulo = l.partir(f.archivo(), tamanoTitulo, titulo, 1700f, 2);
@@ -155,7 +130,6 @@ public class CertificadoPdfExport {
 
             firmas(documento, c, l, f, firmantes, imagenes);
 
-            // QR de verificación y, debajo, el código del certificado (también va en el reverso, en «Código de registro»).
             boolean muchas = firmantes.size() >= 4;
             float qrX = muchas ? 1105 : 975;
             float qrLado = muchas ? 200 : 260;
@@ -180,7 +154,6 @@ public class CertificadoPdfExport {
         }
     }
 
-    /** Franjas diagonales de las esquinas (arte de la plantilla, ya recortado con transparencia). */
     private void decorado(PDDocument documento, PDPageContentStream c, Lienzo l) {
         PDImageXObject superior = imagenDelRecurso(documento, "certificado/decorado-superior.png");
         PDImageXObject inferior = imagenDelRecurso(documento, "certificado/decorado-inferior.png");
@@ -192,7 +165,6 @@ public class CertificadoPdfExport {
                 l.imagen(c, inferior, 0f, 716.4f, 789.5f, 697.6f);
             }
         } catch (IOException e) {
-            // Sin las franjas el certificado conserva toda su información.
         }
     }
 
@@ -221,10 +193,6 @@ public class CertificadoPdfExport {
         }
     }
 
-    /**
-     * Centros de las firmas: una o dos a los lados del QR como en la plantilla; con tres o cuatro se estrechan y el QR
-     * se reduce para que todas queden en la misma fila sin invadir las franjas de la esquina.
-     */
     private static float[] centrosDeFirma(int n) {
         return switch (n) {
             case 1 -> new float[] {640f};
@@ -242,15 +210,12 @@ public class CertificadoPdfExport {
         };
     }
 
-    // =================================================================== reverso ==
-
     private void reverso(PDDocument documento, Lienzo l, Fuentes f, PDImageXObject logo, Certificado cert,
             boolean vistaPrevia) throws IOException {
         List<Bloque> bloques = bloques(cert.getTemarioImpreso());
         if (bloques.isEmpty()) {
             return;
         }
-        // Se ajusta el tamaño para que el temario quepa en la caja; si aun así no cabe, continúa en otra hoja.
         float escala = 1f;
         List<List<Linea>> hojas = paginar(l, f, bloques, 1f);
         if (hojas.size() > 1) {
@@ -290,11 +255,9 @@ public class CertificadoPdfExport {
         l.centrado(c, f.normal(), 28.4f, NEGRO, "RUC " + ruc, 1773, 278);
         notaYHoras(c, l, f, cert);
 
-        // Recuadro del código de registro.
         l.rectangulo(c, 1647, 571, 1902, 745, 5f);
         l.centrado(c, f.negrita(), 30.9f, NEGRO, "CÓDIGO DE", 1775, 606);
         l.centrado(c, f.negrita(), 30.9f, NEGRO, "REGISTRO", 1775, 648);
-        // Código de registro del curso («01-SM_2026»); los certificados anteriores a este código muestran el propio.
         String codigo = cert.getCodigoRegistroImpreso() != null && !cert.getCodigoRegistroImpreso().isBlank()
                 ? cert.getCodigoRegistroImpreso() : cert.getCodigo();
         float maximo = 225f;
@@ -336,8 +299,6 @@ public class CertificadoPdfExport {
         }
     }
 
-    // ---- temario: texto → bloques → líneas por hoja ----
-
     private enum Tipo { ENCABEZADO, VINETA, TEXTO, BLANCO }
 
     private record Bloque(Tipo tipo, String texto) {
@@ -356,7 +317,6 @@ public class CertificadoPdfExport {
         }
     }
 
-    /** El temario se guarda como texto: «# » abre una sesión, «- » una viñeta y una línea vacía separa. */
     private static List<Bloque> bloques(String temario) {
         List<Bloque> lista = new ArrayList<>();
         if (temario == null || temario.isBlank()) {
@@ -409,7 +369,6 @@ public class CertificadoPdfExport {
         List<List<Linea>> hojas = new ArrayList<>();
         for (int i = 0; i < todas.size(); i += capacidad) {
             List<Linea> hoja = new ArrayList<>(todas.subList(i, Math.min(todas.size(), i + capacidad)));
-            // Una hoja no empieza con una línea en blanco.
             while (!hoja.isEmpty() && hoja.getFirst().tipo == Tipo.BLANCO) {
                 hoja.removeFirst();
             }
@@ -421,16 +380,12 @@ public class CertificadoPdfExport {
         return hojas;
     }
 
-    // ================================================================ textos ==
-
     private static final Locale LOCALE = Locale.forLanguageTag("es-PE");
 
-    /** Más de 24 horas: curso o diplomado, que se aprueban y llevan nota; hasta 24 horas es un seminario. */
     static boolean esCursoConNota(Certificado c) {
         return c.getHorasImpresas() != null && c.getHorasImpresas().compareTo(new java.math.BigDecimal("24")) > 0;
     }
 
-    /** «EL» o «LA» según el tipo de curso: «el diplomado», «la especialización». */
     static String articulo(String tipoMayusculas) {
         String primera = tipoMayusculas.strip().split("\\s+")[0];
         boolean femenino = primera.endsWith("CIÓN") || primera.endsWith("CION") || primera.endsWith("SIÓN")
@@ -438,11 +393,6 @@ public class CertificadoPdfExport {
         return femenino ? "LA" : "EL";
     }
 
-    /**
-     * Línea bajo el título, igual para seminarios, cursos y diplomados y sin horas: «Realizado el 23 de octubre de
-     * 2026», «Realizado los días 23 y 24 de octubre de 2026» (hasta cuatro días, todos nombrados) o, desde cinco días,
-     * un rango: «Realizado del 23 al 27 de octubre de 2026». Sin fechas no se imprime nada.
-     */
     static String lineaDePeriodo(Certificado c) {
         if (c.getFechaInicioImpresa() == null && c.getFechaFinImpresa() == null) {
             return "";
@@ -450,12 +400,7 @@ public class CertificadoPdfExport {
         return "Realizado " + periodo(c.getFechaInicioImpresa(), c.getFechaFinImpresa());
     }
 
-    /**
-     * El certificado solo conserva el inicio y el fin, así que los días intermedios se deducen como seguidos. Hasta
-     * cuatro días se nombran uno por uno (agrupados por mes); con más, o si cruzan de año, se usa un rango.
-     */
     static String periodo(LocalDate inicio, LocalDate fin) {
-        // Una sola fecha (un virtual con solo inicio, o solo fin) se trata como un único día: «el 19 de octubre de 2026».
         if (inicio == null || fin == null) {
             return "el " + fechaLarga(inicio != null ? inicio : fin);
         }
@@ -496,7 +441,6 @@ public class CertificadoPdfExport {
         return "del " + fechaLarga(desde) + " al " + fechaLarga(hasta);
     }
 
-    /** «23», «23 y 24», «23, 24 y 25». */
     private static String unir(List<Integer> dias) {
         if (dias.size() == 1) {
             return String.valueOf(dias.getFirst());
@@ -511,7 +455,6 @@ public class CertificadoPdfExport {
         return texto.toString();
     }
 
-    /** En cursos y diplomados, bajo el código de registro: la nota final en grande y las horas académicas. */
     private void notaYHoras(PDPageContentStream c, Lienzo l, Fuentes f, Certificado cert) throws IOException {
         if (!esCursoConNota(cert)) {
             return;
@@ -529,7 +472,6 @@ public class CertificadoPdfExport {
         l.centrado(c, f.negrita(), 24f, NEGRO, "ACADÉMICAS", 1775, y + 68);
     }
 
-    /** Solo la ciudad: «Lima, Perú» se imprime como «Lima», igual que en la plantilla («Lima, 23 de octubre de 2026»). */
     static String ciudad(String lugar) {
         if (lugar == null || lugar.isBlank()) {
             return "";
@@ -542,9 +484,6 @@ public class CertificadoPdfExport {
         return fecha.getDayOfMonth() + " de " + MESES[fecha.getMonthValue() - 1] + " de " + fecha.getYear();
     }
 
-    // ============================================================ marca de agua ==
-
-    /** Marca diagonal clara al fondo: queda debajo del contenido, que se dibuja después. */
     private void marcaDeAgua(PDPageContentStream c, Lienzo l, PDFont fuente) throws IOException {
         double angulo = Math.toRadians(24);
         diagonal(c, l, fuente, 78, "VISTA PREVIA", angulo, 0);
@@ -565,8 +504,6 @@ public class CertificadoPdfExport {
         c.endText();
     }
 
-    // =============================================================== recursos ==
-
     private static byte[] recurso(String ruta) {
         try (InputStream entrada = new ClassPathResource(ruta).getInputStream()) {
             return entrada.readAllBytes();
@@ -575,7 +512,6 @@ public class CertificadoPdfExport {
         }
     }
 
-    /** Imagen del diseño; si el recurso no está disponible el certificado sale igual, solo con el texto. */
     private static PDImageXObject imagenDelRecurso(PDDocument documento, String ruta) {
         try (InputStream entrada = new ClassPathResource(ruta).getInputStream()) {
             return PDImageXObject.createFromByteArray(documento, entrada.readAllBytes(), ruta);
@@ -584,9 +520,6 @@ public class CertificadoPdfExport {
         }
     }
 
-    // ================================================================ lienzo ==
-
-    /** Dibujo sobre el lienzo de 2000 unidades de ancho: convierte unidades de la plantilla a puntos de la página. */
     private static final class Lienzo {
         final PDRectangle tamano;
         final float ancho;
@@ -604,7 +537,6 @@ public class CertificadoPdfExport {
             return u * k;
         }
 
-        /** Unidades medidas desde el borde superior de la plantilla. */
         float y(float u) {
             return alto - u * k;
         }
@@ -617,7 +549,6 @@ public class CertificadoPdfExport {
             c.drawImage(imagen, x(x), y(y + h), w * k, h * k);
         }
 
-        /** Dibuja bytes de imagen dentro de la caja, conservando su proporción; ignora lo que no sea una imagen válida. */
         void imagenBytes(PDDocument documento, PDPageContentStream c, byte[] bytes, float x, float y, float w, float h) {
             if (bytes == null) {
                 return;
@@ -627,10 +558,8 @@ public class CertificadoPdfExport {
                 float escala = Math.min(w / imagen.getWidth(), h / imagen.getHeight());
                 float iw = imagen.getWidth() * escala;
                 float ih = imagen.getHeight() * escala;
-                // Pegada al borde inferior de la caja: la firma apoya sobre su línea.
                 c.drawImage(imagen, x(x + (w - iw) / 2), y(y + h), iw * k, ih * k);
             } catch (IOException | RuntimeException e) {
-                // Una imagen ilegible no impide emitir el certificado.
             }
         }
 
@@ -682,7 +611,6 @@ public class CertificadoPdfExport {
             escribir(c, fuente, tamanoU * k, color, seguro(fuente, valor), x(izquierdaU), y(lineaBaseU), 0);
         }
 
-        /** Texto con separación entre letras (como el «CERTIFICADO» de la plantilla), centrado sin contar la última. */
         void letrado(PDPageContentStream c, PDFont fuente, float tamanoU, Color color, String valor, float centroU,
                 float lineaBaseU, float separacionU) throws IOException {
             String limpio = seguro(fuente, valor);
@@ -691,7 +619,6 @@ public class CertificadoPdfExport {
             escribir(c, fuente, tamanoU * k, color, limpio, x(centroU) - w / 2, y(lineaBaseU), separacion);
         }
 
-        /** Centrado; si no cabe en el ancho disponible, reduce la letra hasta que quepa (con un mínimo). */
         void centradoAjustado(PDPageContentStream c, PDFont fuente, float tamanoU, float disponibleU, Color color, String valor,
                 float centroU, float lineaBaseU) throws IOException {
             float t = tamanoU;
@@ -703,7 +630,6 @@ public class CertificadoPdfExport {
             centrado(c, fuente, t, color, limpio, centroU, lineaBaseU);
         }
 
-        /** Línea justificada: reparte el sobrante entre las palabras para llegar al ancho indicado. */
         void justificado(PDPageContentStream c, PDFont fuente, float tamanoU, Color color, String valor, float izquierdaU,
                 float lineaBaseU, float anchoU) throws IOException {
             String[] palabras = seguro(fuente, valor).split(" ");
@@ -734,7 +660,6 @@ public class CertificadoPdfExport {
             c.endText();
         }
 
-        /** Parte el texto en líneas de a lo sumo {@code disponibleU}; la última absorbe el resto si se pasa de {@code maximo}. */
         List<String> partir(PDFont fuente, float tamanoU, String valor, float disponibleU, int maximo) throws IOException {
             List<String> lineas = new ArrayList<>();
             StringBuilder actual = new StringBuilder();
@@ -757,7 +682,6 @@ public class CertificadoPdfExport {
             return lineas;
         }
 
-        /** Código QR dibujado como cuadrados vectoriales (no depende de imágenes ni de AWT). */
         void qr(PDPageContentStream c, String contenido, float xU, float yU, float ladoU) throws IOException, WriterException {
             BitMatrix matriz = new QRCodeWriter().encode(contenido, BarcodeFormat.QR_CODE, 0, 0,
                     Map.of(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.M, EncodeHintType.MARGIN, 0));
@@ -776,7 +700,6 @@ public class CertificadoPdfExport {
             c.fill();
         }
 
-        /** Lo que la fuente no pueda dibujar se reemplaza por «?» para no abortar la emisión. */
         String seguro(PDFont fuente, String valor) {
             if (valor == null) {
                 return "";

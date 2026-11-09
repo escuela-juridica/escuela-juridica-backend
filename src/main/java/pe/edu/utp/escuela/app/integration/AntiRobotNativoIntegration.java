@@ -10,7 +10,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import pe.edu.utp.escuela.app.exception.BusinessException;
 
-/** Demostración académica, en memoria y para una sola instancia. No es un CAPTCHA robusto. */
 @Service
 public class AntiRobotNativoIntegration {
     private static final int CAPACIDAD = 10_000;
@@ -43,7 +42,6 @@ public class AntiRobotNativoIntegration {
 
     public synchronized Desafio crear(String visitante, String ip) {
         preparar("crear", visitante, ip, 10, 30);
-        // Solo la comprobación más reciente de este navegador permanece vigente.
         retos.values().removeIf(r -> r.visitante().equals(visitante));
         pruebas.values().removeIf(p -> p.visitante().equals(visitante));
         comprobarCapacidad(retos);
@@ -72,7 +70,6 @@ public class AntiRobotNativoIntegration {
         return new Evidencia(token, VIGENCIA_SEGUNDOS);
     }
 
-    /** El bloqueo hace atómica la validación y el consumo, incluso con dos envíos simultáneos. */
     public synchronized void consumir(String visitante, String ip, String evidencia) {
         preparar("registro", visitante, ip, 10, 30);
         Prueba prueba = pruebas.get(evidencia);
@@ -85,7 +82,6 @@ public class AntiRobotNativoIntegration {
         retos.values().removeIf(r -> !r.vence().isAfter(ahora));
         pruebas.values().removeIf(p -> !p.vence().isAfter(ahora));
         limites.values().removeIf(v -> !v.vence().isAfter(ahora));
-        // La IP proviene del contenedor; no se confía en cabeceras enviadas por el cliente.
         limitar(accion + ":ip:" + ip, porIp, ahora);
         if (!identificadorValido(visitante)) throw invalido();
         limitar(accion + ":visitante:" + visitante, porVisitante, ahora);

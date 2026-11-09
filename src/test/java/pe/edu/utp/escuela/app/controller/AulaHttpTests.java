@@ -17,8 +17,6 @@ import pe.edu.utp.escuela.app.entity.Modulo;
 import pe.edu.utp.escuela.app.entity.Usuario;
 import pe.edu.utp.escuela.app.repository.ProgresoLeccionRepository;
 
-/** EP04 — Aula del alumno por HTTP: autenticación, rol, matrícula, temario con bloqueos y registro de progreso con
- * persistencia real en H2. */
 class AulaHttpTests extends HttpIntegracionBase {
 
     @Autowired ProgresoLeccionRepository progreso;
@@ -91,7 +89,6 @@ class AulaHttpTests extends HttpIntegracionBase {
         Leccion[] lecciones = new Leccion[2];
         Curso curso = cursoConDosLecciones(alumno, "ACTIVA", lecciones);
 
-        // Saltarse la primera lección llamando directo a la API se rechaza con el motivo del bloqueo.
         mvc.perform(post("/api/app/lecciones/" + lecciones[1].getId() + "/completar")
                         .with(comoAlumno(alumno.getId())).with(csrf()))
                 .andExpect(status().isBadRequest())
