@@ -70,7 +70,7 @@ Casi todas extienden `RegistroAuditable` (`@MappedSuperclass`), que añade `crea
 - Existe una **segunda clave JWT independiente** para las referencias de verificación de correo, deliberadamente distinta de la de sesión, para que un token de registro nunca pueda decodificarse como una cookie de sesión válida.
 - **Spring Security solo distingue público vs. autenticado** a nivel de ruta (`permitAll()` / `anyRequest().authenticated()`). La autorización fina por rol (`ALUMNO` / `ADMINISTRADOR`) se implementa **dentro de cada servicio**, vía `CurrentUserService.get().hasRole("ADMINISTRADOR")`, lanzando `ForbiddenException` si no corresponde — no se usan matchers de Spring Security por rol.
 - Login con correo: el mismo error se usa para correo inexistente o contraseña incorrecta, para no revelar si una cuenta existe. Verifica cuenta activa y correo verificado antes de emitir sesión.
-- Login/registro con Google: no hay integración OAuth2 completa con un proveedor externo todavía; existe el flujo para completar el registro a partir de un "contexto Google" ya validado externamente (correo/`googleSubject` nunca se toman del cuerpo enviado por el navegador).
+- Login y registro con Google (HU-001/HU-002): el navegador obtiene una credencial de Google Identity Services y la envía a `POST /api/auth/acceso/google`. El servidor la valida contra las claves públicas de Google (firma, emisor, audiencia igual a `esejur.google.client-id`, vigencia y `email_verified`). Si el `sub` de Google ya está vinculado o el correo coincide con una cuenta activa y verificada, la vincula si hace falta y abre la sesión con la cookie HttpOnly (estado `SESION`). Si el correo es nuevo, la cuenta se crea al instante con los datos de Google (nombres y apellidos en mayúsculas, correo ya verificado, rol Alumno) y abre la sesión; no hay pantalla intermedia ni aviso de términos. Solo si Google no entrega nombres o apellidos devuelve estado `REGISTRO` con una referencia firmada de 15 minutos para completar el formulario en `/api/auth/registro/google`. Una cuenta de formulario con el correo aún sin verificar se rechaza con `PENDING_EMAIL_VERIFICATION` y no se vincula. Sin `esejur.google.client-id` el acceso con Google responde 503 `GOOGLE_PENDIENTE`.
 - Recuperación de contraseña: la solicitud siempre responde con un mensaje neutral exista o no la cuenta; los tokens se guardan hasheados, nunca en texto plano.
 
 ## Patrón de capas
@@ -201,6 +201,7 @@ La aplicación las lee de `/etc/esejurce/app.env` (formato `CLAVE=valor`, sin co
 | `CSRF_COOKIE_DOMAIN` | Dominio común del frontend y la API para la cookie CSRF, sin `https://` |
 | `ESEJUR_CULQI_PUBLIC_KEY`, `ESEJUR_CULQI_PRIVATE_KEY` | Llaves de Culqi (`pk_live_...` / `sk_live_...`) |
 | `ESEJUR_CULQI_WEBHOOK_USER`, `ESEJUR_CULQI_WEBHOOK_PASSWORD` | Credenciales del webhook de Culqi; las mismas que se registren en CulqiPanel (contraseña de 20 caracteres como máximo) |
+| `GOOGLE_CLIENT_ID` | ID de cliente OAuth de Google (tipo aplicación web, termina en `.apps.googleusercontent.com`). El perfil `prod` no arranca sin él |
 
 ### Detalles del contenedor
 
