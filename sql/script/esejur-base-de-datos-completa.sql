@@ -2667,18 +2667,19 @@ FROM pago p JOIN matricula m ON m.matricula_id=p.matricula_id
 WHERE p.numero_pedido='PED-EP06-0002';
 
 -- =============================================================================
--- DEMOSTRACION: FLUJO COMPLETO DE UN ALUMNO (pagar, estudiar y obtener el certificado)
+-- DEMOSTRACION: FLUJO COMPLETO DE UN ALUMNO (matricularse gratis, estudiar y obtener el certificado)
 -- =============================================================================
 -- Cuenta:  alumno.demo@escuelajuridica.edu.pe   Contrasena: Marco1415@
---          (cambia el correo por uno propio si quieres recibir los avisos de pago y de certificado)
--- Curso:   "Procedimiento Administrativo Practico" (S/ 20.00, virtual, publicado)
---          3 lecciones en 2 modulos + examen final de 3 preguntas de correccion automatica.
--- El alumno NO tiene matricula: el recorrido empieza en la ficha del curso con "Pagar ahora".
---   1. Paga con la tarjeta de prueba de Culqi (4111 1111 1111 1111, 09/30, CVV 123) o con Yape.
---   2. Completa las 3 lecciones en orden.
+--          (cambia el correo por uno propio si quieres recibir los avisos de matricula y de certificado)
+-- Curso:   "Procedimiento Administrativo Practico" (GRATUITO, virtual, publicado)
+--          8 lecciones en 4 modulos + examen final de 4 preguntas de correccion automatica.
+-- El alumno NO tiene matricula: el recorrido empieza en la ficha del curso con "Matricularme gratis".
+--   1. Se matricula sin pago (matricula gratuita) y entra al aula.
+--   2. Completa las 8 lecciones de los 4 modulos en orden.
 --   3. Rinde el examen final (alternativas correctas: ver el comentario de cada pregunta).
---   4. Confirma sus nombres y genera el certificado: sale al instante, sin intervencion de
---      administracion, con nivel REFRENDADO si la nota llega a 14 (el curso tiene entidad certificadora).
+--   4. Confirma sus nombres y genera el certificado: sale al instante (0 dias de espera), sin
+--      intervencion de administracion, con nivel REFRENDADO si la nota llega a 14 (el curso tiene
+--      entidad certificadora).
 -- Los contenidos, correos y enlaces son datos de demostracion.
 
 INSERT INTO persona (nombres, apellido_paterno, apellido_materno, telefono)
@@ -2701,11 +2702,11 @@ INSERT INTO curso
  horas_academicas, beneficios, creado_por_usuario_id, publicado_en)
 SELECT 'procedimiento-administrativo-practico',
        'Procedimiento Administrativo Practico',
-       'Recorrido corto y aplicado por los principios, el procedimiento y los recursos del procedimiento administrativo general, con examen final y certificado.',
+       'Curso gratuito, corto y aplicado, en cuatro modulos: principios, etapas y actos, recursos y silencio administrativo del procedimiento administrativo general, con examen final de correccion automatica y certificado al instante.',
        '/uploads/portadas/31-1793741001012.jpg',
-       tc.tipo_curso_id, ct.categoria_tematica_id, ec.entidad_certificadora_id, 'VIRTUAL', 'PAGADO',
-       es.estado_curso_id, true, 20.00, 8.00,
-       ARRAY['Acceso inmediato a los materiales','Examen final de correccion automatica','Certificado al terminar'],
+       tc.tipo_curso_id, ct.categoria_tematica_id, ec.entidad_certificadora_id, 'VIRTUAL', 'GRATUITO',
+       es.estado_curso_id, true, 0.00, 8.00,
+       ARRAY['Matricula gratuita con acceso inmediato','Cuatro modulos con lecciones en video','Examen final de correccion automatica','Certificado al instante al aprobar'],
        a.usuario_id, CURRENT_TIMESTAMP
 FROM tipo_curso tc, categoria_tematica ct, entidad_certificadora ec, estado_curso es, usuario a
 WHERE tc.codigo = 'CURSO' AND ct.codigo = 'DERECHO_ADMINISTRATIVO'
@@ -2750,7 +2751,9 @@ SELECT c.curso_id, v.titulo, v.descripcion, v.orden
 FROM curso c
          CROSS JOIN (VALUES
                          ('Fundamentos del procedimiento', 'Principios y reglas basicas del procedimiento administrativo.', 1),
-                         ('Aplicacion practica', 'Recursos y efectos del silencio administrativo.', 2)
+                         ('Etapas y actos del procedimiento', 'Inicio, instruccion y resolucion del procedimiento, y validez del acto administrativo.', 2),
+                         ('Recursos administrativos', 'Reconsideracion, apelacion y revision: cuando proceden y ante quien se presentan.', 3),
+                         ('Silencio administrativo y practica', 'Efectos del silencio administrativo y aplicacion a un caso completo.', 4)
 ) v(titulo, descripcion, orden)
 WHERE c.url_amigable = 'procedimiento-administrativo-practico';
 
@@ -2761,8 +2764,13 @@ FROM modulo m
          JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'procedimiento-administrativo-practico'
          JOIN (VALUES
                    (1, 'Principios del procedimiento administrativo', 'Legalidad, debido procedimiento e informalismo.', 1, true),
-                   (1, 'Etapas del procedimiento', 'Inicio, instruccion y resolucion del procedimiento.', 2, false),
-                   (2, 'Recursos y silencio administrativo', 'Reconsideracion, apelacion y efectos del silencio.', 1, false)
+                   (1, 'Sujetos y competencia', 'Administrados, autoridad administrativa y competencia.', 2, false),
+                   (2, 'Etapas del procedimiento', 'Inicio, instruccion y resolucion del procedimiento.', 1, false),
+                   (2, 'El acto administrativo y su notificacion', 'Requisitos de validez y eficacia del acto administrativo.', 2, false),
+                   (3, 'Recurso de reconsideracion', 'Cuando procede, plazos y nueva prueba.', 1, false),
+                   (3, 'Recursos de apelacion y de revision', 'Diferencias, autoridad competente y plazos.', 2, false),
+                   (4, 'Silencio administrativo positivo y negativo', 'Efectos del silencio segun el tipo de procedimiento.', 1, false),
+                   (4, 'Resolucion de un caso practico', 'Aplicacion de lo aprendido a un caso completo.', 2, false)
 ) v(modulo_orden, titulo, descripcion, orden, vista_previa) ON v.modulo_orden = m.orden;
 
 INSERT INTO recurso
@@ -2783,12 +2791,12 @@ FROM leccion l
          JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'procedimiento-administrativo-practico'
          JOIN recurso r ON r.referencia = 'https://www.youtube.com/watch?v=demo-flujo-' || l.leccion_id;
 
--- Examen final: 3 preguntas de seleccion unica (10 puntos c/u), 3 intentos, sin tiempo limite.
+-- Examen final: 4 preguntas de seleccion unica (una por modulo, 10 puntos c/u), 3 intentos, sin tiempo limite.
 INSERT INTO examen
 (curso_id, modulo_id, titulo, descripcion, tipo, finalidad, orden, maximo_intentos, tiempo_limite_minutos,
  barajar_preguntas, barajar_opciones, mostrar_respuestas, bloquea_siguiente_modulo, dias_revision)
 SELECT c.curso_id, NULL, 'Examen final del curso',
-       'Responde las tres preguntas. La nota se calcula automaticamente al enviar.',
+       'Responde las cuatro preguntas. La nota se calcula automaticamente al enviar.',
        'CALIFICADO', 'FINAL', 1, 3, NULL, false, false, 'AL_APROBAR', false, 3
 FROM curso c WHERE c.url_amigable = 'procedimiento-administrativo-practico';
 
@@ -2798,27 +2806,32 @@ FROM examen e
          JOIN curso c ON c.curso_id = e.curso_id AND c.url_amigable = 'procedimiento-administrativo-practico'
          CROSS JOIN (VALUES
                          (1, 'Que principio exige que la autoridad administrativa actue solo dentro de las facultades que la ley le atribuye?'),
-                         (2, 'Que recurso se presenta ante la misma autoridad que emitio el acto, sustentado en nueva prueba?'),
-                         (3, 'Cual es el efecto del silencio administrativo positivo?')
+                         (2, 'En que etapa del procedimiento la autoridad recaba pruebas y verifica los hechos?'),
+                         (3, 'Que recurso se presenta ante la misma autoridad que emitio el acto, sustentado en nueva prueba?'),
+                         (4, 'Cual es el efecto del silencio administrativo positivo?')
 ) v(orden, enunciado);
 
--- Respuestas correctas: pregunta 1 = "Principio de legalidad"; pregunta 2 = "Recurso de reconsideracion";
--- pregunta 3 = "La solicitud se considera aprobada".
+-- La respuesta correcta de cada pregunta es siempre la primera opcion (sin barajar), para recorrer el examen rapido en las pruebas:
+-- pregunta 1 = "Principio de legalidad"; pregunta 2 = "Instruccion"; pregunta 3 = "Recurso de reconsideracion";
+-- pregunta 4 = "La solicitud se considera aprobada".
 INSERT INTO opcion_pregunta (pregunta_id, texto, es_correcta, orden)
 SELECT p.pregunta_id, v.texto, v.correcta, v.orden
 FROM pregunta p
          JOIN examen e ON e.examen_id = p.examen_id
          JOIN curso c ON c.curso_id = e.curso_id AND c.url_amigable = 'procedimiento-administrativo-practico'
          JOIN (VALUES
-                   (1, 'Principio de informalismo', false, 1),
-                   (1, 'Principio de legalidad', true, 2),
+                   (1, 'Principio de legalidad', true, 1),
+                   (1, 'Principio de informalismo', false, 2),
                    (1, 'Principio de celeridad', false, 3),
-                   (2, 'Recurso de apelacion', false, 1),
-                   (2, 'Recurso de revision', false, 2),
-                   (2, 'Recurso de reconsideracion', true, 3),
-                   (3, 'La solicitud se considera aprobada', true, 1),
-                   (3, 'La solicitud se considera denegada', false, 2),
-                   (3, 'El procedimiento queda suspendido', false, 3)
+                   (2, 'Instruccion', true, 1),
+                   (2, 'Inicio', false, 2),
+                   (2, 'Resolucion', false, 3),
+                   (3, 'Recurso de reconsideracion', true, 1),
+                   (3, 'Recurso de apelacion', false, 2),
+                   (3, 'Recurso de revision', false, 3),
+                   (4, 'La solicitud se considera aprobada', true, 1),
+                   (4, 'La solicitud se considera denegada', false, 2),
+                   (4, 'El procedimiento queda suspendido', false, 3)
 ) v(pregunta_orden, texto, correcta, orden) ON v.pregunta_orden = p.orden;
 
 COMMIT;
