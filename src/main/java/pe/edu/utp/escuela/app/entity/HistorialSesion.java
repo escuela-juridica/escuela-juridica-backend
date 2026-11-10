@@ -14,10 +14,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * HU-027 — Conserva cada reprogramación o cancelación de una sesión en vivo: el horario/enlace
- * anterior, el nuevo (vacío al cancelar) y el motivo obligatorio informado por administración.
- */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -34,7 +30,6 @@ public class HistorialSesion {
     @JoinColumn(name = "leccion_id", nullable = false)
     private Leccion leccion;
 
-    /** REPROGRAMACION | CANCELACION */
     @Column(nullable = false, length = 20)
     private String accion;
 

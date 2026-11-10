@@ -40,8 +40,6 @@ import pe.edu.utp.escuela.app.security.CurrentUserService.CurrentUser;
 import pe.edu.utp.escuela.app.service.AvanceAcademicoService.AvanceAcademico;
 import pe.edu.utp.escuela.app.service.RutaAcademicaService.RutaAcademica;
 
-/** EP04 · HU-022 — Ingresar al aula: autorización por matrícula, temario con módulos y lecciones, estados de
- * bloqueo y punto de continuación. */
 @ExtendWith(MockitoExtension.class)
 class AulaServiceTests {
 
@@ -175,7 +173,6 @@ class AulaServiceTests {
                 lecciones.stream().map(LeccionAulaResponse::estado).toList());
         assertNull(lecciones.get(1).motivoBloqueo());
         assertEquals("Completa la lección anterior: Lección 12", lecciones.get(2).motivoBloqueo());
-        // "Continuar el curso" retoma la primera lección disponible, no la completada ni la bloqueada.
         assertEquals(12L, aula.ultimaLeccionIdValida());
     }
 

@@ -12,10 +12,6 @@ public interface ReclamacionRepository extends JpaRepository<Reclamacion, Long> 
 
     Optional<Reclamacion> findByCodigo(String codigo);
 
-    /**
-     * HU-040 — Bandeja: los pendientes primero, del vencimiento más próximo al más lejano; después los respondidos,
-     * del más reciente al más antiguo. El texto busca por número de caso, documento, nombre o correo.
-     */
     @Query(value = """
             select r from Reclamacion r
             where (:estado = '' or r.estado = :estado)

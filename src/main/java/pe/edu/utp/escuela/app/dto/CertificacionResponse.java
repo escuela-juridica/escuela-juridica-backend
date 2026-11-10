@@ -5,13 +5,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * HU-032 — Situación del certificado de un alumno en un curso. {@code estado}: PENDIENTE_REQUISITOS,
- * PROGRAMADO, PENDIENTE_DATOS, LISTO_PARA_EMITIR y, una vez emitido, VIGENTE o ANULADO. {@code
- * condiciones} son solo las activas del curso con su valor real y su meta. {@code notaFinal},
- * {@code nivelProyectado} y {@code entidadProyectada} son una proyección con lo que lleva hasta
- * hoy (el nivel final se congela al emitir); {@code null} si el curso no exige exámenes.
- */
 public record CertificacionResponse(
         Long cursoId,
         String curso,
@@ -37,7 +30,6 @@ public record CertificacionResponse(
         condiciones = List.copyOf(condiciones);
     }
 
-    /** Lo que el alumno confirmó (o lo que se le sugiere si aún no confirmó). */
     public record DatosCertificado(String nombres, String apellidoPaterno, String apellidoMaterno,
             boolean confirmados, Instant confirmadosEn) {
     }

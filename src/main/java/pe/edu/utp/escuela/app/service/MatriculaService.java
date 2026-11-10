@@ -136,14 +136,9 @@ public class MatriculaService {
         return respuesta(matricula, enviarConfirmacion(matricula, condicion));
     }
 
-    /** Resultado de aplicar un pago APROBADO a la matrícula (HU-047). */
     public record ActivacionPago(boolean accesoConcedido, String atencion, boolean sobrecupo) {
     }
 
-    /**
-     * HU-047 — Matrícula PENDIENTE_PAGO de una compra en línea. No concede contenido ni ocupa cupo: solo existe
-     * para conservar los intentos de pago hasta que Culqi apruebe alguno. El curso llega bloqueado por quien llama.
-     */
     @Transactional
     public Matricula crearPendientePago(Usuario usuario, Curso curso) {
         validarSesionesFuturas(curso, true);
@@ -158,12 +153,6 @@ public class MatriculaService {
         return m;
     }
 
-    /**
-     * HU-047 — Aplica el primer pago APROBADO. Se respeta un cobro iniciado válidamente aunque el cierre, el
-     * estado CERRADO o el cupo hayan cambiado (si se supera el cupo se activa igual y se avisa); pero si el curso
-     * o esa matrícula fueron cancelados, el pago se registra, la matrícula permanece CANCELADA y el caso queda
-     * para atención externa. ESEJUR nunca revierte el resultado bancario.
-     */
     @Transactional
     public ActivacionPago activarPorPagoAprobado(Matricula matricula) {
         Curso curso = cursos.bloquearParaMatricula(matricula.getCurso().getId())
@@ -209,7 +198,25 @@ public class MatriculaService {
                 .map(m -> respuesta(m, null)).toList();
     }
 
-    // ---------------------------------------------------------------- HU-020 --
+    @Transactional
+    public Page<MatriculaResponse> misCursosPaginados(boolean completados, String busqueda, Pageable pageable) {
+        procesarVencimientos();
+        Usuario usuario = usuarioActualAlumno();
+        return matriculas.buscarDelAlumno(usuario.getId(), completados, patronDeBusqueda(busqueda), pageable)
+                .map(m -> respuesta(m, null));
+    }
+
+    @Transactional(readOnly = true)
+    public long contarMisCursos(boolean completados) {
+        Usuario usuario = usuarioActualAlumno();
+        return completados ? matriculas.countByUsuario_IdAndFechaFinalizacionIsNotNull(usuario.getId())
+                : matriculas.countByUsuario_IdAndFechaFinalizacionIsNull(usuario.getId());
+    }
+
+    private static String patronDeBusqueda(String busqueda) {
+        String texto = busqueda == null ? "" : busqueda.strip().toLowerCase();
+        return "%" + texto.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
+    }
 
     @Transactional
     public Page<MatriculaAdministrativaResponse> listarAdministrativas(
@@ -274,11 +281,6 @@ public class MatriculaService {
         return respuesta(matricula, null);
     }
 
-    /**
-     * Devuelve a ACTIVA una matrícula cancelada (p. ej. cancelada por error). Reutiliza la misma fila, porque un alumno
-     * tiene una sola matrícula por curso. Exige que el curso aún admita matrículas y tenga cupo; conserva el vencimiento
-     * original si todavía no pasó y, si ya pasó, lo recalcula desde hoy. El motivo queda en el historial.
-     */
     @Transactional
     public MatriculaResponse reactivar(Long matriculaId, ReactivarMatriculaRequest peticion) {
         procesarVencimientos();
@@ -315,8 +317,6 @@ public class MatriculaService {
                 .orElse("Usuario " + usuarioId);
     }
 
-    // --- HU-041 ---
-
     @Transactional
     public Page<ReporteMatriculaResponse> reportePaginado(
             String texto, String estado, Long cursoId, String modalidad,
@@ -347,7 +347,6 @@ public class MatriculaService {
                 .toList();
     }
 
-    // Metodos auxiliares HU-041
     private Map<Long, String> origenesReporte(List<ReporteMatriculaResponse> filas) {
         if (filas.isEmpty())
             return Map.of();
@@ -358,7 +357,6 @@ public class MatriculaService {
                 Map.Entry::getKey, entry -> origenReporte(entry.getValue())));
     }
 
-    /** Forma de ingreso de una matrícula según sus pagos; también la usa el dashboard (HU-046) para no divergir. */
     static String origenReporte(List<Pago> pagosDeMatricula) {
         if (pagosDeMatricula.stream().anyMatch(p -> "EXONERADO".equals(p.getOrigen())))
             return "EXONERADO";
@@ -401,7 +399,6 @@ public class MatriculaService {
         if (!actual.get().hasRole("ADMINISTRADOR") && !m.getUsuario().getId().equals(actual.get().userId())) {
             throw new ForbiddenException();
         }
-        // El correo anuncia «Matrícula confirmada» con acceso inmediato: solo tiene sentido si la matrícula está activa.
         if (!"ACTIVA".equals(m.getEstado())) {
             throw new BusinessValidationException("Solo se puede reenviar la confirmación de una matrícula activa.");
         }

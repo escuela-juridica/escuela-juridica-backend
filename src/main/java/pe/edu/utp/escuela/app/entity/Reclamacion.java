@@ -16,10 +16,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * HU-039 — Queja o reclamo del Libro de Reclamaciones. Se conserva tal como la presentó la persona;
- * el vencimiento del plazo no cambia su contenido ni impide responderla.
- */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -37,11 +33,9 @@ public class Reclamacion {
     @Column(name = "reclamacion_id")
     private Long id;
 
-    /** Número correlativo del caso: {@code LR-AAAA-NNNNNN}. */
     @Column(nullable = false, length = 40)
     private String codigo;
 
-    /** Cuenta de quien reclama cuando presentó el formulario con sesión; vacío para un visitante. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id")
     private Usuario usuario;
@@ -100,7 +94,6 @@ public class Reclamacion {
     @Column(name = "respondido_en")
     private Instant respondidoEn;
 
-    /** PENDIENTE, ENVIADO o ERROR: solo el resultado del envío de la constancia, sin seguimiento de entrega. */
     @Column(name = "estado_envio_constancia", nullable = false, length = 15)
     private String estadoEnvioConstancia = "PENDIENTE";
 

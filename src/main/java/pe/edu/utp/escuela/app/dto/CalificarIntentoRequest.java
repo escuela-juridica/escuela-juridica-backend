@@ -8,8 +8,6 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.List;
 
-/** HU-030 — Publica la calificación completa de un intento: un puntaje por cada respuesta
- * abierta pendiente, entre 0 y el máximo de su pregunta (ambos extremos válidos). */
 public record CalificarIntentoRequest(
         @NotEmpty(message = "Indica el puntaje de cada respuesta.") List<@Valid PuntajeRespuestaRequest> respuestas) {
 

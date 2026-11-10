@@ -13,7 +13,6 @@ import pe.edu.utp.escuela.app.controller.RegistroController;
 import pe.edu.utp.escuela.app.dto.ApiErrorResponse;
 import pe.edu.utp.escuela.app.dto.FieldErrorResponse;
 
-/** Añade errores de campos solo a HU-002, sin cambiar el manejador compartido. */
 @RestControllerAdvice(assignableTypes = RegistroController.class)
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RequiredArgsConstructor

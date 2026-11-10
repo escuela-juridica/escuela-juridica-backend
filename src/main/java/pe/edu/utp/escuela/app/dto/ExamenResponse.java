@@ -23,5 +23,7 @@ public record ExamenResponse(
         int diasRevision,
         boolean activo,
         Long examenOrigenId,
+        String modoNavegacion,
+        boolean permiteOmitirPreguntas,
         List<PreguntaResponse> preguntas) {
 }

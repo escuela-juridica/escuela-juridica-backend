@@ -159,7 +159,6 @@ class RegistroIntegracionTests {
     }
 
     private String contextoValido(String referencia, String subject, String correo) {
-        // Identidad ya comprobada por HU-001 simulada únicamente en pruebas.
         doReturn(new ContextoGoogleRegistroIntegration.Identidad(subject, correo, "Lucía", "Caminos Quiroz", "",
                 clock.instant().plusSeconds(300))).when(google).obtenerVerificada(referencia);
         return referencia;

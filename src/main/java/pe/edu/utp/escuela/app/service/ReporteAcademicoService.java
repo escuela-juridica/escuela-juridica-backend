@@ -29,19 +29,6 @@ import pe.edu.utp.escuela.app.repository.RespuestaIntentoRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.service.AvanceAcademicoService.AvanceAcademico;
 
-/**
- * HU-043 — Reporte de seguimiento académico (administrador): una fila por matrícula con progreso,
- * exámenes, nota final, asistencia, respuestas pendientes de revisión, condiciones pendientes,
- * finalización y certificado. La pantalla y la exportación a Excel salen de la misma consulta y del
- * mismo cálculo ({@link AvanceAcademicoService}, el que usa el aula del alumno): las condiciones
- * activas, sus valores reales y sus metas coinciden en todas partes y nunca se inventa una
- * asistencia o una nota que el curso no exige.
- *
- * <p>El rango de fechas se aplica a {@code fecha_matricula}. Los filtros de situación,
- * cumplimiento y certificado dependen del cálculo por alumno (no son columnas), así que solo
- * entonces se evalúa todo el universo filtrado antes de paginar; sin ellos se pagina en la consulta
- * y se calcula únicamente la página visible.
- */
 @Service
 @RequiredArgsConstructor
 public class ReporteAcademicoService {
@@ -58,7 +45,6 @@ public class ReporteAcademicoService {
     private final AvanceAcademicoService avanceAcademico;
     private final CurrentUserService actual;
 
-    /** Filtros del reporte (todos opcionales); las cadenas vacías significan "sin filtro". */
     public record Filtro(
             String texto, Long cursoId, String modalidad, LocalDate desde, LocalDate hasta,
             String situacion, String cumplimiento, String certificado) {
@@ -96,8 +82,6 @@ public class ReporteAcademicoService {
                 .map(c -> new OpcionAsistenciaResponse(c.getId(), c.getTitulo(), c.getModalidad(), null))
                 .toList();
     }
-
-    // ------------------------------------------------------------------ internos --
 
     private record Consulta(String texto, String modalidad, Instant desde, Instant hasta,
             boolean filtraPorCalculo, Predicate<ReporteAcademicoResponse> coincide) {
@@ -164,7 +148,6 @@ public class ReporteAcademicoService {
             condicionesPendientes = List.of("Calificación de un examen con respuesta abierta");
         }
         if ("CANCELADA".equals(m.getEstado())) {
-            // Una matrícula cancelada ya no persigue el certificado: no hay nada "pendiente" que atender.
             condicionesPendientes = List.of();
         }
 

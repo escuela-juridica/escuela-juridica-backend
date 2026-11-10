@@ -48,9 +48,10 @@ public class PerfilService {
             throw new DuplicateResourceException("El documento ya se encuentra registrado.");
         }
 
-        persona.setNombres(textNormalizer.requireText(entrada.nombres(), "Nombres"));
-        persona.setApellidoPaterno(textNormalizer.requireText(entrada.apellidoPaterno(), "Apellido paterno"));
-        persona.setApellidoMaterno(textNormalizer.trimToNull(entrada.apellidoMaterno()));
+        persona.actualizarNombres(
+                textNormalizer.requireText(entrada.nombres(), "Nombres"),
+                textNormalizer.requireText(entrada.apellidoPaterno(), "Apellido paterno"),
+                textNormalizer.trimToNull(entrada.apellidoMaterno()));
         persona.setTelefono(textNormalizer.trimToNull(entrada.telefono()));
         persona.setDocumentoIdentidad(documento);
 
@@ -71,9 +72,6 @@ public class PerfilService {
         usuario.setContrasenaHash(passwordEncoder.encode(entrada.contrasena()));
     }
 
-    /** Para cuentas que ya tienen contraseña propia (con o sin vínculo Google): exige la actual
-     * para confirmar identidad antes de reemplazarla. No es el mismo recorrido que HU-004
-     * (recuperación por correo, para cuando no la recuerdas). */
     @Transactional
     public void cambiarContrasena(CambiarContrasenaRequest entrada) {
         Usuario usuario = usuarioActual();

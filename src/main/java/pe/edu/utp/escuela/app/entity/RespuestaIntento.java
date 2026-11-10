@@ -19,8 +19,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** Respuesta de un alumno a una pregunta dentro de un intento (HU-028 / HU-029). Las
- * alternativas marcadas viven en {@code respuesta_opcion}; el texto, en las preguntas abiertas. */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -54,7 +52,6 @@ public class RespuestaIntento extends RegistroAuditable {
     @Column(name = "puntaje_definitivo", precision = 6, scale = 2)
     private BigDecimal puntajeDefinitivo;
 
-    /** NO_APLICA | PENDIENTE | REVISADA */
     @Column(name = "estado_revision", nullable = false, length = 20)
     private String estadoRevision = NO_APLICA;
 

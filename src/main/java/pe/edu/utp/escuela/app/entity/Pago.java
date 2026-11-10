@@ -9,11 +9,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 
-/**
- * Registro económico separado de la matrícula. Cada intento de pago en línea conserva su propio resultado,
- * el importe aceptado por el alumno y la referencia comunicada por Culqi (HU-047); los pagos manuales y las
- * exoneraciones de administración (HU-019) usan la misma tabla.
- */
 @Getter @Setter @NoArgsConstructor
 @Entity @Table(name = "pago")
 public class Pago extends RegistroAuditable {
@@ -29,7 +24,6 @@ public class Pago extends RegistroAuditable {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "matricula_id", nullable = false) private Matricula matricula;
     @Column(name = "numero_pedido", nullable = false, unique = true, length = 60) private String numeroPedido;
-    /** Identificador del cargo (chr_...) comunicado por Culqi. */
     @Column(name = "operacion_proveedor", unique = true, length = 120) private String operacionProveedor;
     @Column(nullable = false, length = 20) private String origen;
     @Column(length = 30) private String medio;
@@ -41,7 +35,6 @@ public class Pago extends RegistroAuditable {
     @Column(name = "precio_promocional_aplicado", precision = 10, scale = 2)
     private BigDecimal precioPromocionalAplicado;
     @Column(nullable = false, precision = 10, scale = 2) private BigDecimal importe;
-    /** Para pagos en línea: la orden (ord_...) creada en Culqi para este intento. */
     @Column(name = "referencia_externa", length = 180) private String referenciaExterna;
     @Column(name = "ultimos_digitos", length = 4) private String ultimosDigitos;
     @Column(name = "numero_cuotas") private Integer numeroCuotas;
@@ -49,7 +42,6 @@ public class Pago extends RegistroAuditable {
     @Column(columnDefinition = "text") private String motivo;
     @Column(name = "constancia_numero", unique = true, length = 80) private String constanciaNumero;
     @Column(name = "registrado_por_usuario_id") private Long registradoPorUsuarioId;
-    /** Boleta o captura opcional de un pago manual (referencia privada bajo uploads/comprobantes). */
     @Column(name = "comprobante_url", length = 255) private String comprobanteUrl;
     @Column(name = "resultado_en") private Instant resultadoEn;
     @Column(name = "requiere_atencion", nullable = false) private boolean requiereAtencion = false;
@@ -62,7 +54,6 @@ public class Pago extends RegistroAuditable {
         return APROBADO.equals(estado);
     }
 
-    /** Un resultado final no aprobado: no concede acceso y permite volver a intentar. */
     public boolean esNoAprobadoFinal() {
         return RECHAZADO.equals(estado) || ERROR.equals(estado) || EXPIRADO.equals(estado);
     }

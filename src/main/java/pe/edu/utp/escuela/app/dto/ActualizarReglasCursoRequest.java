@@ -7,7 +7,6 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/** Datos editables de HU-014. Las relaciones entre campos se validan en el servicio. */
 public record ActualizarReglasCursoRequest(
         boolean requiereExamenes,
         boolean requiereProgreso,

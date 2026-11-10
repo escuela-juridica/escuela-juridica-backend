@@ -35,11 +35,6 @@ import pe.edu.utp.escuela.app.repository.NotificacionRepository;
 import pe.edu.utp.escuela.app.repository.UsuarioRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 
-/**
- * HU-026 — Participar en sesiones en vivo: calendario del alumno, ingreso con registro automático
- * de asistencia dentro de la ventana de la sesión, y los jobs que cierran asistencias pendientes y
- * envían el recordatorio del día anterior.
- */
 @Service
 @RequiredArgsConstructor
 public class SesionAlumnoService {
@@ -57,8 +52,6 @@ public class SesionAlumnoService {
     private final ProgresoService progresoService;
     private final CurrentUserService actual;
     private final Clock clock;
-
-    // ---------------------------------------------------------------- Calendario --
 
     @Transactional(readOnly = true)
     public List<SesionCalendarioResponse> calendario(LocalDate desde, LocalDate hasta) {
@@ -106,8 +99,6 @@ public class SesionAlumnoService {
         }).toList();
     }
 
-    // ---------------------------------------------------------------- Ingresar --
-
     @Transactional
     public IngresarSesionResponse ingresar(Long leccionId) {
         Usuario usuario = usuarioActualAlumno();
@@ -147,8 +138,6 @@ public class SesionAlumnoService {
         return new IngresarSesionResponse(leccion.getEnlaceReunion());
     }
 
-    // ---------------------------------------------------------------- Porcentaje de asistencia --
-
     @Transactional(readOnly = true)
     public Integer porcentajeAsistencia(Long matriculaId) {
         Matricula matricula = matriculas.findById(matriculaId)
@@ -171,8 +160,6 @@ public class SesionAlumnoService {
                 .count();
         return (int) Math.round(asistidas * 100.0 / elegibles.size());
     }
-
-    // ---------------------------------------------------------------- Jobs programados --
 
     @Scheduled(fixedDelay = 60_000, initialDelay = 30_000)
     @Transactional
@@ -258,9 +245,6 @@ public class SesionAlumnoService {
         notificaciones.save(n);
     }
 
-    // ---------------------------------------------------------------- Auxiliares --
-
-    /** Regla 1: elegible si es EN_VIVO, no CANCELADA, y su inicio es posterior a la matrícula. */
     private boolean esElegible(Leccion leccion, Matricula matricula) {
         return !"CANCELADA".equals(leccion.getEstado())
                 && leccion.getFechaHoraInicio() != null
@@ -281,7 +265,6 @@ public class SesionAlumnoService {
         return "EN_VENTANA";
     }
 
-    /** Acceso efectivo de una matrícula: misma fórmula que MatriculaService.respuesta(). */
     private boolean accesoEfectivo(Matricula m) {
         Instant ahora = clock.instant();
         boolean vigente = m.getFechaVencimiento() == null || !ahora.isAfter(m.getFechaVencimiento());

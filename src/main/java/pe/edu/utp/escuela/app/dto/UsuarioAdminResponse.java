@@ -18,7 +18,5 @@ public record UsuarioAdminResponse(
         RolUsuarioAdmin rolPrincipal,
         List<RolUsuarioAdmin> roles,
         Instant creadoEn,
-        /** Nombre de quién concedió el rol ADMINISTRADOR; null si la cuenta no lo tiene o se
-         * asignó sin un administrador identificado. */
         String concedidoPorNombre) {
 }

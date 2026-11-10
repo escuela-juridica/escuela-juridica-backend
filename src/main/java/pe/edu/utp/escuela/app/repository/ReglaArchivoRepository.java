@@ -16,7 +16,5 @@ public interface ReglaArchivoRepository extends JpaRepository<ReglaArchivo, Long
     boolean existsByTipoMaterial_IdAndExtensionIgnoreCase(Long tipoMaterialId, String extension);
     boolean existsByTipoMaterial_IdAndExtensionIgnoreCaseAndIdNot(Long tipoMaterialId, String extension, Long id);
 
-    /** Para validar un archivo subido (HU-011): el límite aplicable por tipo de material y
-     * extensión, solo si la regla sigue activa. */
     Optional<ReglaArchivo> findByTipoMaterial_IdAndExtensionIgnoreCaseAndActivoTrue(Long tipoMaterialId, String extension);
 }

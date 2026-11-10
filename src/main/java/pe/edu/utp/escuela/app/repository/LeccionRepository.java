@@ -17,7 +17,6 @@ public interface LeccionRepository extends JpaRepository<Leccion, Long> {
             """)
     List<Leccion> buscarActivasDeModulos(@Param("moduloIds") Collection<Long> moduloIds);
 
-    /** Para el editor administrativo: incluye lecciones desactivadas. */
     List<Leccion> findByModulo_IdOrderByOrdenAsc(Long moduloId);
 
     List<Leccion> findByModulo_IdInOrderByModulo_IdAscOrdenAsc(Collection<Long> moduloIds);
@@ -28,16 +27,12 @@ public interface LeccionRepository extends JpaRepository<Leccion, Long> {
             + "and l.activo = true and l.estado <> 'CANCELADA' and l.fechaHoraInicio > :desde")
     long contarSesionesFuturasActivas(@Param("cursoId") Long cursoId, @Param("desde") Instant desde);
 
-    /** HU-038: las sesiones en vivo que todavía no comenzaron y se cancelan junto con el curso. */
     @Query("select l from Leccion l where l.modulo.curso.id = :cursoId and l.tipo = 'EN_VIVO' "
             + "and l.activo = true and l.estado <> 'CANCELADA' and l.fechaHoraInicio > :desde")
     List<Leccion> buscarSesionesFuturasActivas(@Param("cursoId") Long cursoId, @Param("desde") Instant desde);
 
     void deleteAllByModulo_IdIn(Collection<Long> moduloIds);
 
-    // ---------------------------------------------------------------- HU-026 --
-
-    /** Calendario del alumno: sesiones en vivo de sus cursos matriculados dentro de un rango. */
     @Query("""
             select l from Leccion l
             join fetch l.modulo m
@@ -50,11 +45,9 @@ public interface LeccionRepository extends JpaRepository<Leccion, Long> {
             @Param("cursoIds") Collection<Long> cursoIds,
             @Param("desde") Instant desde, @Param("hasta") Instant hasta);
 
-    /** Universo de sesiones en vivo de un curso (sin filtro de fecha), para calcular elegibilidad. */
     @Query("select l from Leccion l where l.modulo.curso.id = :cursoId and l.tipo = 'EN_VIVO' and l.activo = true")
     List<Leccion> buscarSesionesEnVivoDeCurso(@Param("cursoId") Long cursoId);
 
-    /** Job de cierre: sesiones en vivo no canceladas ya finalizadas (fecha de fin pasada). */
     @Query("""
             select l from Leccion l
             join fetch l.modulo m
@@ -64,7 +57,6 @@ public interface LeccionRepository extends JpaRepository<Leccion, Long> {
             """)
     List<Leccion> buscarSesionesFinalizadasNoCanceladas(@Param("ahora") Instant ahora);
 
-    /** Job de recordatorio: sesiones en vivo no canceladas que inician dentro del rango dado. */
     @Query("""
             select l from Leccion l
             join fetch l.modulo m

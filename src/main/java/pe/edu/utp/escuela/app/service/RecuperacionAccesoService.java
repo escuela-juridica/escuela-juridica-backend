@@ -61,7 +61,6 @@ public class RecuperacionAccesoService {
         this.frontendBaseUrl = frontendBaseUrl;
     }
 
-    /** Nunca revela si el correo existe: el controlador responde igual pase lo que pase aquí. */
     @Transactional
     public void solicitar(String correoRecibido) {
         String correo = textos.normalizeEmail(correoRecibido);
@@ -71,7 +70,9 @@ public class RecuperacionAccesoService {
         }
 
         Usuario usuario = encontrado.get();
-        if (!usuario.isActivo() || usuario.getContrasenaHash() == null) {
+        boolean tieneContrasena = usuario.getContrasenaHash() != null;
+        boolean soloGoogleVerificada = usuario.getGoogleSubject() != null && usuario.getCorreoVerificadoEn() != null;
+        if (!usuario.isActivo() || !(tieneContrasena || soloGoogleVerificada)) {
             return;
         }
 

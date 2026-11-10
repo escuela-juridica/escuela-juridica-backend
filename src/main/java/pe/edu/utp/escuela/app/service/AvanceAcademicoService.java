@@ -18,16 +18,6 @@ import pe.edu.utp.escuela.app.entity.ReglaCurso;
 import pe.edu.utp.escuela.app.service.RutaAcademicaService.EstadoExamen;
 import pe.edu.utp.escuela.app.service.RutaAcademicaService.RutaAcademica;
 
-/**
- * Cumplimiento académico de una matrícula frente a las reglas de SU curso: progreso, exámenes
- * calificados, nota y asistencia, cada condición solo si el curso la tiene activa. Lo comparten el
- * aula del alumno (HU-025), la consulta de excepciones (HU-031) y el reporte académico (HU-043),
- * de modo que alumno y administración vean siempre las mismas condiciones, valores y metas.
- *
- * <p>Una condición desactivada no se presenta como pendiente y la asistencia nunca se calcula
- * fuera de lo que el curso exige. Un intento CALIFICADO con respuestas abiertas sin revisar impide
- * dar el curso por finalizado hasta que exista nota definitiva (HU-029).
- */
 @Service
 @RequiredArgsConstructor
 public class AvanceAcademicoService {
@@ -35,7 +25,6 @@ public class AvanceAcademicoService {
     private final RutaAcademicaService rutaAcademica;
     private final SesionAlumnoService sesionAlumno;
 
-    /** Un examen con intento a la espera de calificación humana. */
     public record ExamenEnRevision(Long examenId, String titulo, String tipo, Instant fechaLimite) {
     }
 
@@ -45,16 +34,12 @@ public class AvanceAcademicoService {
             List<CondicionAvanceResponse> condiciones,
             boolean cumpleTodo,
             String frase,
-            /** Exámenes calificados que el curso exige aprobar (0 si no los exige). */
             int examenesRequeridos,
             int examenesAprobados,
-            /** Promedio de las mejores notas con igual peso; {@code null} si el curso no exige exámenes o aún no hay notas. */
             BigDecimal notaFinal,
-            /** {@code null} cuando la asistencia no aplica (curso virtual, no exigida o sin sesiones elegibles). */
             Integer asistencia,
             boolean asistenciaExigida,
             List<ExamenEnRevision> enRevision,
-            /** Hay un examen CALIFICADO esperando revisión: bloquea finalización y certificado. */
             boolean bloqueadoPorRevision) {
 
         public AvanceCertificadoResponse comoRespuesta() {
@@ -133,12 +118,10 @@ public class AvanceAcademicoService {
             }
         }
 
-        // La asistencia solo existe en cursos EN_VIVO / HIBRIDO que la exigen: nunca se calcula en VIRTUAL.
         boolean asistenciaExigida = regla.isRequiereAsistencia() && !esVirtual;
         Integer asistencia = null;
         if (asistenciaExigida) {
             asistencia = sesionAlumno.porcentajeAsistencia(matricula.getId());
-            // "No aplica" (cero sesiones elegibles) nunca equivale a cumplido (HU-026).
             boolean cumplida = asistencia != null && BigDecimal.valueOf(asistencia).compareTo(regla.getAsistenciaMinima()) >= 0;
             condiciones.add(new CondicionAvanceResponse("ASISTENCIA", "Asistencia a sesiones en vivo",
                     asistencia == null ? "No aplica" : asistencia + " %",
@@ -158,8 +141,6 @@ public class AvanceAcademicoService {
                 notaFinal, asistencia, asistenciaExigida, enRevision, bloqueadoPorRevision);
     }
 
-    /** Porcentaje de lecciones obligatorias (no canceladas) completadas; si no hay obligatorias,
-     * se usan todas las lecciones. Misma fórmula del aula. */
     public static int porcentaje(RutaAcademica ruta) {
         List<Leccion> obligatorias = ruta.globalOrden().stream()
                 .filter(l -> l.isEsObligatoria() && !"CANCELADA".equals(l.getEstado())).toList();

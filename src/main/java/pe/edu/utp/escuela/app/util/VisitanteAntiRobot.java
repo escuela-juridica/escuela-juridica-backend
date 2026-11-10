@@ -5,7 +5,6 @@ import java.time.Duration;
 import org.springframework.http.ResponseCookie;
 import pe.edu.utp.escuela.app.integration.AntiRobotNativoIntegration;
 
-/** Cookie de vinculación del desafío: no es una sesión ni concede autenticación. */
 public final class VisitanteAntiRobot {
     private static final String NOMBRE = "HU002_ANTIROBOT";
     private VisitanteAntiRobot() {}

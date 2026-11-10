@@ -19,12 +19,6 @@ import pe.edu.utp.escuela.app.repository.CertificadoRepository;
 import pe.edu.utp.escuela.app.repository.EntidadCertificadoraRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 
-/**
- * HU-044 — Reporte de certificados emitidos (administrador). La pantalla y la exportación a Excel salen
- * de la misma consulta y muestran la versión vigente de cada certificado (lo ya congelado al emitir).
- * Nunca se incluyen documento de identidad, nota, firmas ni el PDF. El rango se aplica a la fecha de
- * emisión.
- */
 @Service
 @RequiredArgsConstructor
 public class ReporteCertificadoService {
@@ -37,7 +31,6 @@ public class ReporteCertificadoService {
     private final EntidadCertificadoraRepository entidades;
     private final CurrentUserService actual;
 
-    /** Filtros del reporte (todos opcionales); una cadena vacía significa sin filtro. */
     public record Filtro(String texto, Long cursoId, String nivel, String entidad, String estado, String forma,
             LocalDate desde, LocalDate hasta) {
     }
@@ -56,7 +49,6 @@ public class ReporteCertificadoService {
                 q.hasta).stream().map(ReporteCertificadoService::fila).toList();
     }
 
-    /** Entidades certificadoras para el filtro (el nombre tal como se imprime). */
     @Transactional(readOnly = true)
     public List<OpcionAsistenciaResponse> entidades() {
         exigirAdministrador();

@@ -2,8 +2,6 @@ package pe.edu.utp.escuela.app.dto;
 
 import java.time.Instant;
 
-/** HU-045 — Fila cruda de la consulta del reporte (un alumno en una sesión); el porcentaje
- * acumulado y el cumplimiento se agregan después, por matrícula, en el servicio. */
 public record ReporteAsistenciaRow(
         Long matriculaId,
         Long cursoId,

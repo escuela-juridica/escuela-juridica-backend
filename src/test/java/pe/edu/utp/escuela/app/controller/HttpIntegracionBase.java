@@ -35,11 +35,6 @@ import pe.edu.utp.escuela.app.repository.PersonaRepository;
 import pe.edu.utp.escuela.app.repository.UsuarioRepository;
 import tools.jackson.databind.json.JsonMapper;
 
-/**
- * Base de las pruebas HTTP de las épicas 4, 5 y 6: levanta la aplicación completa con H2 (perfil {@code test}), pasa
- * por la cadena real de Spring Security (cookie/JWT, roles y CSRF) y reemplaza solo lo externo: el correo y Culqi.
- * Cada prueba corre en una transacción que se revierte al terminar, de modo que no deja datos en la base compartida.
- */
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
@@ -66,7 +61,6 @@ abstract class HttpIntegracionBase {
         mvc = MockMvcBuilders.webAppContextSetup(contexto).apply(springSecurity()).build();
     }
 
-    /** Sesión del alumno {@code id}, igual que la que construye la cookie firmada del backend. */
     static RequestPostProcessor comoAlumno(Long id) {
         return sesion(id, "ROLE_ALUMNO");
     }
@@ -79,8 +73,6 @@ abstract class HttpIntegracionBase {
         return jwt().jwt(token -> token.subject(String.valueOf(id)).claim("email", "usuario" + id + "@example.com"))
                 .authorities(new SimpleGrantedAuthority(rol));
     }
-
-    // ---------------------------------------------------------------- datos de prueba --
 
     static int siguiente() {
         return SECUENCIA.incrementAndGet();

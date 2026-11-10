@@ -60,18 +60,6 @@ import pe.edu.utp.escuela.app.service.CourseCommercialStatusService.CourseCommer
 import pe.edu.utp.escuela.app.service.CourseCommercialStatusService.CourseCommercialStatus;
 import pe.edu.utp.escuela.app.service.MatriculaService.ActivacionPago;
 
-/**
- * HU-047 — Matrícula pagada con Culqi. Culqi procesa el dinero y decide el resultado; ESEJUR solo inicia la
- * operación, registra lo que Culqi informa y aplica su consecuencia, sin revisión humana:
- * <ul>
- *   <li>Solo el primer APROBADO activa la matrícula y ocupa cupo; PENDIENTE y los resultados no aprobados no.</li>
- *   <li>Cada intento conserva el importe que el alumno aceptó; un reintento vuelve a pedir el precio vigente.</li>
- *   <li>Nunca hay dos intentos PENDIENTE a la vez: se reanuda el que existe.</li>
- *   <li>Toda confirmación se identifica por un evento único: repetirla no duplica pago, acceso, cupo ni constancia.</li>
- *   <li>Un APROBADO tardío se respeta salvo que el curso o la matrícula se hayan cancelado; entonces se registra una
- *       sola vez y queda para atención externa. Nunca se devuelve dinero automáticamente.</li>
- * </ul>
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -103,12 +91,6 @@ public class PagoEnLineaService {
     @Value("${application.frontend-base-url}")
     private String frontendBaseUrl;
 
-    // ================================================================================== iniciar el pago ==
-
-    /**
-     * Valida curso, cuenta, duplicidad, cierre y cupo; exige que el alumno confirme el importe vigente; conserva
-     * el intento como PENDIENTE y prepara el checkout de Culqi. No reserva cupo.
-     */
     @Transactional
     public PagoCheckoutResponse iniciar(Long cursoId, BigDecimal importeConfirmado) {
         Usuario usuario = alumnoHabilitado();
@@ -118,7 +100,6 @@ public class PagoEnLineaService {
             throw new BusinessValidationException("Este curso es gratuito: no requiere pago.");
         }
         if ("CANCELADO".equals(curso.getEstadoCurso().getCodigo())) {
-            // HU-038: ni nuevos checkouts ni la reanudación de uno que quedó en proceso.
             throw new BusinessValidationException("Este curso fue cancelado: ya no admite pagos.");
         }
         Optional<Matricula> existente = matriculas.findByUsuario_IdAndCurso_Id(usuario.getId(), curso.getId());
@@ -173,17 +154,13 @@ public class PagoEnLineaService {
                 centimos(pago.getImporte()), "Escuela Jurídica", usuario.getCorreo(), p.getNombres(), apellidos(p));
     }
 
-    // ================================================================================== cobrar el token ==
-
-    /** Cobra el token que entregó el checkout (tarjeta o Yape) y aplica el resultado que Culqi comunique. */
     public PagoDetalleResponse procesarToken(String numeroPedido, String tokenId) {
         CobroConToken cobro = new TransactionTemplate(transacciones).execute(estado -> {
             Pago pago = propio(numeroPedido);
             if (!Pago.PENDIENTE.equals(pago.getEstado())) {
-                return null; // Ya tiene resultado: la petición repetida solo devuelve el estado actual.
+                return null;
             }
             if ("CANCELADO".equals(pago.getMatricula().getCurso().getEstadoCurso().getCodigo())) {
-                // HU-038: un checkout abierto antes de cancelar el curso ya no cobra.
                 throw new BusinessValidationException("Este curso fue cancelado: ya no se puede completar el pago.");
             }
             Usuario usuario = pago.getMatricula().getUsuario();
@@ -193,7 +170,7 @@ public class PagoEnLineaService {
                     telefono(p));
         });
         if (cobro != null) {
-            ResultadoCulqi r = culqi.cobrar(cobro); // El dinero lo procesa Culqi, fuera de nuestra transacción.
+            ResultadoCulqi r = culqi.cobrar(cobro);
             String evento = r.cargoId() != null ? "cargo:" + r.cargoId() + ":" + r.estado()
                     : "token:" + tokenId + ":" + r.estado();
             aplicar(numeroPedido, r, evento);
@@ -201,19 +178,13 @@ public class PagoEnLineaService {
         return detalle(numeroPedido);
     }
 
-    // ============================================================================ aplicar un resultado ==
-
-    /**
-     * Aplica un resultado de Culqi una sola vez. {@code eventoId} identifica la confirmación: si ya se aplicó,
-     * no ocurre nada. Es el único camino por el que un pago cambia de estado (token, webhook o consulta).
-     */
     public void aplicar(String numeroPedido, ResultadoCulqi r, String eventoId) {
         new TransactionTemplate(transacciones).executeWithoutResult(estado -> {
             Pago pago = pagos.findByNumeroPedido(numeroPedido)
                     .orElseThrow(() -> new ResourceNotFoundException("El pago no existe."));
             pago = pagos.bloquear(pago.getId()).orElseThrow();
             if (eventos.existsByIdentificadorEvento(eventoId)) {
-                return; // Confirmación repetida: ningún efecto.
+                return;
             }
             Instant ahora = clock.instant();
             EventoPago evento = new EventoPago();
@@ -296,7 +267,6 @@ public class PagoEnLineaService {
         pago.setDetalleAtencion(descripcion);
         pagos.save(pago);
         if (AtencionMatriculaPago.SOBRECUPO.equals(tipo)) {
-            // HU-037: varias aprobaciones sobre el último cupo son una sola alerta atendible por curso.
             var abierta = atenciones.findFirstByTipoAndEstadoAndMatricula_Curso_IdOrderByIdAsc(tipo,
                     AtencionMatriculaPago.PENDIENTE, pago.getMatricula().getCurso().getId());
             if (abierta.isPresent()) {
@@ -312,9 +282,6 @@ public class PagoEnLineaService {
         atenciones.save(a);
     }
 
-    // ================================================================================== correos ==
-
-    /** Confirmación (aprobado) o aviso de que la matrícula no se activó (no aprobado). Su fallo nunca altera el pago. */
     private boolean enviarAviso(Pago pago, boolean aprobado) {
         Matricula m = pago.getMatricula();
         Usuario u = m.getUsuario();
@@ -353,7 +320,6 @@ public class PagoEnLineaService {
         return "ENVIADO".equals(n.getEstadoEnvio());
     }
 
-    /** Reenvía el aviso del resultado sin crear otro pago, constancia ni acceso. */
     @Transactional
     public PagoDetalleResponse reenviarAviso(String numeroPedido) {
         Pago pago = propio(numeroPedido);
@@ -368,12 +334,6 @@ public class PagoEnLineaService {
         return mapear(pago);
     }
 
-    // ================================================================================ consultas ==
-
-    /**
-     * El intento tal como lo ve el alumno. Si sigue PENDIENTE y existe una orden en Culqi, se consulta su estado:
-     * así un pago diferido se refleja aunque el webhook no haya podido llegar.
-     */
     public PagoDetalleResponse detalle(String numeroPedido) {
         String orden = new TransactionTemplate(transacciones, soloLectura()).execute(estado -> {
             Pago pago = propio(numeroPedido);
@@ -396,10 +356,6 @@ public class PagoEnLineaService {
         return new TransactionTemplate(transacciones, soloLectura()).execute(estado -> mapear(propio(numeroPedido)));
     }
 
-    /**
-     * La pantalla de resultado consulta cada pocos segundos mientras el pago está pendiente; hacia Culqi se consulta la
-     * orden como máximo una vez cada {@link #INTERVALO_CONSULTA_ORDEN} por pedido, para no saturar su API.
-     */
     private boolean puedeConsultarOrden(String numeroPedido) {
         Instant ahora = clock.instant();
         Instant ultima = consultasDeOrden.get(numeroPedido);
@@ -438,12 +394,6 @@ public class PagoEnLineaService {
         return new PagosCursoResponse(m.get().getEstado(), pendiente, intentos.stream().map(this::mapear).toList());
     }
 
-    // ==================================================================================== webhook ==
-
-    /**
-     * Aviso de Culqi (no firmado): se vuelve a consultar el recurso a la API antes de confiar en él. Un aviso de un
-     * recurso que no es nuestro, o que no se puede verificar, se ignora.
-     */
     public void procesarEventoCulqi(String eventoId, String tipo, String recursoId) {
         if (eventoId == null || tipo == null || recursoId == null) {
             return;
@@ -467,8 +417,6 @@ public class PagoEnLineaService {
         aplicar(pago.get().getNumeroPedido(), r, "evt:" + eventoId);
     }
 
-    // ==================================================================================== utilidades ==
-
     private PagoDetalleResponse mapear(Pago p) {
         Matricula m = p.getMatricula();
         boolean acceso = p.esAprobado() && "ACTIVA".equals(m.getEstado());
@@ -482,7 +430,6 @@ public class PagoEnLineaService {
                 p.esNoAprobadoFinal() && "PENDIENTE_PAGO".equals(m.getEstado()), instruccionesDe(p), correo);
     }
 
-    /** El QR de una orden de billetera, recordado desde la última consulta a Culqi mientras el pago siga pendiente. */
     private InstruccionesPagoResponse instruccionesDe(Pago p) {
         InstruccionesPago i = Pago.PENDIENTE.equals(p.getEstado()) ? instruccionesPorPedido.get(p.getNumeroPedido()) : null;
         return i == null ? null : new InstruccionesPagoResponse(i.qrUrl(), i.enlace(), i.codigo(), i.venceEn());
@@ -526,7 +473,6 @@ public class PagoEnLineaService {
                 ? "Desde el " + inicio.format(FECHA) : "Inmediato, al iniciar sesión";
     }
 
-    /** El intento de la sesión actual (o cualquiera, si es administrador). */
     private Pago propio(String numeroPedido) {
         Pago pago = pagos.findByNumeroPedido(numeroPedido)
                 .orElseThrow(() -> new ResourceNotFoundException("El pago no existe."));

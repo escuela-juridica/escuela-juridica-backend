@@ -41,9 +41,6 @@ import pe.edu.utp.escuela.app.repository.PreguntaRepository;
 import pe.edu.utp.escuela.app.repository.ReglaCursoRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 
-/** HU-015 — Valida integralmente un BORRADOR antes de publicarlo. Reúne todos los hallazgos de una
- * vez (nunca lanza en el primer error) para que Angular muestre la lista completa y el
- * administrador corrija todo junto, en lugar de una vuelta por cada campo. */
 @Service
 @RequiredArgsConstructor
 public class PublicacionService {
@@ -85,7 +82,6 @@ public class PublicacionService {
         exigirAdministrador();
         Curso curso = buscarOLanzar(cursoId);
         if (!"BORRADOR".equals(curso.getEstadoCurso().getCodigo())) {
-            // Doble solicitud (o un ciclo de vida ya avanzado, HU-016): no hay nada que repetir.
             return new ValidacionPublicacionResponse(false, List.of(), false, curso.getEstadoCurso().getCodigo());
         }
 
@@ -114,8 +110,6 @@ public class PublicacionService {
     private boolean puedePublicarse(List<ErrorValidacionCurso> hallazgos) {
         return hallazgos.stream().noneMatch(h -> SEV_ERROR.equals(h.severidad()));
     }
-
-    // ------------------------------------------------------------------ Evaluación --
 
     private List<ErrorValidacionCurso> evaluar(Curso curso) {
         List<ErrorValidacionCurso> hallazgos = new ArrayList<>();
@@ -281,9 +275,6 @@ public class PublicacionService {
                 .collect(Collectors.toMap(Leccion::getId, Leccion::getTitulo));
         List<Long> idsGrabadas = grabadas.stream().map(Leccion::getId).toList();
 
-        // Recorre todos los videos de la lista, no solo el primero fuera de rango: así el
-        // administrador ve de una vez cuáles lecciones necesitan ajustar su duración, no una por
-        // revisión.
         for (DuracionLeccionRow fila : materiales.buscarDuraciones(idsGrabadas)) {
             Integer segundos = fila.getDuracionSegundos();
             if (segundos == null) {
@@ -353,9 +344,6 @@ public class PublicacionService {
                         "El examen \"" + examen.getTitulo() + "\" necesita preguntas con puntaje positivo.");
                 continue;
             }
-            // No es una regla explícita de la historia, pero un examen cuya suma de puntajes no
-            // alcanza la nota mínima configurada jamás podría aprobarse: el curso quedaría
-            // publicado pero imposible de certificar por esa vía.
             BigDecimal puntajeTotal = propias.stream().map(Pregunta::getPuntaje).reduce(BigDecimal.ZERO, BigDecimal::add);
             if (regla.getNotaMinima() != null && puntajeTotal.compareTo(regla.getNotaMinima()) < 0) {
                 error(hallazgos, "EXAMENES", "puntajeTotal",
@@ -463,8 +451,6 @@ public class PublicacionService {
     private void advertencia(List<ErrorValidacionCurso> hallazgos, String seccion, String campo, String mensaje) {
         hallazgos.add(new ErrorValidacionCurso(seccion + ":" + campo, seccion, campo, SEV_ADVERTENCIA, mensaje));
     }
-
-    // ---------------------------------------------------------------- Soporte --
 
     private void exigirAdministrador() {
         if (!currentUserService.get().hasRole("ADMINISTRADOR")) {

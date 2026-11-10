@@ -19,11 +19,6 @@ import pe.edu.utp.escuela.app.service.PagoEnLineaService;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-/**
- * HU-047 — Webhook de Culqi. Es público (Culqi no tiene sesión) pero acepta un aviso solo si coincide la
- * autenticación básica configurada en CulqiPanel ("Activar autenticación"), y aun así el resultado se vuelve a
- * consultar a la API de Culqi antes de aplicarlo. Siempre responde 200 para evitar reintentos de un evento ya tratado.
- */
 @Slf4j
 @RestController
 @RequestMapping("/api/publico/culqi")
@@ -51,7 +46,7 @@ public class CulqiWebhookController {
             JsonNode evento = json.readTree(cuerpo);
             JsonNode datos = evento.path("data");
             if (datos.isTextual()) {
-                datos = json.readTree(datos.textValue()); // Culqi entrega "data" como texto JSON.
+                datos = json.readTree(datos.textValue());
             }
             String id = evento.path("id").isTextual() ? evento.path("id").textValue() : null;
             String tipo = evento.path("type").isTextual() ? evento.path("type").textValue() : null;

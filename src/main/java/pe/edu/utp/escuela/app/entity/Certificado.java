@@ -16,12 +16,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * HU-032 — Documento emitido para un logro y verificable con su código. Un logro tiene a lo sumo un certificado
- * VIGENTE; si se anula, la administración puede emitir uno nuevo (con otro código) y el anulado queda como historia. Al emitirse se
- * congelan nombres, curso, horas, fechas, nota y nivel: lo impreso no cambia aunque después
- * cambien el curso o el perfil.
- */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -32,7 +26,6 @@ public class Certificado {
     public static final String VIGENTE = "VIGENTE";
     public static final String ANULADO = "ANULADO";
 
-    /** El que cuenta como actual de una matrícula: el vigente y, si no lo hay, el último emitido. */
     public static Certificado actualEntre(Certificado a, Certificado b) {
         boolean aVigente = VIGENTE.equals(a.getEstado());
         boolean bVigente = VIGENTE.equals(b.getEstado());
@@ -54,15 +47,12 @@ public class Certificado {
     @Column(nullable = false, length = 80)
     private String codigo;
 
-    /** VIGENTE | ANULADO */
     @Column(nullable = false, length = 15)
     private String estado = VIGENTE;
 
-    /** AUTOMATICA | SOLICITADA | MANUAL */
     @Column(name = "tipo_emision", nullable = false, length = 20)
     private String tipoEmision;
 
-    /** NORMAL | REFRENDADO */
     @Column(nullable = false, length = 15)
     private String nivel;
 
@@ -84,14 +74,9 @@ public class Certificado {
     @Column(name = "fecha_fin_impresa")
     private LocalDate fechaFinImpresa;
 
-    /**
-     * Temario congelado al emitir (lo que se dictó), para el reverso del certificado: «# » abre una sesión, «- » una
-     * viñeta. Vacío en los certificados anteriores al reverso.
-     */
     @Column(name = "temario_impreso", columnDefinition = "text")
     private String temarioImpreso;
 
-    /** Código de registro del curso («01-SM_2026») congelado al emitir; vacío en certificados anteriores. */
     @Column(name = "codigo_registro_impreso", length = 20)
     private String codigoRegistroImpreso;
 
@@ -104,7 +89,6 @@ public class Certificado {
     @Column(name = "nota_impresa", precision = 5, scale = 2)
     private BigDecimal notaImpresa;
 
-    /** Referencia privada al PDF dentro del almacenamiento (nunca una URL pública). */
     @Column(name = "archivo_pdf_url", nullable = false, columnDefinition = "text")
     private String archivoPdfUrl;
 

@@ -35,11 +35,6 @@ import tools.jackson.databind.json.JsonMapper;
 @Configuration
 public class SecurityConfig {
 
-    /** Rutas sin sesión, compartidas entre el {@code authorizeHttpRequests} de abajo y el
-     * {@code sessionCookieBearerTokenResolver}: si no se comparten, una cookie de sesión vieja o
-     * mal firmada (p. ej. tras rotar {@code security.jwt.secret}) tumba con 401 hasta las rutas
-     * públicas, porque Spring intenta validar cualquier token presente ANTES de mirar si la ruta
-     * lo exige. Por eso el resolver ignora la cookie por completo en estas rutas. */
     private static final String[] RUTAS_PUBLICAS = {
             "/api/health",
             "/api/publico/**",
@@ -83,12 +78,6 @@ public class SecurityConfig {
         return decoder;
     }
 
-    /**
-     * Clave y JWT independientes de la sesión, exclusivos de la referencia de verificación de
-     * correo (PF-005). Nunca deben compartir clave con la sesión: si la compartieran, esa
-     * referencia (entregada apenas te registras, antes de confirmar nada) podría decodificarse
-     * como si fuera una cookie de sesión válida.
-     */
     @Bean
     @Qualifier("verificacionJwt")
     SecretKey verificacionJwtSecretKey(@Value("${security.jwt.verificacion-secret}") String secret) {
@@ -157,8 +146,6 @@ public class SecurityConfig {
             @Value("${security.cookie.secure}") boolean cookieSegura,
             @Value("${security.cookie.same-site}") String sameSite,
             @Value("${security.csrf.cookie-domain:}") String dominioCsrf) throws Exception {
-        // CSRF: la sesión viaja en una cookie, así que cada petición que modifica datos debe repetir en la cabecera
-        // X-XSRF-TOKEN el valor de la cookie XSRF-TOKEN (legible por Angular; un sitio externo no puede leerla).
         CookieCsrfTokenRepository tokenCsrf = CookieCsrfTokenRepository.withHttpOnlyFalse();
         tokenCsrf.setCookieCustomizer(cookie -> {
             cookie.secure(cookieSegura).sameSite(sameSite).path("/");
@@ -167,16 +154,12 @@ public class SecurityConfig {
             }
         });
         CsrfTokenRequestAttributeHandler manejadorCsrf = new CsrfTokenRequestAttributeHandler();
-        // Sin diferir: el token se genera y la cookie se fija en cualquier primera respuesta (incluso un 401),
-        // para que la primera acción que modifica datos ya lo tenga.
         manejadorCsrf.setCsrfRequestAttributeName(null);
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(tokenCsrf)
                         .csrfTokenRequestHandler(manejadorCsrf)
-                        // El webhook de Culqi es servidor a servidor: sin cookies ni sesión, protegido por su
-                        // autenticación básica y porque cada resultado se vuelve a consultar a la API de Culqi.
                         .ignoringRequestMatchers("/api/publico/culqi/webhook"))
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

@@ -24,20 +24,21 @@ import pe.edu.utp.escuela.app.exception.BusinessValidationException;
 import pe.edu.utp.escuela.app.exception.ResourceNotFoundException;
 import pe.edu.utp.escuela.app.repository.ReglaArchivoRepository;
 
-/** Guarda materiales subidos (origen SUBIDO) en disco local, validados contra las reglas de
- * HU-009. No es almacenamiento en la nube: alcanza para esta historia, pero una mudanza a un
- * bucket quedaría contenida en esta sola clase. */
 @Service
 public class ArchivoAlmacenamientoService {
 
     private static final long TAMANO_MAXIMO_IMAGEN_BYTES = 2L * 1024 * 1024;
     private static final long TAMANO_MAXIMO_ADJUNTO_BYTES = 5L * 1024 * 1024;
-    /** La firma se dibuja en una caja horizontal del certificado (160 x 48 puntos): fuera de esta forma se ve diminuta. */
     private static final int FIRMA_ANCHO_MINIMO_PX = 300;
     private static final int FIRMA_ANCHO_MAXIMO_PX = 3000;
     private static final int FIRMA_ALTO_MAXIMO_PX = 1500;
     private static final double FIRMA_PROPORCION_MINIMA = 2.0;
     private static final double FIRMA_PROPORCION_MAXIMA = 5.0;
+    private static final long PORTADA_TAMANO_MAXIMO_BYTES = 5L * 1024 * 1024;
+    private static final int PORTADA_ANCHO_MINIMO_PX = 800;
+    private static final int PORTADA_ANCHO_MAXIMO_PX = 6000;
+    private static final double PORTADA_PROPORCION_MINIMA = 1.3;
+    private static final double PORTADA_PROPORCION_MAXIMA = 2.4;
 
     private final Path raiz;
     private final ReglaArchivoRepository reglasArchivo;
@@ -81,16 +82,6 @@ public class ArchivoAlmacenamientoService {
         }
     }
 
-    /** HU-023 — Resuelve una {@code referencia} ya guardada (forma
-     * {@code "/uploads/cursos/{cursoId}/{archivo}"}) de vuelta a un recurso legible, para que un
-     * servicio autenticado pueda transmitir sus bytes sin exponer la ruta real de almacenamiento.
-     * Se defiende contra path traversal validando que el Path resuelto y normalizado siga
-     * quedando dentro de {@code raiz} antes de devolver nada. */
-    /**
-     * HU-032 — Guarda un archivo generado por el propio sistema (p. ej. el PDF de un certificado) y
-     * devuelve su referencia privada, la misma forma que usa {@link #cargar(String)}. El nombre lo
-     * decide el servidor: nunca viene del usuario.
-     */
     public String guardarBytes(String carpeta, String nombreArchivo, byte[] contenido) {
         Path destino = raiz.resolve(carpeta).resolve(nombreArchivo).normalize();
         if (!destino.startsWith(raiz)) {
@@ -105,18 +96,19 @@ public class ArchivoAlmacenamientoService {
         return "/uploads/" + carpeta + "/" + nombreArchivo;
     }
 
-    /**
-     * HU-009 — Guarda la imagen de una firma, el logo de una entidad o la foto de un docente. Solo admite PNG o JPG,
-     * de hasta 2 MB, y comprueba el contenido real del archivo (no solo su extensión). Las firmas además deben ser
-     * PNG transparentes y horizontales. El nombre lo decide el
-     * servidor y la referencia devuelta es la que se guarda en el firmante o la entidad.
-     */
     public String guardarImagen(String carpeta, MultipartFile archivo) {
+        return guardarImagen(carpeta, archivo, UUID.randomUUID().toString());
+    }
+
+    public String guardarImagen(String carpeta, MultipartFile archivo, String nombreSinExtension) {
         if (archivo == null || archivo.isEmpty()) {
             throw new BusinessValidationException("Selecciona una imagen para subir.");
         }
-        if (archivo.getSize() > TAMANO_MAXIMO_IMAGEN_BYTES) {
-            throw new BusinessValidationException("La imagen supera el tamaño máximo permitido (2.0 MB).");
+        boolean esPortada = "portadas".equals(carpeta);
+        long tamanoMaximo = esPortada ? PORTADA_TAMANO_MAXIMO_BYTES : TAMANO_MAXIMO_IMAGEN_BYTES;
+        if (archivo.getSize() > tamanoMaximo) {
+            throw new BusinessValidationException(
+                    "La imagen supera el tamaño máximo permitido (" + (esPortada ? "5.0" : "2.0") + " MB).");
         }
         byte[] contenido;
         try {
@@ -131,13 +123,64 @@ public class ArchivoAlmacenamientoService {
         if ("firmas".equals(carpeta)) {
             validarFirma(contenido, extension);
         }
-        return guardarBytes(carpeta, UUID.randomUUID() + "." + extension, contenido);
+        if (esPortada) {
+            validarPortada(contenido);
+        }
+        return guardarBytes(carpeta, nombreSinExtension + "." + extension, contenido);
     }
 
-    /**
-     * La firma que se imprime en el certificado debe ser un PNG con fondo transparente (si no, tapa el diseño del
-     * diploma), horizontal y con resolución suficiente. Se comprueba el contenido real del archivo.
-     */
+    public void retirarPortadasSinUso(Long cursoId, String... conservar) {
+        Path carpeta = raiz.resolve("portadas");
+        if (!Files.isDirectory(carpeta)) {
+            return;
+        }
+        java.util.regex.Pattern patron = java.util.regex.Pattern.compile("^" + cursoId + "-\\d+\\.(jpg|png)$");
+        java.util.Set<String> vigentes = new java.util.HashSet<>();
+        for (String referencia : conservar) {
+            if (referencia != null) {
+                vigentes.add(referencia);
+            }
+        }
+        try (var archivos = Files.list(carpeta)) {
+            for (Path archivo : (Iterable<Path>) archivos::iterator) {
+                String nombre = archivo.getFileName().toString();
+                if (patron.matcher(nombre).matches() && !vigentes.contains("/uploads/portadas/" + nombre)) {
+                    Files.deleteIfExists(archivo);
+                }
+            }
+        } catch (IOException e) {
+        }
+    }
+
+    private static void validarPortada(byte[] contenido) {
+        int ancho;
+        int alto;
+        try (ImageInputStream flujo = ImageIO.createImageInputStream(new ByteArrayInputStream(contenido))) {
+            var lectores = ImageIO.getImageReaders(flujo);
+            if (!lectores.hasNext()) {
+                throw new BusinessValidationException("No pudimos leer la portada. Prueba con otra imagen.");
+            }
+            ImageReader lector = lectores.next();
+            try {
+                lector.setInput(flujo);
+                ancho = lector.getWidth(0);
+                alto = lector.getHeight(0);
+            } finally {
+                lector.dispose();
+            }
+        } catch (IOException e) {
+            throw new BusinessValidationException("No pudimos leer la portada. Prueba con otra imagen.");
+        }
+        double proporcion = alto == 0 ? 0 : (double) ancho / alto;
+        if (ancho < PORTADA_ANCHO_MINIMO_PX || proporcion < PORTADA_PROPORCION_MINIMA || proporcion > PORTADA_PROPORCION_MAXIMA) {
+            throw new BusinessValidationException(
+                    "La portada debe ser horizontal (entre 1.3:1 y 2.4:1) y de al menos 800 px de ancho, por ejemplo 1200 x 675 px.");
+        }
+        if (ancho > PORTADA_ANCHO_MAXIMO_PX) {
+            throw new BusinessValidationException("La portada es demasiado grande: usa como máximo 6000 px de ancho.");
+        }
+    }
+
     private static void validarFirma(byte[] contenido, String extension) {
         if (!"png".equals(extension)) {
             throw new BusinessValidationException("La firma debe ser un PNG con fondo transparente.");
@@ -193,7 +236,6 @@ public class ArchivoAlmacenamientoService {
         return false;
     }
 
-    /** Valida una imagen adjunta a una reclamación (PNG, JPG o WEBP de hasta 5 MB) sin guardarla todavía. */
     public byte[] validarAdjuntoReclamacion(MultipartFile archivo) {
         String nombre = archivo == null || archivo.getOriginalFilename() == null ? "imagen" : archivo.getOriginalFilename();
         if (archivo == null || archivo.isEmpty()) {
@@ -214,7 +256,6 @@ public class ArchivoAlmacenamientoService {
         return contenido;
     }
 
-    /** Guarda un adjunto ya validado de la reclamación; el nombre lo decide el servidor. */
     public ArchivoGuardado guardarAdjuntoReclamacion(Long reclamacionId, MultipartFile archivo, byte[] contenido) {
         String extension = esPng(contenido) ? "png" : esJpeg(contenido) ? "jpg" : "webp";
         String tipoMime = switch (extension) {
@@ -228,7 +269,6 @@ public class ArchivoAlmacenamientoService {
         return new ArchivoGuardado(referencia, original, tipoMime, contenido.length);
     }
 
-    /** Boleta o captura que respalda un pago manual: PNG, JPG, WEBP o PDF de hasta 5 MB, validado por su contenido real. */
     public ArchivoGuardado guardarComprobantePago(Long pagoId, MultipartFile archivo) {
         if (archivo == null || archivo.isEmpty()) {
             throw new BusinessValidationException("Selecciona la boleta o captura que quieres adjuntar.");
@@ -280,7 +320,6 @@ public class ArchivoAlmacenamientoService {
         return b.length > 3 && (b[0] & 0xFF) == 0xFF && (b[1] & 0xFF) == 0xD8 && (b[2] & 0xFF) == 0xFF;
     }
 
-    /** Retira un archivo generado por el sistema (p. ej. el PDF de un certificado anulado). Si ya no existe, no hace nada. */
     public void eliminar(String referencia) {
         String prefijo = "/uploads/";
         if (referencia == null || !referencia.startsWith(prefijo)) {

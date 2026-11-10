@@ -28,11 +28,6 @@ import pe.edu.utp.escuela.app.repository.PagoRepository;
 import pe.edu.utp.escuela.app.repository.UsuarioRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 
-/**
- * HU-037 — Atención de excepciones de matrículas y pagos (administrador). ESEJUR detecta el caso (aprobación tardía
- * tras una cancelación, resultado contradictorio, sobrecupo); aquí la Escuela solo consulta la evidencia y registra
- * qué atención brindó. Nunca cambia el resultado de Culqi, el estado de la matrícula ni el acceso, ni devuelve dinero.
- */
 @Service
 @RequiredArgsConstructor
 public class AtencionPagoService {
@@ -69,17 +64,12 @@ public class AtencionPagoService {
         return responder(cargar(id), true);
     }
 
-    /** Cantidad de excepciones pendientes, para avisar en la administración. */
     @Transactional(readOnly = true)
     public long pendientes() {
         exigirAdministrador();
         return atenciones.countByEstado(AtencionMatriculaPago.PENDIENTE);
     }
 
-    /**
-     * Cierra la excepción con la descripción de lo resuelto fuera de ESEJUR, conservando fecha y responsable. Si el
-     * caso agrupa varios pagos (sobrecupo), todos quedan atendidos. Atender de nuevo un caso cerrado se rechaza.
-     */
     @Transactional
     public AtencionPagoResponse atender(Long id, String resultado) {
         exigirAdministrador();

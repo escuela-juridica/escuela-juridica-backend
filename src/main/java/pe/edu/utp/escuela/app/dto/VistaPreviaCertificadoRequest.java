@@ -9,10 +9,6 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.List;
 
-/**
- * HU-036 — Datos con los que se dibuja la vista previa de una corrección. Mismas reglas que
- * {@link CorregirCertificadoRequest}, sin el motivo: la vista previa no guarda ni cambia nada.
- */
 public record VistaPreviaCertificadoRequest(
         @NotBlank(message = "Indica los nombres que se imprimirán.")
         @Size(max = 240, message = "Los nombres no pueden superar 240 caracteres.")

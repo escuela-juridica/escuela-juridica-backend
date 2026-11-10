@@ -37,6 +37,5 @@ public interface TokenRecuperacionAccesoRepository
         """)
     Optional<TokenRecuperacionAcceso> bloquearPorHash(@Param("hash") String hash);
 
-    /** Solo lectura, sin bloqueo: para la consulta de vigencia (GET) que no modifica nada. */
     Optional<TokenRecuperacionAcceso> findByTokenHash(String hash);
 }

@@ -27,17 +27,6 @@ import pe.edu.utp.escuela.app.repository.MatriculaRepository;
 import pe.edu.utp.escuela.app.repository.ProgresoMaterialRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 
-/** HU-023 — Consultar materiales protegidos: cada solicitud (listar, ver contenido o descargar)
- * revalida identidad, matrícula, acceso efectivo y pertenencia al curso antes de entregar nada,
- * así que compartir la URL de un endpoint de este servicio no le da acceso a quien no está
- * matriculado. Deliberadamente no revisa bloqueo por secuencia obligatoria: eso es dominio de
- * HU-022/navegación del aula, ya resuelto ahí; esta historia solo pide identidad, matrícula,
- * estado de acceso y pertenencia al curso.
- *
- * <p>Los materiales de origen SUBIDO nunca se exponen con su ruta real de
- * {@code /uploads/...}: este servicio transmite los bytes él mismo a través de
- * {@link ArchivoAlmacenamientoService#cargar(String)}, así lo único que ve el alumno es un
- * endpoint propio que vuelve a autorizar en cada llamada. */
 @Service
 @RequiredArgsConstructor
 public class MaterialAlumnoService {
@@ -61,7 +50,6 @@ public class MaterialAlumnoService {
         List<MaterialLeccion> activos = materiales.findByLeccion_IdOrderByOrdenAsc(leccionId).stream()
                 .filter(MaterialLeccion::isActivo)
                 .toList();
-        // Punto donde el alumno dejó cada video (para retomarlo) y cuánto lleva visto.
         Map<Long, ProgresoMaterial> progreso = activos.isEmpty() ? Map.of()
                 : progresoMateriales.findByMatricula_IdAndMaterialLeccion_IdIn(
                         matricula.getId(), activos.stream().map(MaterialLeccion::getId).toList()).stream()
@@ -116,10 +104,6 @@ public class MaterialAlumnoService {
         return matricula;
     }
 
-    /** Replica exactamente {@code AulaService#verificarAcceso} (y, en última instancia,
-     * {@code MatriculaService#respuesta}): es la definición oficial de acceso efectivo en todo
-     * el proyecto y no debe divergir. Se duplica a propósito en vez de extraerla a un helper
-     * compartido, siguiendo la convención ya usada entre esos dos servicios. */
     private void verificarAcceso(Matricula m) {
         Instant ahora = clock.instant();
         boolean vigente = m.getFechaVencimiento() == null || !ahora.isAfter(m.getFechaVencimiento());
@@ -133,7 +117,6 @@ public class MaterialAlumnoService {
             return;
         }
 
-        // HU-038: solo conserva la consulta quien ya tenía contenido disponible al cancelar el curso.
         if (AccesoPorCancelacion.permiteLectura(m, cuentaHabilitada, LIMA)) {
             return;
         }
@@ -141,7 +124,6 @@ public class MaterialAlumnoService {
         throw new BusinessValidationException("No tienes acceso a este contenido.");
     }
 
-    /** Resultado de resolver un material SUBIDO para transmitir sus bytes por streaming. */
     public record ContenidoMaterial(Resource recurso, String nombreArchivo, String tipoMime) {
     }
 }

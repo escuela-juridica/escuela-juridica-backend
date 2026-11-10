@@ -55,7 +55,6 @@ public class RegistroService {
     private <T> T conConflictos(String correo, String documento, Supplier<T> operacion) {
         try { return operacion.get(); }
         catch (DataIntegrityViolationException ex) {
-            // Se consulta tras finalizar/revertir la transacción fallida.
             if (usuarios.existsByCorreoIgnoreCase(textos.normalizeEmail(correo))) {
                 throw new CampoRegistroException(HttpStatus.CONFLICT, "CORREO_DUPLICADO", "correo",
                         "El correo ya se encuentra registrado.");

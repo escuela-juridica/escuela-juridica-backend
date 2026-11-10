@@ -19,15 +19,6 @@ import pe.edu.utp.escuela.app.exception.BusinessValidationException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-/**
- * HU-047 — Cliente de la API de Culqi (https://api.culqi.com/v2). La misma URL sirve a integración y producción:
- * la llave ({@code sk_test_...} o {@code sk_live_...}) decide el entorno. La llave privada nunca sale del servidor.
- *
- * <p>Flujo: se crea una <b>orden</b> para el intento ({@code confirm=false}) y el navegador abre Culqi Checkout con
- * esa orden; la tarjeta y Yape entregan un token que aquí se cobra con {@code POST /charges}, y los medios
- * diferidos (billeteras) se confirman por webhook. Un webhook de Culqi no va firmado, así que siempre se vuelve a
- * consultar el recurso a la API antes de confiar en él.
- */
 @Slf4j
 @Service
 public class CulqiRealIntegration implements CulqiIntegration {
@@ -73,7 +64,6 @@ public class CulqiRealIntegration implements CulqiIntegration {
         cuerpo.put("amount", s.montoCentimos());
         cuerpo.put("currency_code", s.moneda());
         cuerpo.put("description", s.descripcion());
-        // Culqi exige un order_number único en toda la cuenta: el sufijo evita choques si la numeración local reinicia.
         cuerpo.put("order_number", s.numeroPedido() + "-" + UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase(Locale.ROOT));
         cuerpo.put("client_details", cliente);
         cuerpo.put("expiration_date", clock.instant().plus(Duration.ofHours(vigenciaOrdenHoras)).getEpochSecond());
@@ -107,7 +97,6 @@ public class CulqiRealIntegration implements CulqiIntegration {
 
         Respuesta r = enviar("POST", "/charges", cuerpo);
         if (r.estado() == 0) {
-            // Sin respuesta no sabemos si el cobro se hizo: queda PENDIENTE hasta que Culqi lo comunique.
             return new ResultadoCulqi("PENDIENTE", null, null, medio, null, null, "sin_respuesta",
                     "Todavía no pudimos confirmar el resultado con Culqi.", c.numeroPedido(), clock.instant(), null);
         }
@@ -117,7 +106,6 @@ public class CulqiRealIntegration implements CulqiIntegration {
                     entero(j, "installments"), "venta_exitosa", textoOr(j.path("outcome"), "user_message",
                             "Su compra ha sido exitosa."), c.numeroPedido(), clock.instant(), null);
         }
-        // Rechazo del emisor (card_error) o error de la operación: Culqi lo informa como objeto "error".
         String tipoError = texto(j, "type");
         String codigoRechazo = texto(j, "decline_code");
         String estado = "card_error".equals(tipoError) || codigoRechazo != null ? "RECHAZADO" : "ERROR";
@@ -154,7 +142,6 @@ public class CulqiRealIntegration implements CulqiIntegration {
                 vence.isNumber() ? Instant.ofEpochSecond(vence.longValue()) : null);
     }
 
-    /** Solo se entregan al alumno direcciones https de PagoEfectivo, nunca una URL cualquiera. */
     private static String urlDePagoEfectivo(String url) {
         if (url == null) {
             return null;
@@ -184,8 +171,6 @@ public class CulqiRealIntegration implements CulqiIntegration {
                 textoOr(j.path("outcome"), "user_message", ""), texto(metadata, "numero_pedido"), clock.instant(), null);
     }
 
-    // ------------------------------------------------------------------------------------------ HTTP --
-
     private record Respuesta(int estado, JsonNode cuerpo) {
         boolean exitosa() {
             return estado >= 200 && estado < 300;
@@ -212,8 +197,6 @@ public class CulqiRealIntegration implements CulqiIntegration {
             return new Respuesta(0, json.createObjectNode());
         }
     }
-
-    // --------------------------------------------------------------------------------------- lectura --
 
     private static String texto(JsonNode nodo, String campo) {
         JsonNode v = nodo.path(campo);

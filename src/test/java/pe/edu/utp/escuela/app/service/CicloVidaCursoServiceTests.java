@@ -37,7 +37,6 @@ import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.security.CurrentUserService.CurrentUser;
 import pe.edu.utp.escuela.app.util.TextNormalizer;
 
-/** HU-016 — Administrar el ciclo de vida del curso. */
 @ExtendWith(MockitoExtension.class)
 class CicloVidaCursoServiceTests {
 
@@ -63,8 +62,6 @@ class CicloVidaCursoServiceTests {
         service = new CicloVidaCursoService(cursos, estadosCurso, historial, reglasCurso, cursoDocentes,
                 cursoFirmantes, modulos, examenes, matriculas, currentUserService, new TextNormalizer(), clock,
                 cursoService, contenidoService, examenService);
-        // lenient(): aplicarTransicionesAutomaticas() es un job sin usuario autenticado y nunca
-        // llama a currentUserService, así que este stub sería "innecesario" solo en esas pruebas.
         org.mockito.Mockito.lenient().when(currentUserService.get())
                 .thenReturn(new CurrentUser(1L, "admin@escuelajuridica.edu.pe", Set.of("ADMINISTRADOR")));
     }
@@ -78,11 +75,8 @@ class CicloVidaCursoServiceTests {
         return curso;
     }
 
-    // ---------------------------------------------------------------- Adelantar inicio --
-
     @Test
     void adelantarInicioConCursoPublicadoPasaAEnCurso() {
-        // HU-016 Escenario 1 (transición permitida).
         Curso curso = cursoEnEstado("PUBLICADO");
         curso.setFechaInicio(LocalDate.of(2026, 10, 1));
         when(cursos.findWithDetalleById(100L)).thenReturn(Optional.of(curso));
@@ -99,15 +93,12 @@ class CicloVidaCursoServiceTests {
 
     @Test
     void adelantarInicioConCursoNoPublicadoLanzaValidacion() {
-        // HU-016 Escenario 2 (transición inválida).
         Curso curso = cursoEnEstado("BORRADOR");
         when(cursos.findWithDetalleById(100L)).thenReturn(Optional.of(curso));
 
         assertThrows(BusinessValidationException.class, () -> service.adelantarInicio(100L));
         assertEquals("BORRADOR", curso.getEstadoCurso().getCodigo());
     }
-
-    // ---------------------------------------------------------------- Retrasar inicio --
 
     @Test
     void retrasarInicioConFechaPosteriorLaConserva() {
@@ -152,8 +143,6 @@ class CicloVidaCursoServiceTests {
                 new RetrasarInicioRequest(LocalDate.of(2026, 11, 1))));
     }
 
-    // ---------------------------------------------------------------- Cerrar --
-
     @Test
     void cerrarUnCursoPublicadoOEnCursoLoCierra() {
         Curso curso = cursoEnEstado("EN_CURSO");
@@ -176,8 +165,6 @@ class CicloVidaCursoServiceTests {
                 () -> service.cerrar(100L, new CerrarCursoRequest(null)));
     }
 
-    // ---------------------------------------------------------------- Eliminar --
-
     @Test
     void eliminarCursoEnBorradorSinMatriculasLoElimina() {
         Curso curso = cursoEnEstado("BORRADOR");
@@ -194,7 +181,6 @@ class CicloVidaCursoServiceTests {
 
     @Test
     void eliminarCursoConMatriculasLanzaValidacion() {
-        // HU-016 Escenario 3 (conservación): no se elimina un curso que ya tiene alumnos.
         Curso curso = cursoEnEstado("BORRADOR");
         when(cursos.findWithDetalleById(100L)).thenReturn(Optional.of(curso));
         when(matriculas.existsByCurso_Id(100L)).thenReturn(true);
@@ -211,8 +197,6 @@ class CicloVidaCursoServiceTests {
         assertThrows(BusinessValidationException.class, () -> service.eliminarCurso(100L));
         verify(cursos, never()).delete(any());
     }
-
-    // ---------------------------------------------------------------- Transiciones automáticas --
 
     @Test
     void transicionesAutomaticasPasanPublicadoAEnCursoAlLlegarLaFecha() {

@@ -60,8 +60,6 @@ import pe.edu.utp.escuela.app.mail.MailService;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.security.CurrentUserService.CurrentUser;
 
-/** HU-017 (matrícula gratuita), HU-019 (matrícula administrativa), HU-020 (consultar/controlar
- * matrículas y pagos) y HU-021 (mis cursos y accesos). */
 @ExtendWith(MockitoExtension.class)
 class MatriculaServiceTests {
 
@@ -132,11 +130,8 @@ class MatriculaServiceTests {
                 rolesDelUsuario.get(0), rolesDelUsuario, Instant.parse("2026-08-01T00:00:00Z"), null);
     }
 
-    // ---------------------------------------------------------------- HU-017 --
-
     @Test
     void matricularGratisConCursoPublicadoCreaMatriculaActiva() {
-        // HU-017 Escenario 1 (matrícula gratuita).
         comoAlumno(1L);
         Usuario usuario = alumnoHabilitado(1L);
         Curso curso = cursoPublicadoGratuito();
@@ -169,7 +164,6 @@ class MatriculaServiceTests {
 
     @Test
     void matricularGratisConMatriculaExistenteNoCreaUnSegundoRegistro() {
-        // HU-017 Escenario 2 (idempotencia).
         comoAlumno(1L);
         when(usuarios.findWithPersonaById(1L)).thenReturn(Optional.of(alumnoHabilitado(1L)));
         when(cursos.findWithDetalleById(200L)).thenReturn(Optional.of(cursoPublicadoGratuito()));
@@ -180,7 +174,6 @@ class MatriculaServiceTests {
 
     @Test
     void matricularGratisConCursoNoPublicadoLanzaValidacion() {
-        // HU-017 Escenario 3 (disponibilidad).
         comoAlumno(1L);
         when(usuarios.findWithPersonaById(1L)).thenReturn(Optional.of(alumnoHabilitado(1L)));
         Curso curso = cursoPublicadoGratuito();
@@ -199,8 +192,6 @@ class MatriculaServiceTests {
         curso.setCupoMaximo(10);
         when(cursos.findWithDetalleById(200L)).thenReturn(Optional.of(curso));
         when(matriculas.existsByUsuario_IdAndCurso_Id(1L, 200L)).thenReturn(false);
-        // contarActivas() es un método default del repositorio: un mock no ejecuta su cuerpo real
-        // (que delega en contarActivasPorCurso), así que se estuba directamente.
         when(matriculas.contarActivas(List.of(200L))).thenReturn(java.util.Map.of(200L, 10L));
 
         assertThrows(BusinessValidationException.class, () -> service.matricularGratis(200L));
@@ -235,8 +226,6 @@ class MatriculaServiceTests {
         assertThrows(BusinessValidationException.class, () -> service.matricularGratis(200L));
     }
 
-    // ---------------------------------------------------------------- HU-019 --
-
     private CrearMatriculaAdministrativaRequest peticionExonerada() {
         return new CrearMatriculaAdministrativaRequest(5L, 200L, "EXONERADO", BigDecimal.ZERO, null, null,
                 "Convenio institucional", false);
@@ -252,7 +241,6 @@ class MatriculaServiceTests {
 
     @Test
     void matricularAdministrativamenteConAlumnoValidoCreaMatricula() {
-        // HU-019 Escenario 1 (selección de alumno).
         comoAdministrador(1L);
         when(usuarios.findWithPersonaById(5L)).thenReturn(Optional.of(alumnoHabilitado(5L)));
         when(adminUsuarios.obtener(5L)).thenReturn(respuestaAdminCon(List.of(RolUsuarioAdmin.ALUMNO)));
@@ -268,7 +256,6 @@ class MatriculaServiceTests {
 
     @Test
     void matricularAdministrativamenteConUsuarioSoloAdministradorNoApareceComoCandidato() {
-        // HU-019 Escenario 2 (exclusión por rol).
         comoAdministrador(1L);
         when(usuarios.findWithPersonaById(5L)).thenReturn(Optional.of(alumnoHabilitado(5L)));
         when(adminUsuarios.obtener(5L)).thenReturn(respuestaAdminCon(List.of(RolUsuarioAdmin.ADMINISTRADOR)));
@@ -279,7 +266,6 @@ class MatriculaServiceTests {
 
     @Test
     void matricularAdministrativamenteConMatriculaPreviaConservaUnSoloRegistro() {
-        // HU-019 Escenario 3 (registro sin duplicidad).
         comoAdministrador(1L);
         when(usuarios.findWithPersonaById(5L)).thenReturn(Optional.of(alumnoHabilitado(5L)));
         when(adminUsuarios.obtener(5L)).thenReturn(respuestaAdminCon(List.of(RolUsuarioAdmin.ALUMNO)));
@@ -350,8 +336,6 @@ class MatriculaServiceTests {
         assertEquals("ACTIVA", respuesta.estado());
         org.mockito.Mockito.verify(pagos).save(any());
     }
-
-    // ---------------------------------------------------------------- HU-020 --
 
     private Matricula matriculaActivaAdministrativa() {
         Matricula matricula = new Matricula();
@@ -470,11 +454,8 @@ class MatriculaServiceTests {
         assertEquals("Mario Salas", respuesta.responsable());
     }
 
-    // ---------------------------------------------------------------- HU-021 --
-
     @Test
     void misCursosConMatriculaActivaYVigenteOfreceAccesoDisponible() {
-        // HU-021 Escenario 1 (cursos vigentes).
         comoAlumno(1L);
         Usuario usuario = alumnoHabilitado(1L);
         when(usuarios.findWithPersonaById(1L)).thenReturn(Optional.of(usuario));
@@ -496,7 +477,6 @@ class MatriculaServiceTests {
 
     @Test
     void misCursosDistingueUnaMatriculaVencidaDeLasVigentes() {
-        // HU-021 Escenario 2 (vigencia).
         comoAlumno(1L);
         Usuario usuario = alumnoHabilitado(1L);
         when(usuarios.findWithPersonaById(1L)).thenReturn(Optional.of(usuario));
@@ -538,8 +518,4 @@ class MatriculaServiceTests {
         assertEquals("El curso a\u00fan no inicia.", resultado.get(0).mensajeAcceso());
     }
 
-    // HU-041 (reporteFiltraPorTextoYPorEstado, reportePaginadoDelegaAlRepository) se retiró
-    // deliberadamente — ver docs/epica-4/HU-041-MAPA-TECNICO-REPORTE-MATRICULAS.md para
-    // reconstruirla. Por la instrucción vigente de no escribir nuevos tests JUnit, no se
-    // recrean aquí.
 }

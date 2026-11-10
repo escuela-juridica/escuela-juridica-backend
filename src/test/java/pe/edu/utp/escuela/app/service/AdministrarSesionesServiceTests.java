@@ -51,7 +51,6 @@ import pe.edu.utp.escuela.app.repository.NotificacionRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.security.CurrentUserService.CurrentUser;
 
-/** EP04 · HU-027 — Administrar cambios en sesiones: reprogramar, cancelar y corregir asistencia con historial. */
 @ExtendWith(MockitoExtension.class)
 class AdministrarSesionesServiceTests {
 

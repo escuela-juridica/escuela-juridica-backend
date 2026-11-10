@@ -29,15 +29,6 @@ import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.service.AvanceAcademicoService.AvanceAcademico;
 import pe.edu.utp.escuela.app.service.RutaAcademicaService.RutaAcademica;
 
-/** HU-022 — Ingresar y continuar un curso: resuelve el acceso efectivo de la matrícula del
- * alumno actual a un curso y construye el temario (módulos → lecciones) con el estado de cada
- * lección y el punto donde "Continuar" debe reabrir el aula. HU-025 — el orden y los bloqueos
- * vienen de {@link RutaAcademicaService} y el aula suma los exámenes de cada módulo y el bloque
- * "Tu avance hacia el certificado".
- *
- * <p>El cálculo de "acceso efectivo" replica exactamente, a propósito, el de {@code
- * MatriculaService#respuesta(Matricula, String)}: es la definición oficial de acceso efectivo en
- * todo el proyecto y no debe divergir. */
 @Service
 @RequiredArgsConstructor
 public class AulaService {
@@ -71,7 +62,6 @@ public class AulaService {
                         .map(m -> m.getLeccion().getId())
                         .collect(Collectors.toSet());
 
-        // Duración de la lección = la del video más largo entre sus materiales activos (si la hay).
         Map<Long, Integer> duraciones = idsLecciones.isEmpty() ? Map.of()
                 : materiales.buscarDuraciones(idsLecciones).stream()
                         .filter(f -> f.getDuracionSegundos() != null)
@@ -127,8 +117,6 @@ public class AulaService {
             return "CANCELADA";
         }
         if (leccion.getFechaHoraInicio() == null || leccion.getFechaHoraFin() == null) {
-            // Sesión EN_VIVO aún sin programar (HU-012 todavía no le asignó fecha): se trata como
-            // futura, a falta de un estado más específico en el enunciado.
             return "FUTURA";
         }
         if (ahora.isBefore(leccion.getFechaHoraInicio())) {
@@ -140,9 +128,6 @@ public class AulaService {
         return "REALIZADA";
     }
 
-    /** La primera lección (de la base considerada: obligatorias, o todas si no hay obligatorias)
-     * que esté DISPONIBLE marca el punto de continuación; si todas están completadas, se usa la
-     * última para reabrir el final del curso en vez de no abrir nada. */
     private Long ultimaLeccionValida(List<Leccion> base, Map<Long, LeccionAulaResponse> respuestaPorLeccion) {
         Leccion ultimaCompletada = null;
         for (Leccion leccion : base) {
@@ -157,13 +142,6 @@ public class AulaService {
         return ultimaCompletada != null ? ultimaCompletada.getId() : null;
     }
 
-    /** Replica MatriculaService#respuesta(...) para el cálculo de acceso efectivo, y añade el
-     * caso de HU-022: un curso CANCELADO conserva el acceso de lectura de quien ya tenía
-     * matrícula (no cancelada individualmente) antes de la cancelación. Como MatriculaService
-     * solo permite crear/activar matrículas mientras el curso está PUBLICADO o EN_CURSO, cualquier
-     * matrícula no cancelada individualmente que exista sobre un curso ya CANCELADO solo pudo
-     * haberse aprobado antes de esa cancelación: no hace falta (ni hay cómo, sin una historia que
-     * registre el instante exacto de cancelación) distinguir más. */
     private void verificarAcceso(Matricula m) {
         Instant ahora = clock.instant();
         boolean vigente = m.getFechaVencimiento() == null || !ahora.isAfter(m.getFechaVencimiento());
@@ -177,7 +155,6 @@ public class AulaService {
             return;
         }
 
-        // HU-038: solo conserva la consulta quien ya tenía contenido disponible al cancelar el curso.
         if (AccesoPorCancelacion.permiteLectura(m, cuentaHabilitada, LIMA)) {
             return;
         }

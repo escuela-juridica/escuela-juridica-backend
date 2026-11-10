@@ -29,16 +29,35 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Long> {
     @EntityGraph(attributePaths = { "curso", "curso.estadoCurso", "usuario", "usuario.persona" })
     List<Matricula> findByUsuario_IdOrderByFechaMatriculaDesc(Long usuarioId);
 
+    @EntityGraph(attributePaths = { "curso", "curso.estadoCurso", "usuario", "usuario.persona" })
+    @Query(value = """
+            select m from Matricula m join m.curso c
+            where m.usuario.id = :usuarioId
+              and ((:completados = true and m.fechaFinalizacion is not null)
+                or (:completados = false and m.fechaFinalizacion is null))
+              and lower(c.titulo) like :patron escape '!'
+            """, countQuery = """
+            select count(m) from Matricula m join m.curso c
+            where m.usuario.id = :usuarioId
+              and ((:completados = true and m.fechaFinalizacion is not null)
+                or (:completados = false and m.fechaFinalizacion is null))
+              and lower(c.titulo) like :patron escape '!'
+            """)
+    Page<Matricula> buscarDelAlumno(@Param("usuarioId") Long usuarioId, @Param("completados") boolean completados,
+            @Param("patron") String patron, Pageable pageable);
+
+    long countByUsuario_IdAndFechaFinalizacionIsNull(Long usuarioId);
+
+    long countByUsuario_IdAndFechaFinalizacionIsNotNull(Long usuarioId);
+
     @EntityGraph(attributePaths = { "curso", "usuario", "usuario.persona" })
     List<Matricula> findAllByOrderByFechaMatriculaDesc();
 
-    /** HU-027 — Alumnado a avisar cuando una sesión en vivo de ese curso cambia. */
     @EntityGraph(attributePaths = { "usuario" })
     List<Matricula> findByEstadoAndCurso_Id(String estado, Long cursoId);
 
     long countByCurso_IdAndEstado(Long cursoId, String estado);
 
-    /** HU-046 — Matrícula que llegó a ACTIVA (tiene fecha de activación), con lo mínimo que grafica el dashboard. */
     interface ActivacionRow {
         Long getId();
 
@@ -51,11 +70,6 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Long> {
         String getForma();
     }
 
-    /**
-     * HU-046 — Universo único de los gráficos de matrículas: cada matrícula que llegó a ACTIVA dentro del rango
-     * (fecha de activación), sin importar su estado actual, filtrada por curso y modalidad. Una fila por matrícula:
-     * nada se cuenta dos veces.
-     */
     @Query("""
             select m.id as id, m.fechaActivacion as fecha, c.id as cursoId, c.titulo as curso, m.formaIngreso as forma
             from Matricula m join m.curso c
@@ -67,7 +81,6 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Long> {
     List<ActivacionRow> activacionesParaDashboard(@Param("cursoId") Long cursoId, @Param("modalidad") String modalidad,
             @Param("desde") Instant desde, @Param("hasta") Instant hasta);
 
-    /** HU-038: matrículas de un curso de un conjunto de alumnos (para completar la lista de afectados). */
     List<Matricula> findByCurso_IdAndUsuario_IdIn(Long cursoId, java.util.Collection<Long> usuarioIds);
 
     @EntityGraph(attributePaths = { "curso", "curso.estadoCurso", "usuario", "usuario.persona" })
@@ -180,11 +193,6 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Long> {
                 .collect(Collectors.toMap(ConteoMatriculaRow::cursoId, ConteoMatriculaRow::activas));
     }
 
-    /**
-     * HU-043 — Universo y filtros del reporte académico, compartidos por la página, el conteo y la
-     * exportación para que pantalla y Excel nunca discrepen: una fila por matrícula (no pendiente
-     * de pago) cuyo registro cae en el rango pedido. El rango se aplica a {@code fecha_matricula}.
-     */
     String ALCANCE_ACADEMICO = """
             from Matricula m
             join m.curso c join m.usuario u join u.persona p
@@ -205,10 +213,6 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Long> {
             @Param("texto") String texto, @Param("cursoId") Long cursoId, @Param("modalidad") String modalidad,
             @Param("desde") Instant desde, @Param("hasta") Instant hasta, Pageable pageable);
 
-    /**
-     * HU-035/HU-036 — Gestión administrativa de certificados: una fila por matrícula con acceso (no pendiente
-     * de pago), filtrable por alumno, curso y por la situación de su certificado.
-     */
     String ALCANCE_GESTION_CERTIFICADOS = """
             from Matricula m join m.usuario u join u.persona p join m.curso c
             where m.estado <> 'PENDIENTE_PAGO'

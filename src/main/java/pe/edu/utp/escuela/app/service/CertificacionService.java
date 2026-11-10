@@ -58,22 +58,6 @@ import pe.edu.utp.escuela.app.repository.PersonaRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.service.AvanceAcademicoService.AvanceAcademico;
 
-/**
- * HU-032 — Obtener el certificado. Centraliza el cumplimiento de las condiciones ACTIVAS del curso
- * ({@link AvanceAcademicoService}), la finalización, la fecha de emisión, la confirmación de datos y
- * la emisión del documento.
- *
- * <p>Estados que ve el alumno antes de emitir: PENDIENTE_REQUISITOS (falta una condición, incluido un
- * examen con respuesta abierta sin calificar), PROGRAMADO (cumplió pero espera su fecha), PENDIENTE_DATOS
- * (llegó la fecha y falta confirmar nombres) y LISTO_PARA_EMITIR (espera cero: el alumno decide generar
- * o seguir mejorando). Después de emitir solo existe VIGENTE o ANULADO.
- *
- * <p>Fechas, en {@code America/Lima}: {@code fecha_base = max(finalización, fecha_fin del curso)} y la
- * emisión programada es esa fecha más los días de espera, a las 00:00. Con espera mayor que cero el
- * certificado se emite solo ese día si los datos están confirmados; con espera cero lo emite el alumno
- * cuando lo decide. Emitir congela nota, nivel y datos y cierra los intentos calificados (los de
- * práctica siguen); la finalización ya registrada se conserva aunque la matrícula venza o se cancele.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -109,13 +93,10 @@ public class CertificacionService {
 
     private final SecureRandom random = new SecureRandom();
 
-    /** Resultado del cálculo de situación; {@code emitirYa} indica que corresponde emitir sin pedirle nada al alumno. */
     private record Situacion(Matricula matricula, AvanceAcademico avance, LogroCertificacion logro, Certificado certificado,
             String estado, String mensaje, boolean emitirYa, LocalDate fechaBase, int espera, boolean condicionesActivas,
             BigDecimal nota, String nivel) {
     }
-
-    // =========================================================== API del alumno ==
 
     @Transactional
     public CertificacionResponse consultar(Long cursoId) {
@@ -128,7 +109,6 @@ public class CertificacionService {
         return respuesta(s);
     }
 
-    /** Guarda y confirma los nombres y apellidos a imprimir. Se puede repetir mientras no se haya emitido. */
     @Transactional
     public CertificacionResponse confirmarDatos(Long cursoId, ConfirmarDatosRequest peticion) {
         Matricula matricula = matriculaDelAlumno(cursoId);
@@ -140,9 +120,8 @@ public class CertificacionService {
                     : "Tu certificado ya fue emitido: sus datos no se pueden cambiar.");
         }
         Persona persona = matricula.getUsuario().getPersona();
-        persona.setNombres(limpiar(peticion.nombres()));
-        persona.setApellidoPaterno(limpiar(peticion.apellidoPaterno()));
-        persona.setApellidoMaterno(limpiar(peticion.apellidoMaterno()));
+        persona.confirmarNombres(limpiar(peticion.nombres()), limpiar(peticion.apellidoPaterno()),
+                limpiarOpcional(peticion.apellidoMaterno()));
         personas.save(persona);
 
         logro.setNombresConfirmados(persona.nombreCompleto());
@@ -151,7 +130,6 @@ public class CertificacionService {
         logros.save(logro);
 
         Situacion s = evaluar(matricula);
-        // Si la fecha programada ya pasó, la emisión continúa en cuanto se confirman los datos.
         if (s.emitirYa()) {
             emitir(s, "AUTOMATICA");
             s = evaluar(matricula);
@@ -159,7 +137,6 @@ public class CertificacionService {
         return respuesta(s);
     }
 
-    /** "Generar certificado ahora": solo con espera cero y todo en regla. Congela nota, nivel y datos. */
     @Transactional
     public CertificacionResponse emitirAhora(Long cursoId) {
         Matricula matricula = matriculaDelAlumno(cursoId);
@@ -176,11 +153,6 @@ public class CertificacionService {
         return respuesta(evaluar(matricula));
     }
 
-    /**
-     * Entrega el PDF a su dueño (o a un administrador). El PDF nunca viaja por correo. Si el archivo no existe en el
-     * almacenamiento (p. ej. un certificado cargado por script, o una carpeta restaurada), se vuelve a generar con los
-     * datos congelados del certificado: el documento es el mismo y su código no cambia.
-     */
     @Transactional
     public Descarga descargar(String codigo) {
         Certificado certificado = certificados.findByCodigo(codigo)
@@ -202,7 +174,6 @@ public class CertificacionService {
         return new Descarga(archivo, "certificado-" + certificado.getCodigo() + ".pdf");
     }
 
-    /** Vuelve a dibujar el PDF de un certificado vigente a partir de lo congelado y lo guarda donde corresponde. */
     private Resource regenerarPdf(Certificado c) {
         List<CertificadoFirmante> firmantes = certificadoFirmantes.findByCertificado_IdOrderByOrdenAsc(c.getId());
         var curso = c.getLogro().getMatricula().getCurso();
@@ -217,15 +188,11 @@ public class CertificacionService {
     public record Descarga(Resource archivo, String nombre) {
     }
 
-    // ============================================================ reevaluación ==
-
-    /** Un cambio en el avance (lección, examen, asistencia) reevalúa la certificación, sin afectar a quien lo originó. */
     @TransactionalEventListener(fallbackExecution = true)
     public void alCambiarElAvance(ReevaluarCertificacionEvent evento) {
         reevaluarSeguro(evento.matriculaId());
     }
 
-    /** Revisa los logros que dependen del tiempo (espera de emisión, datos pendientes). */
     @Scheduled(fixedDelay = 300_000, initialDelay = 90_000)
     public void procesarPendientes() {
         for (LogroCertificacion logro : logros.findByEstadoIn(List.of(LogroCertificacion.ESPERA, LogroCertificacion.DATOS_PENDIENTES))) {
@@ -258,9 +225,6 @@ public class CertificacionService {
         return definicion;
     }
 
-    // ============================================================== situación ==
-
-    /** Calcula (y deja registrada en el logro) la situación del certificado de una matrícula. */
     private Situacion evaluar(Matricula matricula) {
         Curso curso = matricula.getCurso();
         LogroCertificacion logro = logroDe(matricula);
@@ -284,8 +248,6 @@ public class CertificacionService {
         }
 
         Instant ahora = clock.instant();
-        // La finalización se registra una vez y se conserva: vencer o cancelar después no la deshace.
-        // HU-038: cancelar un curso no crea finalizaciones; solo conserva las que ya existían.
         boolean cursoCancelado = "CANCELADO".equals(curso.getEstadoCurso().getCodigo());
         if (logro.getFechaFinalizacion() == null && condicionesActivas && avance.cumpleTodo() && !cursoCancelado) {
             logro.setFechaFinalizacion(ahora);
@@ -310,7 +272,7 @@ public class CertificacionService {
                 fechaBase = curso.getFechaFin();
             }
             programada = fechaBase.plusDays(espera).atStartOfDay(LIMA).toInstant();
-            boolean datos = logro.getDatosConfirmadosEn() != null;
+            boolean datos = !matricula.getUsuario().getPersona().isCertificadoNombresPendientes();
             if (ahora.isBefore(programada)) {
                 estado = "PROGRAMADO";
                 mensaje = espera > 0
@@ -322,7 +284,6 @@ public class CertificacionService {
                 estado = "PENDIENTE_DATOS";
                 mensaje = "Confirma tus nombres y apellidos tal como quieres que aparezcan en tu certificado.";
             } else if (espera > 0) {
-                // Llegó la fecha con los datos confirmados: se emite sola.
                 estado = "PROGRAMADO";
                 mensaje = "Tu certificado se está emitiendo.";
                 emitirYa = true;
@@ -346,20 +307,12 @@ public class CertificacionService {
                 condicionesActivas, nota, nivel);
     }
 
-    /** Normal desde la nota mínima; Refrendado desde el umbral configurado y solo si el curso tiene entidad. */
     private static String nivelPara(ReglaCurso regla, Curso curso, BigDecimal nota) {
         boolean refrendado = regla.isRequiereExamenes() && nota != null && curso.getEntidadCertificadora() != null
                 && nota.compareTo(regla.getNotaRefrendado()) >= 0;
         return refrendado ? "REFRENDADO" : "NORMAL";
     }
 
-    // ================================================================= emisión ==
-
-    /**
-     * HU-035 — Emite un certificado excepcional que {@code CertificadoAdminService} ya validó (motivo, datos
-     * confirmados, ausencia de certificado y de revisiones pendientes). Nunca elige el nivel: lo decide la
-     * nota definitiva con los umbrales del curso; sin nota, el nivel es Normal y no se imprime ninguna.
-     */
     Certificado emitirExcepcional(Matricula matricula, String motivo, Long administradorId, Instant fechaFinalizacion) {
         Situacion base = evaluar(matricula);
         LogroCertificacion logro = base.logro();
@@ -375,10 +328,6 @@ public class CertificacionService {
         return emitir(s, "MANUAL", motivo, administradorId);
     }
 
-    /**
-     * Confirma, en nombre del alumno, los nombres y apellidos que se imprimirán. Solo la usa la emisión excepcional
-     * de administración cuando el alumno no los confirmó: no toca los datos de su cuenta, solo lo que se imprime.
-     */
     void confirmarNombresAdministrativos(Matricula matricula, String nombres) {
         LogroCertificacion logro = logroDe(matricula);
         logro.setNombresConfirmados(limpiar(nombres));
@@ -404,16 +353,14 @@ public class CertificacionService {
         c.setEstado(Certificado.VIGENTE);
         c.setTipoEmision(tipoEmision);
         c.setNivel(s.nivel());
-        c.setNombresImpresos(logro.getNombresConfirmados());
+        c.setNombresImpresos("MANUAL".equals(tipoEmision) && logro.getNombresConfirmados() != null
+                ? logro.getNombresConfirmados() : matricula.getUsuario().getPersona().nombreCompleto());
         c.setTituloCursoImpreso(curso.getTitulo());
         c.setTipoCursoImpreso(curso.getTipoCurso() != null ? curso.getTipoCurso().getNombre() : "Curso");
         c.setTemarioImpreso(temarioDe(curso));
-        // Cursos publicados antes del código de registro lo reciben al emitir su primer certificado.
         codigosRegistro.asignar(curso);
         c.setCodigoRegistroImpreso(curso.getCodigoRegistro());
         c.setHorasImpresas(curso.getHorasAcademicas() != null ? curso.getHorasAcademicas() : BigDecimal.ZERO);
-        // El periodo impreso es el del curso: en vivo e híbrido siempre lo tienen; un virtual puede no tener fechas, tener
-        // solo un inicio o un rango. Nunca se usan las fechas personales del alumno.
         LocalDate inicio = curso.getFechaInicio();
         LocalDate fin = curso.getFechaFin();
         c.setFechaInicioImpresa(inicio);
@@ -463,10 +410,6 @@ public class CertificacionService {
         return c;
     }
 
-    /**
-     * Lo que se dictó, tomado del contenido del curso: cada módulo activo es una sesión y sus lecciones activas, las
-     * viñetas. Se congela en el certificado para que cambios posteriores del curso no alteren lo ya emitido.
-     */
     private String temarioDe(Curso curso) {
         List<Modulo> modulosActivos = modulos.findByCursoIdAndActivoTrueOrderByOrdenAsc(curso.getId());
         if (modulosActivos.isEmpty()) {
@@ -483,7 +426,6 @@ public class CertificacionService {
                 temario.append('\n');
             }
             String titulo = modulo.getTitulo().strip();
-            // Un módulo que ya se titula «Sesión 1: …» se imprime tal cual; si no, se numera como «Módulo n: …».
             temario.append("# ").append(titulo.matches("^\\p{L}+\\s+\\d+\\s*[:.\\-].*") ? titulo : "Módulo " + numero + ": " + titulo).append('\n');
             numero++;
             for (Leccion leccion : porModulo.getOrDefault(modulo.getId(), List.of())) {
@@ -507,9 +449,6 @@ public class CertificacionService {
         throw new IllegalStateException("No pudimos generar un código único para el certificado.");
     }
 
-    // ================================================================== correos ==
-
-    /** Un correo, una sola vez, cuando ya cumple todo y solo faltan sus datos. */
     private void pedirDatos(Matricula matricula) {
         String tipo = "CERT_DATOS_" + matricula.getId();
         if (notificaciones.existsByUsuario_IdAndTipo(matricula.getUsuario().getId(), tipo)) {
@@ -527,7 +466,6 @@ public class CertificacionService {
                         "enlace", frontendBaseUrl + "/aula/" + matricula.getCurso().getId()));
     }
 
-    /** El fallo del correo queda registrado; nunca elimina el certificado ni reabre nada. */
     private void enviar(Matricula matricula, String tipo, String asunto, String plantilla, Map<String, String> campos) {
         Notificacion n = new Notificacion();
         n.setUsuario(matricula.getUsuario());
@@ -544,8 +482,6 @@ public class CertificacionService {
         }
         notificaciones.save(n);
     }
-
-    // ================================================================ respuesta ==
 
     private CertificacionResponse respuesta(Situacion s) {
         Matricula m = s.matricula();
@@ -572,14 +508,11 @@ public class CertificacionService {
                 s.nota(), s.nivel(), entidad, logro.getFechaFinalizacion(), s.fechaBase(),
                 logro.getFechaEmisionProgramada(), s.espera(), s.espera() > 0,
                 new DatosCertificado(p.getNombres(), p.getApellidoPaterno(), p.getApellidoMaterno(),
-                        logro.getDatosConfirmadosEn() != null, logro.getDatosConfirmadosEn()),
-                // Puede confirmar/corregir sus datos desde que finaliza y mientras no haya emitido.
+                        !p.isCertificadoNombresPendientes(), logro.getDatosConfirmadosEn()),
                 finalizado && !emitido,
                 !emitido && fechaLlegada && "LISTO_PARA_EMITIR".equals(s.estado()),
                 emitidoDto);
     }
-
-    // =================================================================== helpers ==
 
     private Matricula matriculaDelAlumno(Long cursoId) {
         if (!actual.get().hasRole("ALUMNO")) {
@@ -601,5 +534,9 @@ public class CertificacionService {
 
     private static String limpiar(String valor) {
         return valor.strip().replaceAll("\\s+", " ");
+    }
+
+    private static String limpiarOpcional(String valor) {
+        return valor == null || valor.isBlank() ? null : limpiar(valor);
     }
 }

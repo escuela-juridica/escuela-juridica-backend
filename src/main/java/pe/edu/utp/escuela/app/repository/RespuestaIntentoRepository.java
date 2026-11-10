@@ -22,17 +22,12 @@ public interface RespuestaIntentoRepository extends JpaRepository<RespuestaInten
     @EntityGraph(attributePaths = "opciones")
     Optional<RespuestaIntento> findByIntentoExamen_IdAndPregunta_Id(Long intentoId, Long preguntaId);
 
-    /** HU-043: respuestas abiertas por revisar de cada matrícula y la fecha límite más cercana. */
     @Query("select new pe.edu.utp.escuela.app.dto.PendienteRevisionRow(r.intentoExamen.matricula.id, count(r), "
             + "min(r.fechaLimiteRevision)) from RespuestaIntento r "
             + "where r.estadoRevision = 'PENDIENTE' and r.intentoExamen.matricula.id in :matriculaIds "
             + "group by r.intentoExamen.matricula.id")
     List<PendienteRevisionRow> pendientesPorMatricula(@Param("matriculaIds") Collection<Long> matriculaIds);
 
-    /**
-     * HU-030: intentos con respuestas abiertas por revisar, uno por intento y con su fecha límite
-     * más cercana. La bandeja los filtra por plazo y los ordena por esa fecha.
-     */
     @Query("select new pe.edu.utp.escuela.app.dto.BandejaRevisionRow(i.id, m.id, "
             + "concat(p.nombres, ' ', p.apellidoPaterno), u.correo, c.id, c.titulo, e.id, e.titulo, i.numeroIntento, "
             + "i.enviadoEn, min(r.fechaLimiteRevision), count(r)) "

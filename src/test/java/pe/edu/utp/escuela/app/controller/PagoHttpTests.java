@@ -36,8 +36,6 @@ import pe.edu.utp.escuela.app.mail.HtmlMailMessage;
 import pe.edu.utp.escuela.app.repository.EventoPagoRepository;
 import pe.edu.utp.escuela.app.repository.PagoRepository;
 
-/** EP06 · HU-047 — Matrícula pagada con Culqi por HTTP: inicio del pago, token, resultados aprobado, rechazado,
- * error y pendiente, reintento, consulta de órdenes y webhook. Culqi se reemplaza por un doble: no hay red. */
 class PagoHttpTests extends HttpIntegracionBase {
 
     private static final String USUARIO_WEBHOOK = "culqi-webhook";
@@ -96,8 +94,6 @@ class PagoHttpTests extends HttpIntegracionBase {
     private static String autorizacionWebhook(String usuario, String clave) {
         return "Basic " + Base64.getEncoder().encodeToString((usuario + ":" + clave).getBytes(StandardCharsets.UTF_8));
     }
-
-    // ------------------------------------------------------------------------------------ iniciar --
 
     @Test
     void sinSesionNoSeIniciaUnPago() throws Exception {
@@ -209,8 +205,6 @@ class PagoHttpTests extends HttpIntegracionBase {
                 .andExpect(jsonPath("$.message").value("Ya tienes una matrícula en este curso."));
         assertEquals(0, pagos.count());
     }
-
-    // ---------------------------------------------------------------------------------- resultados --
 
     @Test
     void unPagoAprobadoActivaLaMatriculaEmiteConstanciaYEnviaElCorreo() throws Exception {
@@ -362,8 +356,6 @@ class PagoHttpTests extends HttpIntegracionBase {
                 .andExpect(jsonPath("$.message").value("Este curso fue cancelado: ya no se puede completar el pago."));
         verify(culqi, times(0)).cobrar(any());
     }
-
-    // ------------------------------------------------------------------- consulta de órdenes / webhook --
 
     @Test
     void consultarUnPagoPendienteReflejaLaOrdenPagadaEnCulqi() throws Exception {

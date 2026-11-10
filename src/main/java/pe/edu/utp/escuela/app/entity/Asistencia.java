@@ -14,10 +14,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * Asistencia a una sesion en vivo (HU-026 la registra automaticamente al abrir el enlace dentro
- * de la ventana; HU-027 permite corregirla despues de realizada).
- */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -38,7 +34,6 @@ public class Asistencia {
     @JoinColumn(name = "leccion_id", nullable = false)
     private Leccion leccion;
 
-    /** PENDIENTE | PRESENTE | AUSENTE | JUSTIFICADA */
     @Column(nullable = false, length = 15)
     private String estado;
 

@@ -5,13 +5,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * HU-035 — Lo que administración revisa antes de emitir un certificado excepcional: avance real,
- * nota y nivel que se congelarían, datos confirmados por el alumno y, si existe, el certificado.
- * Incluye también lo que se imprimiría o ya se imprimió: horas, tipo de curso, periodo y firmantes; {@code fechaFinCurso}
- * viene vacía cuando el fin lo marca la finalización del alumno.
- * {@code bloqueo} explica en palabras por qué no se puede emitir; vacío cuando sí se puede.
- */
 public record EmisionManualSituacionResponse(
         Long matriculaId,
         String alumno,
@@ -39,11 +32,9 @@ public record EmisionManualSituacionResponse(
         CertificadoResumen certificado,
         String bloqueo) {
 
-    /** Firmante tal como figura (o figuraría) en el certificado. */
     public record FirmanteVista(String nombre, String cargo) {
     }
 
-    /** Certificado ya emitido para esa matrícula. */
     public record CertificadoResumen(
             String codigo,
             String estado,

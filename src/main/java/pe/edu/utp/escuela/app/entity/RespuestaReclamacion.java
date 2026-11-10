@@ -14,10 +14,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * HU-040 — Respuesta institucional a una queja o reclamo. Se conserva antes de intentar el envío y nunca se edita:
- * un envío fallido o un reenvío reutilizan este mismo texto y su fecha original. Solo existe una por caso.
- */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -44,15 +40,12 @@ public class RespuestaReclamacion {
     @Column(name = "respondido_por_usuario_id", nullable = false)
     private Long respondidoPorUsuarioId;
 
-    /** PENDIENTE (aún no se envió), ENVIADO o ERROR (el último intento falló y el caso sigue pendiente). */
     @Column(name = "estado_envio", nullable = false, length = 15)
     private String estadoEnvio = PENDIENTE;
 
-    /** Momento del primer envío aceptado. */
     @Column(name = "enviado_en")
     private Instant enviadoEn;
 
-    /** Fecha original de la respuesta: no cambia aunque se reenvíe. */
     @Column(name = "creado_en", nullable = false)
     private Instant creadoEn;
 }

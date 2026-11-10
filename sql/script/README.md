@@ -13,6 +13,12 @@ fuente vigente para nuevas instalaciones y reemplaza los scripts incrementales a
 
 Los tres bloques se ejecutan dentro de una sola transacción.
 
+## Script de demostración con tres cursos
+
+`esejur-base-de-datos-demo.sql` crea la misma estructura (tablas, restricciones y comentarios) pero carga solo los datos base (roles, catálogos, administrador, docentes y firmantes), el alumno de demostración y **tres cursos gratuitos con la misma estructura**: «Procedimiento Administrativo Práctico», «Contratación Pública Práctica» y «Redacción Jurídica Práctica». Cada uno es un diplomado virtual de 120 horas con 4 módulos, 8 lecciones (video, PDF y lecturas), un examen final de 30 minutos en modo una por una (la respuesta correcta es siempre la primera opción) y certificado inmediato (0 días de espera) que imprime la nota y las horas.
+
+Se ejecuta en lugar del script completo, nunca junto con él. Los cursos reciben los ids 1, 2 y 3, por lo que los PDF deben estar en `uploads/cursos/1/`, `uploads/cursos/2/` y `uploads/cursos/3/` del backend. El script se genera a partir del completo; si cambias el contenido de un curso, ajusta el bloque correspondiente al final del archivo.
+
 ## Orden de ejecución
 
 Para instalar o reconstruir completamente una base de desarrollo se ejecuta únicamente:
@@ -45,10 +51,11 @@ proyecto, estos scripts no crean triggers, funciones, procedimientos ni vistas.
 - Contraseña de demostración para las cuentas: `Marco1415@`.
 - Historial no vigente de verificación y recuperación, sin códigos ni tokens activos.
 - Alumno de demostración del flujo completo: `alumno.demo@escuelajuridica.edu.pe` (contraseña `Marco1415@`), sin matrícula, y el curso 
-  «Curso Práctico de Procedimiento Administrativo» (S/ 20, virtual) con 3 lecciones y un examen final automático, para mostrar pagar, 
-  estudiar y generar el certificado.
-- Quince cursos de distintas modalidades con descripcion, beneficios, docentes, dos modulos con sus lecciones y un examen por curso. Las fechas de inicio, cierre de matricula y sesiones en vivo se calculan a partir del dia de ejecucion del script.
+  «Procedimiento Administrativo Práctico» (diplomado gratuito y virtual de 120 horas, cuyo certificado imprime la nota y las horas) con 4 módulos, 8 lecciones y un examen final automático de 4 preguntas, para mostrar 
+  la matrícula gratuita, estudiar y generar el certificado al instante (0 días de espera). La respuesta correcta de cada pregunta es siempre la primera opción, y el examen dura 30 minutos y se rinde en modo una por una (sin volver atrás y sin dejar preguntas en blanco). Cada lección trae video, PDF descargables y lecturas: los PDF están en `uploads/cursos/31/` del backend y esa carpeta debe copiarse junto con el script.
+- Treinta cursos de distintas modalidades, tipos y categorias, con descripcion, imagen de portada, beneficios, docentes, dos o tres modulos con sus lecciones y un examen por curso. Las fechas de inicio, cierre de matricula y sesiones en vivo se calculan a partir del dia de ejecucion del script.
 - Matrículas gratuita, manual, exonerada y pagada con Culqi.
+- Las portadas de esos cursos son archivos de la carpeta `uploads/portadas/` del backend (rutas `/uploads/portadas/<id del curso>-<marca de tiempo>.jpg`, el mismo formato que usa el panel al subir una portada); en un servidor nuevo hay que copiar esa carpeta junto con el script.
 - Progreso, asistencia, intento automático/abierto, certificado y reclamación de ejemplo.
 - Excepción académica, corrección de certificado y pago aprobado tras una cancelación para probar
   los recorridos excepcionales.
