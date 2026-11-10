@@ -13,6 +13,12 @@ fuente vigente para nuevas instalaciones y reemplaza los scripts incrementales a
 
 Los tres bloques se ejecutan dentro de una sola transacción.
 
+## Script de demostración con tres cursos
+
+`esejur-base-de-datos-demo.sql` crea la misma estructura (tablas, restricciones y comentarios) pero carga solo los datos base (roles, catálogos, administrador, docentes y firmantes), el alumno de demostración y **tres cursos gratuitos con la misma estructura**: «Procedimiento Administrativo Práctico», «Contratación Pública Práctica» y «Redacción Jurídica Práctica». Cada uno es un diplomado virtual de 120 horas con 4 módulos, 8 lecciones (video, PDF y lecturas), un examen final de 30 minutos en modo una por una (la respuesta correcta es siempre la primera opción) y certificado inmediato (0 días de espera) que imprime la nota y las horas.
+
+Se ejecuta en lugar del script completo, nunca junto con él. Los cursos reciben los ids 1, 2 y 3, por lo que los PDF deben estar en `uploads/cursos/1/`, `uploads/cursos/2/` y `uploads/cursos/3/` del backend. El script se genera a partir del completo; si cambias el contenido de un curso, ajusta el bloque correspondiente al final del archivo.
+
 ## Orden de ejecución
 
 Para instalar o reconstruir completamente una base de desarrollo se ejecuta únicamente:
