@@ -15,11 +15,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * HU-032 — Consolida el cumplimiento de una matrícula frente a las reglas de certificación y
- * conserva lo que se necesita para emitir: cuándo finalizó, cuándo corresponde emitir y qué datos
- * confirmó el alumno. Una fila por matrícula.
- */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -42,7 +37,6 @@ public class LogroCertificacion {
     @JoinColumn(name = "matricula_id", nullable = false, unique = true)
     private Matricula matricula;
 
-    /** EN_PROGRESO | ESPERA | DATOS_PENDIENTES | LISTO | EMITIDO */
     @Column(nullable = false, length = 25)
     private String estado = EN_PROGRESO;
 
@@ -55,11 +49,9 @@ public class LogroCertificacion {
     @Column(name = "asistencia_final", precision = 5, scale = 2)
     private BigDecimal asistenciaFinal;
 
-    /** NORMAL | REFRENDADO, decidido por las reglas al emitir. */
     @Column(length = 15)
     private String nivel;
 
-    /** Momento en que se cumplieron todas las condiciones activas; una vez registrado se conserva. */
     @Column(name = "fecha_finalizacion")
     private Instant fechaFinalizacion;
 
@@ -69,7 +61,6 @@ public class LogroCertificacion {
     @Column(name = "datos_confirmados_en")
     private Instant datosConfirmadosEn;
 
-    /** Nombres y apellidos tal como el alumno los confirmó para imprimirlos. */
     @Column(name = "nombres_confirmados", length = 240)
     private String nombresConfirmados;
 

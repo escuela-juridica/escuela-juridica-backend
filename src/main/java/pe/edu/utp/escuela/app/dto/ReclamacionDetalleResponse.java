@@ -5,10 +5,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * HU-040 — Expediente completo de una queja o reclamo para la administración: el formulario original tal como se
- * presentó, las imágenes, la respuesta (si ya se redactó) y cada intento de envío por correo.
- */
 public record ReclamacionDetalleResponse(
         Long id,
         String codigo,
@@ -38,7 +34,6 @@ public record ReclamacionDetalleResponse(
     public record Adjunto(Long id, String nombre, String tipoMime, long tamanoBytes) {
     }
 
-    /** La respuesta redactada: su texto y su fecha original no cambian al reenviar. */
     public record Respuesta(String texto, String respondidoPor, Instant creadoEn, Instant enviadoEn,
             String estadoEnvio, String correoDestino) {
     }

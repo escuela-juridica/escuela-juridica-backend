@@ -10,7 +10,6 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 
-/** HU-039 — Datos del formulario del Libro de Reclamaciones. Todo es obligatorio salvo las imágenes. */
 public record PresentarReclamacionRequest(
         @NotBlank @Pattern(regexp = "QUEJA|RECLAMO", message = "Elige si es una queja o un reclamo.") String tipo,
         @NotBlank @Pattern(regexp = "DNI|CE|PASAPORTE|RUC", message = "Elige el tipo de documento.") String tipoDocumento,

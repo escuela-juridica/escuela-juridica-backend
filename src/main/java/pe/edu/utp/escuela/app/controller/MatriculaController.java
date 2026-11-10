@@ -52,8 +52,6 @@ public class MatriculaController {
         return ResponseEntity.ok(service.consultarAdvertenciaAdministrativa(cursoId));
     }
 
-    // ---------------------------------------------------------------- HU-020 --
-
     @GetMapping("/admin/matriculas/{matriculaId}")
     public ResponseEntity<MatriculaDetalleAdministrativaResponse> detalle(@PathVariable Long matriculaId) {
         return ResponseEntity.ok(service.detalleAdministrativo(matriculaId));
@@ -90,8 +88,6 @@ public class MatriculaController {
     public ResponseEntity<ReenvioMatriculaResponse> reenviarConfirmacion(@PathVariable Long matriculaId) {
         return ResponseEntity.ok(service.reenviarConfirmacion(matriculaId));
     }
-
-    // ---------------- HU-041: REPORTE DE MATRÍCULAS ----------------
 
     @GetMapping("/admin/reportes/matriculas")
     public ResponseEntity<PageResponse<ReporteMatriculaResponse>> reporte(

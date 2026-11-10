@@ -110,7 +110,6 @@ public class Curso extends RegistroAuditable {
     @Column(name = "publicado_en")
     private Instant publicadoEn;
 
-    /** Código de registro, p. ej. «02-DP_2026»: número del curso dentro de su tipo y año. Se asigna al publicarlo. */
     @Column(name = "codigo_registro", unique = true, length = 20)
     private String codigoRegistro;
 
@@ -123,7 +122,6 @@ public class Curso extends RegistroAuditable {
     @Column(name = "cerrado_en")
     private Instant cerradoEn;
 
-    /** HU-038 — Cancelación excepcional completa: momento y motivo obligatorio. */
     @Column(name = "cancelado_en")
     private Instant canceladoEn;
 

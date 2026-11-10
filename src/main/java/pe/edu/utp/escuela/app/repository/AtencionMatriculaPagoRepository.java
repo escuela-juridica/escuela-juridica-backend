@@ -12,10 +12,6 @@ import pe.edu.utp.escuela.app.entity.AtencionMatriculaPago;
 
 public interface AtencionMatriculaPagoRepository extends JpaRepository<AtencionMatriculaPago, Long> {
 
-    /**
-     * HU-037 — Bandeja de excepciones: las pendientes primero y, dentro de cada grupo, las más recientes. El texto
-     * busca por curso, correo o nombre del alumno.
-     */
     @EntityGraph(attributePaths = { "matricula", "matricula.curso", "matricula.usuario", "matricula.usuario.persona",
             "pago" })
     @Query(value = """
@@ -44,7 +40,6 @@ public interface AtencionMatriculaPagoRepository extends JpaRepository<AtencionM
             "matricula.usuario.persona", "pago" })
     Optional<AtencionMatriculaPago> findWithDetalleById(Long id);
 
-    /** El sobrecupo de un curso es una sola alerta atendible, aunque lo originen varias aprobaciones. */
     Optional<AtencionMatriculaPago> findFirstByTipoAndEstadoAndMatricula_Curso_IdOrderByIdAsc(String tipo, String estado,
             Long cursoId);
 

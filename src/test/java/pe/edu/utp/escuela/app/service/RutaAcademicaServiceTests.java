@@ -36,7 +36,6 @@ import pe.edu.utp.escuela.app.repository.ReglaCursoRepository;
 import pe.edu.utp.escuela.app.service.RutaAcademicaService.EstadoExamen;
 import pe.edu.utp.escuela.app.service.RutaAcademicaService.RutaAcademica;
 
-/** EP04 · HU-025 — Ruta académica: qué lecciones quedan bloqueadas y por qué, y cuándo un examen puede rendirse. */
 @ExtendWith(MockitoExtension.class)
 class RutaAcademicaServiceTests {
 
@@ -160,7 +159,6 @@ class RutaAcademicaServiceTests {
 
         RutaAcademica ruta = service.calcular(matricula);
 
-        // l12 queda sin completar pero cancelada: no frena al primer contenido del módulo siguiente.
         assertNull(ruta.motivoBloqueo(21L));
     }
 

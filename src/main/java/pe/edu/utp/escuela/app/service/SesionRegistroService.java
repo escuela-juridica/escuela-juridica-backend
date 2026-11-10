@@ -7,7 +7,6 @@ import pe.edu.utp.escuela.app.dto.SesionResponse;
 import pe.edu.utp.escuela.app.entity.Usuario;
 import pe.edu.utp.escuela.app.security.JwtService;
 
-/** Solo inicia la sesión del alumno recién creado, como exige HU-002. */
 @Service
 @RequiredArgsConstructor
 public class SesionRegistroService {

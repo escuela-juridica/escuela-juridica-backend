@@ -19,7 +19,6 @@ public interface TipoCursoRepository extends JpaRepository<TipoCurso, Long> {
     boolean existsBySiglaRegistroIgnoreCase(String sigla);
     boolean existsBySiglaRegistroIgnoreCaseAndIdNot(String sigla, Long id);
 
-    /** Bloquea la fila del tipo mientras dura la transacción: serializa la numeración de sus cursos. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select t from TipoCurso t where t.id = :id")
     Optional<TipoCurso> bloquearPorId(@Param("id") Long id);

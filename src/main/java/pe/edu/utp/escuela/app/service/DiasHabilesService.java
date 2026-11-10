@@ -8,11 +8,6 @@ import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-/**
- * Calendario de días hábiles del Perú: se excluyen sábados, domingos y feriados oficiales. Los feriados
- * fijos y Semana Santa se calculan; los que el Gobierno decrete cada año (días no laborables o
- * feriados extraordinarios) se agregan con {@code esejur.feriados-adicionales} (fechas ISO separadas por comas).
- */
 @Service
 public class DiasHabilesService {
 
@@ -44,10 +39,6 @@ public class DiasHabilesService {
         return fecha.equals(pascua.minusDays(3)) || fecha.equals(pascua.minusDays(2));
     }
 
-    /**
-     * Fecha máxima de respuesta: el día hábil posterior a la presentación es el día 1 y el plazo
-     * corre hasta el día {@code diasHabiles}. Presentar en un día no hábil no adelanta el conteo.
-     */
     public LocalDate sumarDiasHabiles(LocalDate presentacion, int diasHabiles) {
         LocalDate fecha = presentacion;
         int contados = 0;
@@ -60,10 +51,6 @@ public class DiasHabilesService {
         return fecha;
     }
 
-    /**
-     * Días hábiles que faltan para {@code limite} contando desde mañana (0 si vence hoy o ya venció).
-     * HU-040 lo usa para resaltar los casos próximos a vencer sin cerrarlos.
-     */
     public int diasHabilesHasta(LocalDate hoy, LocalDate limite) {
         int dias = 0;
         for (LocalDate fecha = hoy.plusDays(1); !fecha.isAfter(limite); fecha = fecha.plusDays(1)) {
@@ -74,7 +61,6 @@ public class DiasHabilesService {
         return dias;
     }
 
-    /** Domingo de Pascua (algoritmo gregoriano anónimo). */
     static LocalDate pascua(int anio) {
         int a = anio % 19;
         int b = anio / 100;

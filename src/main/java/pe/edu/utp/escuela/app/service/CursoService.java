@@ -14,6 +14,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import pe.edu.utp.escuela.app.dto.ActualizarInformacionCursoRequest;
 import pe.edu.utp.escuela.app.dto.ActualizarReglasCursoRequest;
 import pe.edu.utp.escuela.app.dto.AsignarDocentesRequest;
@@ -23,6 +26,7 @@ import pe.edu.utp.escuela.app.dto.CursoEditorResponse;
 import pe.edu.utp.escuela.app.dto.CursoResumenResponse;
 import pe.edu.utp.escuela.app.dto.DocenteCursoResponse;
 import pe.edu.utp.escuela.app.dto.FirmanteCursoResponse;
+import pe.edu.utp.escuela.app.dto.ImagenSubidaResponse;
 import pe.edu.utp.escuela.app.dto.ModalidadCurso;
 import pe.edu.utp.escuela.app.dto.PageResponse;
 import pe.edu.utp.escuela.app.dto.TipoVentaCurso;
@@ -58,9 +62,6 @@ import pe.edu.utp.escuela.app.repository.TipoCursoRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.util.TextNormalizer;
 
-/** HU-010 — Crear y configurar un curso: alta en BORRADOR y edición de su información comercial y
- * temporal, docentes y firmantes. El contenido (HU-011), sesiones (HU-012), exámenes (HU-013),
- * requisitos de certificación (HU-014) y publicación (HU-015) son historias aparte. */
 @Service
 @RequiredArgsConstructor
 public class CursoService {
@@ -80,6 +81,7 @@ public class CursoService {
     private final PersonaRepository personas;
     private final FirmanteRepository firmantes;
     private final MatriculaRepository matriculas;
+    private final ArchivoAlmacenamientoService almacenamiento;
     private final CurrentUserService currentUserService;
     private final TextNormalizer textos;
     private final Clock clock;
@@ -130,13 +132,21 @@ public class CursoService {
         return detalleDe(buscarOLanzar(cursoId));
     }
 
+    @Transactional(readOnly = true)
+    public ImagenSubidaResponse subirPortada(Long cursoId, MultipartFile archivo) {
+        exigirAdministrador();
+        Curso curso = buscarOLanzar(cursoId);
+        String referencia = almacenamiento.guardarImagen("portadas", archivo, cursoId + "-" + clock.millis());
+        almacenamiento.retirarPortadasSinUso(cursoId, curso.getImagenPortadaUrl(), referencia);
+        return new ImagenSubidaResponse(referencia);
+    }
+
     @Transactional
     public CursoEditorResponse actualizarInformacion(Long cursoId, ActualizarInformacionCursoRequest p) {
         exigirAdministrador();
         Curso curso = buscarOLanzar(cursoId);
         boolean modalidadSinDefinir = curso.getModalidad() == null;
 
-        // Un curso virtual puede indicar solo el inicio o un rango (inicio y fin); el cierre de matrícula no aplica.
         LocalDate fechaFin = p.fechaFin();
         LocalDate fechaCierre = p.modalidad() == ModalidadCurso.VIRTUAL ? null : p.fechaCierreMatricula();
         validarModalidadYFechas(p.modalidad(), p.fechaInicio(), fechaFin, fechaCierre);
@@ -155,7 +165,9 @@ public class CursoService {
         curso.setTitulo(textos.requireText(p.titulo(), "Título"));
         curso.setUrlAmigable(url);
         curso.setDescripcion(textos.trimToNull(p.descripcion()));
+        String portadaAnterior = curso.getImagenPortadaUrl();
         curso.setImagenPortadaUrl(textos.trimToNull(p.imagenPortadaUrl()));
+        retirarPortadaReemplazada(portadaAnterior, curso);
         curso.setTipoCurso(referenciaOLanzar(p.tipoCursoId(), tiposCurso::findById, "El tipo de curso ya no existe."));
         curso.setCategoriaTematica(referenciaOLanzar(p.categoriaTematicaId(), categorias::findById, "La categoría ya no existe."));
         curso.setEntidadCertificadora(referenciaOLanzar(p.entidadCertificadoraId(), entidades::findById, "La entidad certificadora ya no existe."));
@@ -174,9 +186,6 @@ public class CursoService {
         curso.setVigenciaAccesoDias(p.vigenciaAccesoDias());
         curso.setBeneficios(normalizarBeneficios(p.beneficios()));
 
-        // Los valores iniciales de HU-014 dependen de la primera modalidad elegida. Después de
-        // esta asignación la administración conserva sus propias decisiones en la pestaña
-        // Certificación y una posterior edición de Información no las sobrescribe.
         if (modalidadSinDefinir) {
             aplicarReglasInicialesPorModalidad(reglaDe(cursoId), p.modalidad());
         }
@@ -184,11 +193,47 @@ public class CursoService {
         return detalleDe(curso);
     }
 
+    private static final String CARPETA_PORTADAS = "/uploads/portadas/";
+
+    private void retirarPortadaReemplazada(String anterior, Curso curso) {
+        if (anterior == null || anterior.equals(curso.getImagenPortadaUrl())) {
+            return;
+        }
+        retirarPortadaSiNadieLaUsa(anterior, curso.getId());
+    }
+
+    public void retirarPortadaDeCursoEliminado(String portada, Long cursoId) {
+        retirarPortadaSiNadieLaUsa(portada, cursoId);
+    }
+
+    private void retirarPortadaSiNadieLaUsa(String anterior, Long cursoId) {
+        if (anterior == null || !anterior.startsWith(CARPETA_PORTADAS)) {
+            return;
+        }
+        if (cursos.existsByImagenPortadaUrlAndIdNot(anterior, cursoId)) {
+            return;
+        }
+        Runnable borrar = () -> {
+            try {
+                almacenamiento.eliminar(anterior);
+            } catch (RuntimeException ignorada) {
+            }
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    borrar.run();
+                }
+            });
+        } else {
+            borrar.run();
+        }
+    }
+
     private static final int BENEFICIO_LONGITUD_MAXIMA = 150;
     private static final int BENEFICIOS_CANTIDAD_MAXIMA = 10;
 
-    /** Recorta espacios, descarta vacíos, trunca textos absurdamente largos y quita duplicados;
-     * nunca falla por esto, salvo que se pase del máximo de beneficios permitido. */
     private String[] normalizarBeneficios(List<String> entrada) {
         if (entrada == null) {
             return new String[0];
@@ -273,8 +318,6 @@ public class CursoService {
         return detalleDe(curso);
     }
 
-    // -------------------------------------------------------- HU-014 Requisitos --
-
     @Transactional(readOnly = true)
     public ReglasCursoResponse obtenerReglas(Long cursoId) {
         exigirAdministrador();
@@ -351,8 +394,6 @@ public class CursoService {
                 c.getFechaCierreMatricula(), r.getBloqueadoEn() != null || cursoIniciado(c));
     }
 
-    /** HU-016 — Una convocatoria "ha iniciado" desde que pasa a EN_CURSO; sigue siéndolo en
-     * CERRADO (nunca vuelve atrás). Antes de eso (BORRADOR, PUBLICADO) no congela nada por esto. */
     private boolean cursoIniciado(Curso curso) {
         String codigo = curso.getEstadoCurso().getCodigo();
         return "EN_CURSO".equals(codigo) || "CERRADO".equals(codigo);
@@ -365,11 +406,8 @@ public class CursoService {
         reglasCurso.save(regla);
     }
 
-    // ---------------------------------------------------------------- Validaciones --
-
     private void validarModalidadYFechas(ModalidadCurso modalidad, LocalDate inicio, LocalDate fin, LocalDate cierre) {
         if (modalidad == ModalidadCurso.VIRTUAL) {
-            // Virtual: sin fechas, solo el inicio o un rango completo (inicio y fin).
             if (fin != null && inicio == null) {
                 throw new BusinessValidationException("Para indicar la fecha de fin de un curso virtual indica también la de inicio.");
             }
@@ -425,8 +463,6 @@ public class CursoService {
             throw new BusinessValidationException("La vigencia de acceso debe ser mayor que cero días.");
         }
     }
-
-    // ---------------------------------------------------------------- Soporte --
 
     private void exigirAdministrador() {
         if (!currentUserService.get().hasRole("ADMINISTRADOR")) {

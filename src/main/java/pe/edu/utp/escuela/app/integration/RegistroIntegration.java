@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
 import pe.edu.utp.escuela.app.exception.BusinessException;
 import pe.edu.utp.escuela.app.exception.InvalidTokenException;
 
-/** No incluye implementaciones simuladas ni permite omitir dependencias obligatorias. */
 @Component
 @RequiredArgsConstructor
 public class RegistroIntegration {

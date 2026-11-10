@@ -33,11 +33,6 @@ import pe.edu.utp.escuela.app.repository.ReglaCursoRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.util.TextNormalizer;
 
-/** HU-016 — Transiciones ordinarias del ciclo de vida (BORRADOR ya cubierto en HU-010, PUBLICADO
- * en HU-015): adelantar/retrasar el inicio, cerrar anticipadamente, destacar y duplicar como una
- * nueva convocatoria independiente. CANCELADO pertenece a HU-038 (EP06): no se reconoce, ejecuta
- * ni demuestra aquí. Las transiciones automáticas por fecha corren en {@link
- * #aplicarTransicionesAutomaticas()}, un job diario sin usuario autenticado. */
 @Service
 @RequiredArgsConstructor
 public class CicloVidaCursoService {
@@ -83,9 +78,6 @@ public class CicloVidaCursoService {
         if (curso.getFechaFin() != null && p.nuevaFechaInicio().isAfter(curso.getFechaFin())) {
             throw new BusinessValidationException("La nueva fecha de inicio no puede ser posterior a la fecha de fin.");
         }
-        // No es un cambio de estado: no se registra en historial_estado_curso. El impacto en
-        // matrículas ya existentes se refleja en "tieneMatriculas" de la respuesta (advertencia,
-        // no bloqueo: retrasar antes de iniciar siempre está permitido).
         curso.setFechaInicio(p.nuevaFechaInicio());
         return cursoService.obtener(cursoId);
     }
@@ -112,11 +104,6 @@ public class CicloVidaCursoService {
         return cursoService.obtener(cursoId);
     }
 
-    /** HU-016 — "BORRADOR solo puede eliminarse si no tiene matrículas ni actividad relacionada".
-     * Un curso en BORRADOR nunca puede tener matrículas (exige publicación), así que la condición
-     * siempre se cumple; la comprobación queda por seguridad. Publicado, ni este método ni los
-     * eliminarModulo/eliminarLeccion/... de ContenidoService/ExamenService aceptan borrar: solo
-     * queda activar/desactivar. Reutiliza esas mismas cascadas en vez de duplicar la lógica aquí. */
     @Transactional
     public void eliminarCurso(Long cursoId) {
         exigirAdministrador();
@@ -131,8 +118,6 @@ public class CicloVidaCursoService {
         for (Modulo modulo : modulos.findByCurso_IdOrderByOrdenAsc(cursoId)) {
             contenidoService.eliminarModulo(modulo.getId());
         }
-        // A esta altura solo quedan los exámenes finales (sin módulo: los de módulo ya se
-        // borraron arriba, en cascada, junto con su módulo).
         for (Examen examen : examenes.findByCurso_IdOrderByOrdenAsc(cursoId)) {
             examenService.eliminarExamen(examen.getId());
         }
@@ -141,15 +126,11 @@ public class CicloVidaCursoService {
         cursoDocentes.deleteAllByCurso_Id(cursoId);
         cursoFirmantes.deleteAllByCurso_Id(cursoId);
         historial.deleteAllByCurso_Id(cursoId);
+        String portada = curso.getImagenPortadaUrl();
         cursos.delete(curso);
+        cursoService.retirarPortadaDeCursoEliminado(portada, cursoId);
     }
 
-    /** HU-016 — Nueva convocatoria BORRADOR independiente: copia información general, módulos,
-     * lecciones, materiales, exámenes, preguntas, opciones, reglas de certificación, docentes y
-     * beneficios. No copia matrículas, pagos, progreso, intentos, asistencia ni certificados (esas
-     * tablas no tienen referencia al curso de origen porque simplemente no existe nada que copiar:
-     * la copia nace sin ellas). Tampoco copia firmantes: no están en la lista de la historia y
-     * conviene revisarlos para cada convocatoria. */
     @Transactional
     public CursoEditorResponse duplicar(Long cursoId) {
         exigirAdministrador();
@@ -175,8 +156,6 @@ public class CicloVidaCursoService {
         copia.setPrecioPromocional(origen.getPrecioPromocional());
         copia.setPromocionInicioEn(origen.getPromocionInicioEn());
         copia.setPromocionFinEn(origen.getPromocionFinEn());
-        // Se copian como punto de partida; HU-015 bloqueará publicar hasta que se revisen (p. ej.
-        // una fecha de inicio ya pasada), tal como pide la historia.
         copia.setFechaInicio(origen.getFechaInicio());
         copia.setFechaFin(origen.getFechaFin());
         copia.setFechaCierreMatricula(origen.getFechaCierreMatricula());
@@ -201,7 +180,6 @@ public class CicloVidaCursoService {
         reglaCopia.setAsistenciaMinima(reglaOrigen.getAsistenciaMinima());
         reglaCopia.setSecuenciaObligatoria(reglaOrigen.isSecuenciaObligatoria());
         reglaCopia.setDiasEsperaCertificado(reglaOrigen.getDiasEsperaCertificado());
-        // bloqueadoEn queda null: es una convocatoria nueva, todavía sin congelar.
         reglasCurso.saveAndFlush(reglaCopia);
 
         int orden = 1;
@@ -230,10 +208,6 @@ public class CicloVidaCursoService {
         return cursoService.obtener(copia.getId());
     }
 
-    /** HU-016 — Transiciones que no dependen de una acción administrativa: PUBLICADO pasa a
-     * EN_CURSO al llegar su fecha de inicio (incluye VIRTUAL con fecha); EN_CURSO pasa a CERRADO al
-     * pasar su fecha de fin (aplica también a un VIRTUAL si se le indicó fecha de fin; sin ella solo
-     * cierra manualmente). Sin usuario autenticado: no llama exigirAdministrador ni currentUserService. */
     @Transactional
     @Scheduled(cron = "0 5 0 * * *", zone = "${application.time-zone}")
     public void aplicarTransicionesAutomaticas() {
@@ -245,8 +219,6 @@ public class CicloVidaCursoService {
             transicionar(curso, "CERRADO", "Cierre automático al finalizar la convocatoria.", null);
         }
     }
-
-    // ---------------------------------------------------------------- Soporte --
 
     private void transicionar(Curso curso, String codigoDestino, String motivo, Long usuarioId) {
         EstadoCurso anterior = curso.getEstadoCurso();

@@ -19,8 +19,6 @@ import pe.edu.utp.escuela.app.entity.Pago;
 import pe.edu.utp.escuela.app.entity.Usuario;
 import pe.edu.utp.escuela.app.repository.PagoRepository;
 
-/** EP06 · HU-041 / HU-044 / HU-046 — Dashboard administrativo y reporte de pagos: acceso solo para administración,
- * totales que solo suman pagos confirmados, filtros validados y exportación a Excel. */
 class DashboardYReportePagosHttpTests extends HttpIntegracionBase {
 
     private static final ZoneId LIMA = ZoneId.of("America/Lima");
@@ -41,7 +39,6 @@ class DashboardYReportePagosHttpTests extends HttpIntegracionBase {
         return pagos.saveAndFlush(pago);
     }
 
-    /** Un curso con una venta aprobada de S/ 320 y otro alumno cuyo pago fue rechazado. */
     private Curso ventaAprobadaYRechazada() {
         Curso curso = curso("PUBLICADO", "VIRTUAL", "320.00");
         Usuario comprador = alumno("Ana");
@@ -62,8 +59,6 @@ class DashboardYReportePagosHttpTests extends HttpIntegracionBase {
         LocalDate hoy = LocalDate.now(LIMA);
         return hoy.withDayOfMonth(hoy.lengthOfMonth()).toString();
     }
-
-    // ------------------------------------------------------------------------------------ dashboard --
 
     @Test
     void elDashboardSoloEsParaAdministracion() throws Exception {
@@ -87,7 +82,6 @@ class DashboardYReportePagosHttpTests extends HttpIntegracionBase {
                 .andExpect(jsonPath("$.matriculasPorCurso[0].clave").value(String.valueOf(curso.getId())))
                 .andExpect(jsonPath("$.matriculasPorCurso[0].valor").value(1))
                 .andExpect(jsonPath("$.formaIngreso[?(@.clave=='PAGO_EN_LINEA')].valor").value(1))
-                // Solo el pago aprobado suma al gráfico de ingresos; el rechazado no.
                 .andExpect(jsonPath("$.pagosPorPeriodo[?(@.monto > 0)].monto")
                         .value(org.hamcrest.Matchers.contains(320.0)));
     }
@@ -112,8 +106,6 @@ class DashboardYReportePagosHttpTests extends HttpIntegracionBase {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("La modalidad no es válida."));
     }
-
-    // ------------------------------------------------------------------------------ reporte de pagos --
 
     @Test
     void soloAdministracionConsultaElReporteDePagos() throws Exception {
@@ -176,7 +168,6 @@ class DashboardYReportePagosHttpTests extends HttpIntegracionBase {
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .andReturn().getResponse().getContentAsByteArray();
 
-        // Un .xlsx es un ZIP: empieza con la firma "PK".
         assertTrue(excel.length > 100 && excel[0] == 'P' && excel[1] == 'K');
     }
 

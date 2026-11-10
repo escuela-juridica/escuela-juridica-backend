@@ -5,10 +5,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * HU-037 — Excepción económica o de capacidad que la Escuela atiende fuera del procesamiento bancario. Pago,
- * matrícula, acceso y cupo se informan por separado: atender un caso nunca cambia el resultado de Culqi.
- */
 public record AtencionPagoResponse(
         Long id,
         String tipo,
@@ -32,7 +28,6 @@ public record AtencionPagoResponse(
             String referencia, Instant resultadoEn, String constancia) {
     }
 
-    /** {@code acceso}: CONCEDIDO solo con matrícula ACTIVA; en cualquier otro estado no hay acceso. */
     public record MatriculaInfo(String estado, String formaIngreso, Instant fechaMatricula, String acceso) {
     }
 
@@ -40,7 +35,6 @@ public record AtencionPagoResponse(
             boolean sobrecupo) {
     }
 
-    /** Otros pagos del mismo curso con la misma incidencia pendiente (el sobrecupo agrupa varias aprobaciones). */
     public record PagoRelacionado(Long pagoId, String numeroPedido, String alumno, BigDecimal importe, String estado) {
     }
 }

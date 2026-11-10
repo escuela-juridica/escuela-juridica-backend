@@ -45,22 +45,10 @@ import pe.edu.utp.escuela.app.repository.RespuestaIntentoRepository;
 import pe.edu.utp.escuela.app.repository.RevisionRespuestaRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 
-/**
- * HU-030 — Calificar respuestas abiertas (administrador). La bandeja lista los intentos en
- * PENDIENTE_REVISION ordenados por su fecha límite más cercana y separa los vencidos y los próximos
- * a vencer; vencer solo señala demora, nunca califica ni altera la respuesta.
- *
- * <p>Publicar la calificación es una sola transacción: exige un puntaje por cada respuesta abierta
- * pendiente (entre 0 y el máximo de su pregunta, ambos válidos), guarda el historial en
- * {@code revision_respuesta}, recalcula la nota del intento con la misma fórmula que la corrección
- * automática y lo pasa a CALIFICADO. Un intento ya calificado no se publica dos veces. El aviso
- * por correo va después y su fallo no revierte la nota; se puede reenviar.
- */
 @Service
 @RequiredArgsConstructor
 public class RevisionExamenService {
 
-    /** Un intento "próximo" vence en menos de este tiempo. */
     private static final Duration PROXIMO = Duration.ofHours(24);
 
     private final RespuestaIntentoRepository respuestas;
@@ -73,7 +61,6 @@ public class RevisionExamenService {
     private final CurrentUserService actual;
     private final Clock clock;
 
-    /** Filtros de la bandeja; las cadenas vacías significan "sin filtro". */
     public record Filtro(String texto, Long cursoId, String plazo) {
     }
 
@@ -86,8 +73,6 @@ public class RevisionExamenService {
         }
         Instant ahora = clock.instant();
         String texto = filtro.texto() == null ? "" : filtro.texto().strip().toLowerCase();
-        // El universo pendiente es pequeño por naturaleza; el plazo no es una columna, así que se
-        // clasifica aquí y el servidor pagina el resultado ya filtrado y ordenado por urgencia.
         List<IntentoPendienteResponse> todos = respuestas.bandejaRevision(texto, filtro.cursoId()).stream()
                 .map(f -> fila(f, ahora))
                 .filter(f -> plazo.isEmpty() || plazo.equals(f.plazo()))
@@ -116,7 +101,6 @@ public class RevisionExamenService {
         return construir(intento);
     }
 
-    /** Publica la calificación completa del intento. Idempotente por estado: un segundo intento falla. */
     @Transactional
     public RevisionIntentoResponse calificar(Long intentoId, CalificarIntentoRequest peticion) {
         exigirAdministrador();
@@ -188,12 +172,10 @@ public class RevisionExamenService {
         intentos.save(intento);
 
         avisar(intento);
-        // HU-032: la nota definitiva reevalúa finalización y certificación.
         eventos.publishEvent(new ReevaluarCertificacionEvent(intento.getMatricula().getId()));
         return construir(intento);
     }
 
-    /** Reenvía el aviso "Tu examen fue calificado" de un intento ya calificado. */
     @Transactional
     public void reenviarAviso(Long intentoId) {
         exigirAdministrador();
@@ -204,8 +186,6 @@ public class RevisionExamenService {
         }
         avisar(intento);
     }
-
-    // ------------------------------------------------------------------ internos --
 
     private IntentoPendienteResponse fila(BandejaRevisionRow f, Instant ahora) {
         long minutos = Duration.between(ahora, f.fechaLimite()).toMinutes();
@@ -261,12 +241,10 @@ public class RevisionExamenService {
                 intento.getAprobado(), intento.getCalificadoEn(), preguntas);
     }
 
-    /** El correo se pide después de publicar y un fallo queda registrado sin tocar la nota. */
     private void avisar(IntentoExamen intento) {
         Matricula matricula = intento.getMatricula();
         Notificacion n = new Notificacion();
         n.setUsuario(matricula.getUsuario());
-        // El tipo cabe en varchar(40) y es único por envío para que un reenvío no se agrupe con el anterior.
         n.setTipo("EXAMEN_CALIFICADO_" + intento.getId() + "_" + clock.millis());
         n.setDestinatario(matricula.getUsuario().getCorreo());
         n.setAsunto("Tu examen fue calificado: " + intento.getExamen().getTitulo());

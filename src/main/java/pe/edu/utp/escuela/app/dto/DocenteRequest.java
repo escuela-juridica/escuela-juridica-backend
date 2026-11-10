@@ -3,7 +3,6 @@ package pe.edu.utp.escuela.app.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-/** Un docente es un perfil público: nunca crea cuenta de acceso (ver HU-009). */
 public record DocenteRequest(
         @NotBlank @Size(max = 120) String nombres,
         @NotBlank @Size(max = 80) String apellidoPaterno,

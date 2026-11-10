@@ -12,7 +12,6 @@ import pe.edu.utp.escuela.app.entity.MaterialLeccion;
 
 public interface MaterialLeccionRepository extends JpaRepository<MaterialLeccion, Long> {
 
-    /** Para el editor administrativo: incluye materiales desactivados (quitar nunca borra). */
     @EntityGraph(attributePaths = { "recurso", "recurso.tipoMaterial" })
     List<MaterialLeccion> findByLeccion_IdOrderByOrdenAsc(Long leccionId);
 
@@ -48,7 +47,6 @@ public interface MaterialLeccionRepository extends JpaRepository<MaterialLeccion
     List<RecursoVistaPreviaRow> buscarVistaPrevia(
             @Param("slug") String slug, @Param("leccionId") Long leccionId);
 
-    /** HU-026: lecciones (de las dadas) que ya tienen al menos un material activo, p. ej. la grabación. */
     @Query("""
             select distinct ml.leccion.id from MaterialLeccion ml
             where ml.leccion.id in :leccionIds and ml.activo = true

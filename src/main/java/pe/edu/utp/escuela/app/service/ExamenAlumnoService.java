@@ -52,23 +52,6 @@ import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.service.RutaAcademicaService.EstadoExamen;
 import pe.edu.utp.escuela.app.service.RutaAcademicaService.RutaAcademica;
 
-/**
- * HU-028 — Rendir un examen de calificación automática. HU-029 — Rendir un examen con respuesta
- * abierta. Ambas historias comparten el mismo intento: el alumno inicia, responde (con guardado
- * continuo), revisa y envía; el servidor es la única fuente de tiempo, puntaje y estado.
- *
- * <ul>
- *   <li>Tiempo: corre desde el inicio y no se pausa al cerrar el navegador; al vencer, el intento
- *       se envía solo con lo que hubiera guardado (lo no respondido vale cero) y consume el intento.
- *   <li>Nota: {@code puntaje_obtenido / puntaje_total × 20}, redondeada a dos decimales, sin
- *       penalización. En selección múltiple no hay puntaje parcial: solo suma si marca todas las
- *       correctas y ninguna incorrecta.
- *   <li>Respuestas abiertas: no se califican solas; el intento queda PENDIENTE_REVISION con su
- *       fecha límite y no admite otro intento hasta que exista nota definitiva (HU-030).
- *   <li>Intentos: los exámenes calificados usan el máximo configurado (ilimitado por defecto) más
- *       los intentos adicionales concedidos como excepción (HU-031); la práctica es ilimitada.
- * </ul>
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -90,11 +73,8 @@ public class ExamenAlumnoService {
     private final CurrentUserService actual;
     private final Clock clock;
 
-    /** Examen + matrícula del alumno actual + su situación frente a él, ya con los vencidos cerrados. */
     private record Contexto(Examen examen, Matricula matricula, EstadoExamen estado, boolean soloLectura) {
     }
-
-    // ------------------------------------------------------------------ ficha --
 
     @Transactional(noRollbackFor = BusinessValidationException.class)
     public ExamenFichaResponse ficha(Long examenId) {
@@ -136,12 +116,10 @@ public class ExamenAlumnoService {
                 examen.isBloqueaSiguienteModulo(), estado.motivoNoHabilitado() == null, puedeIniciar, motivo,
                 estado.agotadoSinAprobar(), ctx.soloLectura(),
                 estado.enProgreso() == null ? null : estado.enProgreso().getId(),
-                estado.aprobado(), estado.mejorNota(), historial);
+                estado.aprobado(), estado.mejorNota(), examen.getModoNavegacion(),
+                examen.isPermiteOmitirPreguntas(), historial);
     }
 
-    // ----------------------------------------------------------------- iniciar --
-
-    /** Inicia un intento nuevo o retoma el que ya está en curso (con su tiempo restante). */
     @Transactional(noRollbackFor = BusinessValidationException.class)
     public IntentoResponse iniciar(Long examenId) {
         Contexto ctx = contexto(examenId);
@@ -177,8 +155,6 @@ public class ExamenAlumnoService {
         return construir(nuevo, ctx.matricula());
     }
 
-    // ------------------------------------------------------------------ intento --
-
     @Transactional(noRollbackFor = BusinessValidationException.class)
     public IntentoResponse intento(Long intentoId) {
         IntentoExamen intento = intentoDelAlumno(intentoId);
@@ -186,7 +162,6 @@ public class ExamenAlumnoService {
         return construir(intento, intento.getMatricula());
     }
 
-    /** Guarda (reemplazando) la respuesta a una pregunta. Idempotente. */
     @Transactional(noRollbackFor = BusinessValidationException.class)
     public void guardarRespuesta(Long intentoId, Long preguntaId, GuardarRespuestaRequest peticion) {
         IntentoExamen intento = intentoDelAlumno(intentoId);
@@ -238,20 +213,45 @@ public class ExamenAlumnoService {
         respuestas.save(respuesta);
     }
 
-    /** Envía el intento: califica lo objetivo y, si hay respuestas abiertas, lo deja en revisión. */
     @Transactional(noRollbackFor = BusinessValidationException.class)
     public IntentoResponse enviar(Long intentoId) {
         IntentoExamen intento = intentoDelAlumno(intentoId);
         if (!cerrarSiVencido(intento) && intento.estaEnProgreso()) {
             exigirEscritura(intento.getMatricula());
+            exigirTodasRespondidas(intento);
             calificar(intento, clock.instant());
         }
         return construir(intento, intento.getMatricula());
     }
 
-    // --------------------------------------------------- cierre por vencimiento --
+    private void exigirTodasRespondidas(IntentoExamen intento) {
+        Examen examen = intento.getExamen();
+        if (examen.isPermiteOmitirPreguntas()) {
+            return;
+        }
+        Map<Long, RespuestaIntento> guardadas = respuestas.findByIntentoExamen_Id(intento.getId()).stream()
+                .collect(Collectors.toMap(r -> r.getPregunta().getId(), r -> r));
+        long faltan = preguntasActivas(examen.getId()).stream()
+                .filter(pregunta -> !estaRespondida(pregunta, guardadas.get(pregunta.getId())))
+                .count();
+        if (faltan > 0) {
+            throw new BusinessValidationException((faltan == 1 ? "Te falta responder 1 pregunta. "
+                    : "Te faltan por responder " + faltan + " preguntas. ")
+                    + "Responde todas las preguntas antes de enviar.");
+        }
+    }
 
-    /** Cierra los intentos cuyo tiempo se agotó aunque el alumno ya no esté conectado. */
+    private static boolean estaRespondida(Pregunta pregunta, RespuestaIntento respuesta) {
+        if (respuesta == null) {
+            return false;
+        }
+        if ("RESPUESTA_ABIERTA".equals(pregunta.getTipo())) {
+            String texto = respuesta.getTextoRespuesta();
+            return texto != null && !texto.isBlank();
+        }
+        return !respuesta.getOpciones().isEmpty();
+    }
+
     @Scheduled(fixedDelay = 60_000, initialDelay = 50_000)
     @Transactional
     public void cerrarVencidos() {
@@ -265,17 +265,13 @@ public class ExamenAlumnoService {
         }
     }
 
-    /** Si el intento está en curso y su tiempo ya venció, lo envía con lo guardado. Devuelve si lo cerró. */
     private boolean cerrarSiVencido(IntentoExamen intento) {
         if (!intento.estaEnProgreso() || intento.getExpiraEn() == null || clock.instant().isBefore(intento.getExpiraEn())) {
             return false;
         }
-        // El envío se registra en el instante exacto en que se agotó el tiempo.
         calificar(intento, intento.getExpiraEn());
         return true;
     }
-
-    // --------------------------------------------------------------- calificación --
 
     private void calificar(IntentoExamen intento, Instant momentoEnvio) {
         Examen examen = intento.getExamen();
@@ -299,7 +295,6 @@ public class ExamenAlumnoService {
             if ("RESPUESTA_ABIERTA".equals(pregunta.getTipo())) {
                 String texto = respuesta.getTextoRespuesta();
                 if (texto == null || texto.isBlank()) {
-                    // Sin respuesta: cero, sin nada que revisar.
                     respuesta.setPuntajeDefinitivo(BigDecimal.ZERO);
                     respuesta.setEstadoRevision(RespuestaIntento.NO_APLICA);
                 } else {
@@ -320,7 +315,6 @@ public class ExamenAlumnoService {
 
         intento.setEnviadoEn(momentoEnvio);
         if (hayAbiertasPendientes) {
-            // Sin nota definitiva mientras haya una abierta por revisar (la califica HU-030).
             intento.setEstado(IntentoExamen.PENDIENTE_REVISION);
         } else {
             BigDecimal nota = calcularNota(obtenido, intento.getPuntajeTotal());
@@ -331,25 +325,19 @@ public class ExamenAlumnoService {
             intento.setCalificadoEn(momentoEnvio);
         }
         intentos.save(intento);
-        // HU-032: una nota nueva (o un intento en revisión) puede cambiar el cumplimiento del curso.
         eventos.publishEvent(new ReevaluarCertificacionEvent(intento.getMatricula().getId()));
     }
 
-    /** Nota sobre 20 con dos decimales, sin penalización. La usan la corrección automática y la calificación
-     * humana (HU-030) para que ambas den siempre el mismo resultado. */
     public static BigDecimal calcularNota(BigDecimal obtenido, BigDecimal total) {
         return obtenido.multiply(ESCALA).divide(total, 2, RoundingMode.HALF_UP);
     }
 
-    /** Verdadero/falso y selección única/múltiple: solo puntúa si marca todas las correctas y ninguna incorrecta. */
     private static boolean acierta(Pregunta pregunta, RespuestaIntento respuesta, List<OpcionPregunta> disponibles) {
         Set<Long> correctas = disponibles.stream().filter(OpcionPregunta::isEsCorrecta)
                 .map(OpcionPregunta::getId).collect(Collectors.toSet());
         Set<Long> marcadas = respuesta.getOpciones().stream().map(OpcionPregunta::getId).collect(Collectors.toSet());
         return !correctas.isEmpty() && correctas.equals(marcadas);
     }
-
-    // ------------------------------------------------------------- construcción --
 
     private IntentoResponse construir(IntentoExamen intento, Matricula matricula) {
         Examen examen = intento.getExamen();
@@ -358,7 +346,6 @@ public class ExamenAlumnoService {
 
         List<Pregunta> activas = new ArrayList<>(preguntasActivas(examen.getId()));
         if (examen.isBarajarPreguntas()) {
-            // Orden determinista por intento: al retomar o recargar no cambia.
             Collections.shuffle(activas, new Random(intento.getId()));
         }
         Map<Long, List<OpcionPregunta>> opcionesPorPregunta = opciones
@@ -369,8 +356,6 @@ public class ExamenAlumnoService {
                 .collect(Collectors.toMap(r -> r.getPregunta().getId(), r -> r));
 
         boolean visibles = !enProgreso && respuestasVisibles(examen, matricula);
-        // Lo que decidió el revisor en las respuestas abiertas (puntaje y observación) es del alumno: se ve
-        // siempre que el intento ya fue calificado, aunque el examen no muestre las alternativas correctas.
         Map<Long, RevisionRespuesta> revisadas = enProgreso ? Map.of() : revisiones
                 .findByRespuestaIntento_IdInOrderByRevisadoEnDesc(
                         guardadas.values().stream().map(RespuestaIntento::getId).toList())
@@ -395,8 +380,6 @@ public class ExamenAlumnoService {
             String observacion = null;
             if (!enProgreso && respuesta != null) {
                 estadoRevision = respuesta.getEstadoRevision();
-                // El detalle por pregunta (puntaje y acierto) es parte de "mostrar respuestas": mientras
-                // el examen no lo permita, el API tampoco lo entrega.
                 if (visibles) {
                     puntaje = respuesta.getPuntajeDefinitivo();
                 }
@@ -426,10 +409,10 @@ public class ExamenAlumnoService {
                 examen.getTipo(), intento.getNumeroIntento(), intento.getEstado(), intento.getIniciadoEn(),
                 intento.getExpiraEn(), restantes, ahora, intento.getPuntajeTotal(), intento.getPuntajeObtenido(),
                 intento.getNota(), intento.getAprobado(), reglaDe(matricula).getNotaMinima(), intento.getEnviadoEn(),
-                porTiempo, limiteRevision(intento, examen), visibles, "CALIFICADO".equals(examen.getTipo()), filas);
+                porTiempo, limiteRevision(intento, examen), visibles, "CALIFICADO".equals(examen.getTipo()),
+                examen.getModoNavegacion(), examen.isPermiteOmitirPreguntas(), filas);
     }
 
-    /** "Al aprobar" / "al agotar" / "nunca": decide si el alumno ve las alternativas correctas. */
     private boolean respuestasVisibles(Examen examen, Matricula matricula) {
         RutaAcademica ruta = rutaAcademica.calcular(matricula);
         EstadoExamen estado = ruta.estadoExamenes().get(examen.getId());
@@ -448,8 +431,6 @@ public class ExamenAlumnoService {
                 ? intento.getEnviadoEn().plus(examen.getDiasRevision(), ChronoUnit.DAYS) : null;
     }
 
-    // ------------------------------------------------------------------ contexto --
-
     private Contexto contexto(Long examenId) {
         exigirAlumno();
         Examen examen = examenes.findById(examenId).filter(Examen::isActivo)
@@ -458,7 +439,6 @@ public class ExamenAlumnoService {
                 .orElseThrow(() -> new ResourceNotFoundException("No tienes una matrícula en este curso."));
         boolean soloLectura = verificarAcceso(matricula);
 
-        // Un intento cuyo tiempo venció se cierra antes de calcular el estado que se le muestra.
         for (IntentoExamen intento : intentos.findByMatricula_IdAndExamen_IdOrderByNumeroIntentoAsc(matricula.getId(), examenId)) {
             if (intento.estaEnProgreso() && intento.getExpiraEn() != null && !clock.instant().isBefore(intento.getExpiraEn())) {
                 intentos.buscarConBloqueo(intento.getId()).ifPresent(this::cerrarSiVencido);
@@ -501,10 +481,6 @@ public class ExamenAlumnoService {
         }
     }
 
-    /** Replica MatriculaService#respuesta(...) / AulaService#verificarAcceso(...): es la definición
-     * oficial de acceso efectivo en todo el proyecto y no debe divergir. Duplicado a propósito en cada
-     * servicio, no se extrae a un helper compartido. Devuelve {@code true} cuando el acceso es solo de
-     * lectura (curso CANCELADO), y lanza si no hay acceso. */
     private boolean verificarAcceso(Matricula m) {
         Instant ahora = clock.instant();
         boolean vigente = m.getFechaVencimiento() == null || !ahora.isAfter(m.getFechaVencimiento());
@@ -518,7 +494,6 @@ public class ExamenAlumnoService {
         if (efectivo) {
             return cursoCancelado;
         }
-        // HU-038: solo conserva la consulta quien ya tenía contenido disponible al cancelar el curso.
         if (AccesoPorCancelacion.permiteLectura(m, cuentaHabilitada, LIMA)) {
             return true;
         }

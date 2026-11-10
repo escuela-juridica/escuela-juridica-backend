@@ -13,10 +13,6 @@ import pe.edu.utp.escuela.app.exception.ResourceNotFoundException;
 import pe.edu.utp.escuela.app.repository.PagoRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 
-/**
- * Boleta o captura opcional que respalda un pago registrado manualmente por la administración. El archivo es
- * privado: no se publica bajo /uploads, solo se descarga por este servicio y únicamente un administrador.
- */
 @Service
 @RequiredArgsConstructor
 public class ComprobantePagoService {
@@ -25,11 +21,9 @@ public class ComprobantePagoService {
     private final ArchivoAlmacenamientoService archivos;
     private final CurrentUserService actual;
 
-    /** Archivo listo para descargar. */
     public record Descarga(Resource archivo, String nombre, String tipoMime) {
     }
 
-    /** Adjunta (o reemplaza) el comprobante del pago manual de la matrícula. */
     @Transactional
     public void adjuntar(Long matriculaId, MultipartFile archivo) {
         exigirAdministrador();

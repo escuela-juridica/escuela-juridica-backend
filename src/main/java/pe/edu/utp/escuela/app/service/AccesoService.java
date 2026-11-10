@@ -43,6 +43,10 @@ public class AccesoService {
             throw new PendingEmailVerificationException();
         }
 
+        return abrirSesion(usuario);
+    }
+
+    public ResultadoAcceso abrirSesion(Usuario usuario) {
         String rol = rolPrincipal(usuario.getId());
         String jwt = jwtService.issue(usuario.getId(), usuario.getCorreo(), List.of(rol));
         return new ResultadoAcceso(jwt, construirSesion(usuario, rol));

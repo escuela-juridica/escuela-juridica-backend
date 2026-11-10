@@ -24,8 +24,6 @@ import pe.edu.utp.escuela.app.entity.Usuario;
 import pe.edu.utp.escuela.app.repository.CertificadoRepository;
 import pe.edu.utp.escuela.app.repository.ReglaCursoRepository;
 
-/** EP05 · HU-032 a HU-034 — Estado de la certificación, confirmación de datos, emisión, mis certificados, descarga y
- * verificación pública, con persistencia real en H2 y el PDF generado en disco. */
 class CertificacionHttpTests extends HttpIntegracionBase {
 
     private static final String DATOS =
@@ -34,7 +32,6 @@ class CertificacionHttpTests extends HttpIntegracionBase {
     @Autowired ReglaCursoRepository reglas;
     @Autowired CertificadoRepository certificados;
 
-    /** Curso virtual con una sola lección obligatoria y como único requisito completar el 100 % del progreso. */
     private Curso cursoSoloProgreso(Usuario alumno, Leccion[] leccion) {
         Curso curso = curso("EN_CURSO", "VIRTUAL", "320.00");
         matricula(alumno, curso, "ACTIVA");
@@ -55,7 +52,6 @@ class CertificacionHttpTests extends HttpIntegracionBase {
                 .andExpect(status().isNoContent());
     }
 
-    /** Lleva al alumno hasta tener el certificado emitido y devuelve su código. */
     private String emitirCertificado(Usuario alumno, Curso curso, Leccion leccion) throws Exception {
         completar(alumno, leccion);
         mvc.perform(put("/api/app/cursos/" + curso.getId() + "/certificacion/datos")
@@ -131,7 +127,7 @@ class CertificacionHttpTests extends HttpIntegracionBase {
         mvc.perform(put("/api/app/cursos/" + curso.getId() + "/certificacion/datos")
                         .with(comoAlumno(alumno.getId())).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"nombres\":\" \",\"apellidoPaterno\":\"Pérez\",\"apellidoMaterno\":\"\"}"))
+                        .content("{\"nombres\":\" \",\"apellidoPaterno\":\" \",\"apellidoMaterno\":\"\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_DATA"))
                 .andExpect(jsonPath("$.fieldErrors.length()").value(2));
@@ -163,7 +159,6 @@ class CertificacionHttpTests extends HttpIntegracionBase {
         assertEquals("SOLICITADA", guardado.getTipoEmision());
         assertTrue(guardado.getCodigo().startsWith("ESEJUR-"));
 
-        // Emitir de nuevo no genera un segundo certificado.
         mvc.perform(post("/api/app/cursos/" + curso.getId() + "/certificacion/emitir")
                         .with(comoAlumno(alumno.getId())).with(csrf()))
                 .andExpect(status().isBadRequest())
@@ -181,14 +176,17 @@ class CertificacionHttpTests extends HttpIntegracionBase {
 
         mvc.perform(get("/api/app/certificados").with(comoAlumno(alumno.getId())))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].codigo").value(codigo))
-                .andExpect(jsonPath("$[0].estado").value("VIGENTE"))
-                .andExpect(jsonPath("$[0].descargaUrl").value("/api/app/certificados/" + codigo + "/descargar"));
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.size").value(10))
+                .andExpect(jsonPath("$.items[0].codigo").value(codigo))
+                .andExpect(jsonPath("$.items[0].estado").value("VIGENTE"))
+                .andExpect(jsonPath("$.items[0].descargaUrl").value("/api/app/certificados/" + codigo + "/descargar"));
 
         mvc.perform(get("/api/app/certificados").with(comoAlumno(otro.getId())))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
+                .andExpect(jsonPath("$.items.length()").value(0))
+                .andExpect(jsonPath("$.totalElements").value(0));
 
         mvc.perform(get("/api/app/certificados/" + codigo + "/descargar").with(comoAlumno(alumno.getId())))
                 .andExpect(status().isOk())
@@ -234,8 +232,8 @@ class CertificacionHttpTests extends HttpIntegracionBase {
                 .andExpect(jsonPath("$.motivoAnulacion").doesNotExist());
 
         mvc.perform(get("/api/app/certificados").with(comoAlumno(alumno.getId())))
-                .andExpect(jsonPath("$[0].estado").value("ANULADO"))
-                .andExpect(jsonPath("$[0].descargaUrl").doesNotExist());
+                .andExpect(jsonPath("$.items[0].estado").value("ANULADO"))
+                .andExpect(jsonPath("$.items[0].descargaUrl").doesNotExist());
 
         mvc.perform(get("/api/app/certificados/" + codigo + "/descargar").with(comoAlumno(alumno.getId())))
                 .andExpect(status().isBadRequest())

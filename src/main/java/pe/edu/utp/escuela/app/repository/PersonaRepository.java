@@ -7,8 +7,6 @@ public interface PersonaRepository extends JpaRepository<Persona, Long> {
     boolean existsByDocumentoIdentidad(String documentoIdentidad);
     boolean existsByDocumentoIdentidadAndIdNot(String documentoIdentidad, Long id);
 
-    /** "Docente" no es un rol de acceso: es cualquier persona con cargo profesional publicado
-     * (ver HU-009). */
     Page<Persona> findByCargoProfesionalIsNotNullAndActivoTrueOrderByNombresAsc(Pageable pageable);
     Page<Persona> findByCargoProfesionalIsNotNullOrderByNombresAsc(Pageable pageable);
 }

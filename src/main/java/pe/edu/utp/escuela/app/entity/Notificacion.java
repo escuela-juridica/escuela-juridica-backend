@@ -5,7 +5,6 @@ import java.time.Instant;
 import lombok.Getter;
 import lombok.Setter;
 
-/** Registro simple de correos solicitados y su resultado de envío (ver notificacion en la BD). */
 @Entity @Table(name = "notificacion") @Getter @Setter
 public class Notificacion extends RegistroAuditable {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)

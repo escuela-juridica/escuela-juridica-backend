@@ -19,11 +19,6 @@ import pe.edu.utp.escuela.app.exception.ForbiddenException;
 import pe.edu.utp.escuela.app.repository.PagoRepository;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 
-/**
- * HU-042 — Reporte de pagos registrados (administrador). El detalle, el total y la exportación a Excel salen de la
- * misma consulta y los mismos filtros. Solo lee: nunca recalcula ni cambia un pago. El total suma únicamente los
- * pagos confirmados (APROBADO y REGISTRADO_MANUAL con monto mayor que cero).
- */
 @Service
 @RequiredArgsConstructor
 public class ReportePagoService {
@@ -35,7 +30,6 @@ public class ReportePagoService {
     private final PagoRepository pagos;
     private final CurrentUserService actual;
 
-    /** Filtros del reporte (todos opcionales); una cadena vacía significa sin filtro. */
     public record Filtro(String texto, Long cursoId, String estado, String medio, String origen, LocalDate desde,
             LocalDate hasta) {
     }
@@ -62,7 +56,6 @@ public class ReportePagoService {
         return new ReportePagoTotalResponse(suma == null ? BigDecimal.ZERO.setScale(2) : suma, cantidad, "PEN");
     }
 
-    /** Medios registrados (tarjeta, Yape, transferencia…), para el filtro. */
     @Transactional(readOnly = true)
     public List<String> medios() {
         exigirAdministrador();

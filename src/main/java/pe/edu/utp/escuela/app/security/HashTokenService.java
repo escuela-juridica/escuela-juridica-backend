@@ -6,8 +6,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import org.springframework.stereotype.Component;
 
-/** Hash de propósito general para tokens aleatorios (no contraseñas): SHA-256 permite búsqueda
- * exacta por igualdad, algo que BCrypt no ofrece porque genera una sal distinta cada vez. */
 @Component
 public class HashTokenService {
 

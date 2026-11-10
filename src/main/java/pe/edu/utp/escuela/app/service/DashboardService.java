@@ -31,12 +31,6 @@ import pe.edu.utp.escuela.app.repository.PagoRepository;
 import pe.edu.utp.escuela.app.repository.PagoRepository.ConfirmadoRow;
 import pe.edu.utp.escuela.app.security.CurrentUserService;
 
-/**
- * HU-046 — Dashboard administrativo: exactamente cuatro gráficos que comparten rango, curso y modalidad. Las reglas de
- * conteo son las de los reportes: una matrícula cuenta una sola vez (la que llegó a ACTIVA) y un pago confirmado
- * también (APROBADO y REGISTRADO_MANUAL con monto mayor que cero), de modo que cada cifra se puede comprobar con el
- * detalle filtrado del reporte correspondiente. No es contabilidad ni una bandeja de tareas.
- */
 @Service
 @RequiredArgsConstructor
 public class DashboardService {
@@ -47,7 +41,6 @@ public class DashboardService {
     private static final int CURSOS_VISIBLES = 10;
     private static final int LOTE_IDS = 1000;
     private static final String[] MESES = {"ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"};
-    /** Formas de ingreso del gráfico, en orden fijo (cada una conserva su color aunque otra quede en cero). */
     private static final Map<String, String> FORMAS = new LinkedHashMap<>();
 
     static {
@@ -85,7 +78,6 @@ public class DashboardService {
         List<ActivacionRow> activadas = matriculas.activacionesParaDashboard(cursoId, mod, desdeInstante, hastaInstante);
         List<ConfirmadoRow> confirmados = pagos.confirmadosParaDashboard(cursoId, mod, desdeInstante, hastaInstante);
 
-        // 1) Evolución de matrículas activadas.
         Map<String, long[]> serie = periodos(inicio, fin, porDia, new long[1]);
         for (ActivacionRow a : activadas) {
             serie.get(clave(a.getFecha(), porDia))[0]++;
@@ -97,9 +89,6 @@ public class DashboardService {
                 formaIngreso(activadas), pagosPorPeriodo(confirmados, inicio, fin, porDia));
     }
 
-    // ------------------------------------------------------------------------------------- gráficos --
-
-    /** 2) Distribución de las matrículas activadas por curso: los más frecuentes y el resto agrupado. */
     private static List<Barra> porCurso(List<ActivacionRow> activadas) {
         Map<Long, long[]> conteo = new LinkedHashMap<>();
         Map<Long, String> titulos = new LinkedHashMap<>();
@@ -120,13 +109,11 @@ public class DashboardService {
         return visibles;
     }
 
-    /** 3) Forma de ingreso de esas mismas matrículas, clasificada con la regla del reporte de matrículas. */
     private List<Barra> formaIngreso(List<ActivacionRow> activadas) {
         Map<String, long[]> conteo = new LinkedHashMap<>();
         FORMAS.keySet().forEach(k -> conteo.put(k, new long[1]));
         if (!activadas.isEmpty()) {
             List<Long> ids = activadas.stream().map(ActivacionRow::getId).toList();
-            // Por lotes: una lista de miles de ids superaría el límite de parámetros de una consulta.
             Map<Long, List<Pago>> pagosPorMatricula = new java.util.HashMap<>();
             for (int i = 0; i < ids.size(); i += LOTE_IDS) {
                 pagos.findByMatricula_IdIn(ids.subList(i, Math.min(i + LOTE_IDS, ids.size()))).forEach(
@@ -144,7 +131,6 @@ public class DashboardService {
         return conteo.entrySet().stream().map(e -> new Barra(e.getKey(), FORMAS.get(e.getKey()), e.getValue()[0])).toList();
     }
 
-    /** 4) Importe de los pagos confirmados por periodo. */
     private static List<PuntoMonto> pagosPorPeriodo(List<ConfirmadoRow> confirmados, LocalDate inicio, LocalDate fin,
             boolean porDia) {
         Map<String, BigDecimal[]> serie = periodos(inicio, fin, porDia, new BigDecimal[] {BigDecimal.ZERO.setScale(2)});
@@ -156,9 +142,6 @@ public class DashboardService {
                 .map(e -> new PuntoMonto(e.getKey(), etiqueta(e.getKey(), porDia), e.getValue()[0])).toList();
     }
 
-    // ----------------------------------------------------------------------------------------- tiempo --
-
-    /** Todos los periodos del rango, aunque queden en cero, para que la serie sea continua. */
     private static <T> Map<String, T[]> periodos(LocalDate inicio, LocalDate fin, boolean porDia, T[] molde) {
         Map<String, T[]> mapa = new LinkedHashMap<>();
         if (porDia) {

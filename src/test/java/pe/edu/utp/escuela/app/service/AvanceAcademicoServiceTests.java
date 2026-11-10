@@ -32,8 +32,6 @@ import pe.edu.utp.escuela.app.service.AvanceAcademicoService.AvanceAcademico;
 import pe.edu.utp.escuela.app.service.RutaAcademicaService.EstadoExamen;
 import pe.edu.utp.escuela.app.service.RutaAcademicaService.RutaAcademica;
 
-/** EP05 · HU-032 — Condiciones de certificación: progreso, exámenes, nota promedio y asistencia, y qué le falta al
- * alumno para obtener su certificado. */
 @ExtendWith(MockitoExtension.class)
 class AvanceAcademicoServiceTests {
 
@@ -240,7 +238,6 @@ class AvanceAcademicoServiceTests {
         l5.setEsObligatoria(false);
         RutaAcademica ruta = ruta(regla(true, false, false), 3, List.of(), Set.of(), Map.of(), Map.of());
 
-        // Obligatorias vigentes: l1, l2, l3 (las tres completadas).
         assertEquals(100, AvanceAcademicoService.porcentaje(ruta));
     }
 }

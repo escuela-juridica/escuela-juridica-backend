@@ -51,8 +51,6 @@ import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.security.CurrentUserService.CurrentUser;
 import pe.edu.utp.escuela.app.service.RutaAcademicaService.RutaAcademica;
 
-/** EP04 · HU-024 — Completar lecciones y registrar progreso: umbral de video, check manual, asistencia y la regla de
- * que un check completado nunca se desmarca. */
 @ExtendWith(MockitoExtension.class)
 class ProgresoServiceTests {
 
@@ -102,8 +100,6 @@ class ProgresoServiceTests {
         when(lecciones.findById(11L)).thenReturn(Optional.of(leccion));
         return leccion;
     }
-
-    // ---------------------------------------------------------------- check manual --
 
     @Test
     void completarManualRegistraLaLeccionYPideReevaluarLaCertificacion() {
@@ -213,8 +209,6 @@ class ProgresoServiceTests {
         assertTrue(error.getMessage().contains("ya no se registra progreso"));
         verifyNoInteractions(progresoLecciones, eventos);
     }
-
-    // ---------------------------------------------------------------- video --
 
     private MaterialLeccion videoSubido(Integer duracionSegundos) {
         Leccion leccion = AcademiaFixtures.leccion(11L, modulo, 1, "VIDEO", true);
@@ -330,8 +324,6 @@ class ProgresoServiceTests {
         assertEquals("Este material no permite registrar progreso de video.", error.getMessage());
         verifyNoInteractions(progresoMateriales, eventos);
     }
-
-    // ---------------------------------------------------------------- asistencia --
 
     @Test
     void laAsistenciaPresenteCompletaLaSesionPeroLaAusenciaNo() {

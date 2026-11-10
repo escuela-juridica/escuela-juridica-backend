@@ -14,7 +14,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** HU-039 — Imagen opcional adjunta a una reclamación (por ejemplo, el comprobante de pago). */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -34,7 +33,6 @@ public class ReclamacionAdjunto {
     @Column(name = "nombre_archivo", nullable = false, length = 255)
     private String nombreArchivo;
 
-    /** Ubicación privada ({@code /uploads/reclamaciones/...}); solo administración la consulta. */
     @Column(nullable = false, columnDefinition = "text")
     private String referencia;
 

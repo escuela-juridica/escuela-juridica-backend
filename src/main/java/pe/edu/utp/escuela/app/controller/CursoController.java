@@ -10,6 +10,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import pe.edu.utp.escuela.app.dto.ActualizarInformacionCursoRequest;
 import pe.edu.utp.escuela.app.dto.ActualizarReglasCursoRequest;
 import pe.edu.utp.escuela.app.dto.AsignarDocentesRequest;
@@ -19,6 +20,7 @@ import pe.edu.utp.escuela.app.dto.CerrarCursoRequest;
 import pe.edu.utp.escuela.app.dto.CrearCursoRequest;
 import pe.edu.utp.escuela.app.dto.CursoEditorResponse;
 import pe.edu.utp.escuela.app.dto.CursoResumenResponse;
+import pe.edu.utp.escuela.app.dto.ImagenSubidaResponse;
 import pe.edu.utp.escuela.app.dto.ReglasCursoResponse;
 import pe.edu.utp.escuela.app.dto.PageResponse;
 import pe.edu.utp.escuela.app.dto.RetrasarInicioRequest;
@@ -75,6 +77,17 @@ public class CursoController {
     @ApiResponse(responseCode = "404", description = "El curso ya no existe")
     public ResponseEntity<CursoEditorResponse> obtener(@PathVariable Long id) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(service.obtener(id));
+    }
+
+    @PostMapping(value = "/{id}/portada", consumes = "multipart/form-data")
+    @Operation(summary = "Subir la imagen de portada del curso (se guarda como {id}-{marca de tiempo})")
+    @ApiResponse(responseCode = "200", description = "Imagen subida; su referencia se guarda con la información del curso")
+    @ApiResponse(responseCode = "400", description = "La imagen no cumple las reglas de formato, tamaño o proporción")
+    @ApiResponse(responseCode = "403", description = "No tienes rol ADMINISTRADOR")
+    @ApiResponse(responseCode = "404", description = "El curso ya no existe")
+    public ResponseEntity<ImagenSubidaResponse> subirPortada(
+            @PathVariable Long id, @RequestParam("archivo") MultipartFile archivo) {
+        return ResponseEntity.ok(service.subirPortada(id, archivo));
     }
 
     @PutMapping("/{id}/informacion")

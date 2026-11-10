@@ -76,6 +76,12 @@ public class Examen extends RegistroAuditable {
     @Column(name = "dias_revision", nullable = false)
     private Integer diasRevision = 3;
 
+    @Column(name = "modo_navegacion", nullable = false, length = 12)
+    private String modoNavegacion = "LIBRE";
+
+    @Column(name = "permite_omitir_preguntas", nullable = false)
+    private boolean permiteOmitirPreguntas = false;
+
     @Column(nullable = false)
     private boolean activo = true;
 }

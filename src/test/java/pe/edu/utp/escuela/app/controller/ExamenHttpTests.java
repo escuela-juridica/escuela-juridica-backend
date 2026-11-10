@@ -26,8 +26,6 @@ import pe.edu.utp.escuela.app.repository.OpcionPreguntaRepository;
 import pe.edu.utp.escuela.app.repository.PreguntaRepository;
 import pe.edu.utp.escuela.app.repository.RespuestaIntentoRepository;
 
-/** EP05 · HU-028 / HU-029 / HU-030 — Rendir un examen de calificación automática, con respuesta abierta y su revisión,
- * por HTTP y con persistencia real en H2. */
 class ExamenHttpTests extends HttpIntegracionBase {
 
     @Autowired ExamenRepository examenes;
@@ -256,12 +254,10 @@ class ExamenHttpTests extends HttpIntegracionBase {
                 .andExpect(jsonPath("$.estado").value("PENDIENTE_REVISION"))
                 .andExpect(jsonPath("$.nota").doesNotExist());
 
-        // Mientras haya una revisión pendiente no se admite otro intento.
         mvc.perform(post("/api/app/examenes/" + examen.getId() + "/intentos")
                         .with(comoAlumno(alumno.getId())).with(csrf()))
                 .andExpect(status().isBadRequest());
 
-        // El alumno no puede ver la bandeja de revisión.
         mvc.perform(get("/api/admin/evaluaciones/pendientes").with(comoAlumno(alumno.getId())))
                 .andExpect(status().isForbidden());
 
@@ -273,7 +269,6 @@ class ExamenHttpTests extends HttpIntegracionBase {
 
         RespuestaIntento pendiente = respuestas.findByIntentoExamen_Id(intento).getFirst();
 
-        // Un puntaje por encima del máximo de la pregunta se rechaza.
         mvc.perform(post("/api/admin/evaluaciones/intentos/" + intento + "/calificar")
                         .with(comoAdministrador(1L)).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -293,7 +288,6 @@ class ExamenHttpTests extends HttpIntegracionBase {
         assertEquals(0, new BigDecimal("16.00").compareTo(calificado.getNota()));
         assertEquals(true, calificado.getAprobado());
 
-        // Publicar la calificación dos veces no está permitido.
         mvc.perform(post("/api/admin/evaluaciones/intentos/" + intento + "/calificar")
                         .with(comoAdministrador(1L)).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -328,7 +322,6 @@ class ExamenHttpTests extends HttpIntegracionBase {
                 .andExpect(jsonPath("$.message").value(
                         "El tiempo del intento terminó: se envió automáticamente con lo que tenías respondido."));
 
-        // Solo la pregunta respondida a tiempo cuenta: 10 de 20 puntos.
         mvc.perform(get("/api/app/intentos/" + intento).with(comoAlumno(alumno.getId())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estado").value("CALIFICADO"))

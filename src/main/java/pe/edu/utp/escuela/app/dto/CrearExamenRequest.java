@@ -6,9 +6,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 
-/** {@code moduloId}: obligatorio cuando {@code finalidad=MODULO}, debe ser nulo cuando
- * {@code finalidad=FINAL}. {@code maximoIntentos}/{@code tiempoLimiteMinutos}: nulo significa sin
- * límite. {@code fechaHabilitacion}: no admitida en cursos VIRTUAL. */
 public record CrearExamenRequest(
         Long moduloId,
         @NotBlank @Size(max = 220) String titulo,
@@ -22,5 +19,26 @@ public record CrearExamenRequest(
         @NotNull MostrarRespuestas mostrarRespuestas,
         Instant fechaHabilitacion,
         boolean bloqueaSiguienteModulo,
-        @Min(1) Integer diasRevision) {
+        @Min(1) Integer diasRevision,
+        ModoNavegacionExamen modoNavegacion,
+        Boolean permiteOmitirPreguntas) {
+
+    public CrearExamenRequest(
+            Long moduloId,
+            String titulo,
+            String descripcion,
+            TipoExamen tipo,
+            FinalidadExamen finalidad,
+            Integer maximoIntentos,
+            Integer tiempoLimiteMinutos,
+            boolean barajarPreguntas,
+            boolean barajarOpciones,
+            MostrarRespuestas mostrarRespuestas,
+            Instant fechaHabilitacion,
+            boolean bloqueaSiguienteModulo,
+            Integer diasRevision) {
+        this(moduloId, titulo, descripcion, tipo, finalidad, maximoIntentos, tiempoLimiteMinutos, barajarPreguntas,
+                barajarOpciones, mostrarRespuestas, fechaHabilitacion, bloqueaSiguienteModulo, diasRevision,
+                ModoNavegacionExamen.LIBRE, Boolean.FALSE);
+    }
 }

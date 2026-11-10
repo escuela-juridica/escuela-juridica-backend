@@ -12,7 +12,6 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Long
 
     boolean existsByUsuario_IdAndTipo(Long usuarioId, String tipo);
 
-    /** HU-038: avisos de un mismo evento (p. ej. la cancelación de un curso), los fallidos o pendientes primero. */
     @EntityGraph(attributePaths = { "usuario", "usuario.persona" })
     Page<Notificacion> findByTipoOrderByEstadoEnvioDescIdAsc(String tipo, Pageable pageable);
 

@@ -32,8 +32,6 @@ import pe.edu.utp.escuela.app.integration.CulqiIntegration.SolicitudCobro;
 import pe.edu.utp.escuela.app.repository.AtencionMatriculaPagoRepository;
 import pe.edu.utp.escuela.app.repository.PagoRepository;
 
-/** EP06 · HU-037 / HU-038 — Excepciones de matrícula y pago, y cancelación de un curso: avisos a los alumnos con
- * acceso, sesiones futuras canceladas, lectura conservada y pagos tardíos que quedan para atención. */
 class CancelacionYExcepcionesPagoHttpTests extends HttpIntegracionBase {
 
     private static final String MOTIVO = "No se alcanzó el mínimo de alumnos para dictar el curso.";
@@ -43,7 +41,6 @@ class CancelacionYExcepcionesPagoHttpTests extends HttpIntegracionBase {
 
     @BeforeEach
     void prepararCulqi() {
-        // El catálogo real trae el estado CANCELADO; en H2 vacío hay que crearlo para poder cancelar cursos.
         estado("CANCELADO");
         when(culqi.llavePublica()).thenReturn("pk_test_demo");
         when(culqi.prepararCheckout(any())).thenAnswer(invocacion -> {
@@ -62,8 +59,6 @@ class CancelacionYExcepcionesPagoHttpTests extends HttpIntegracionBase {
                         .contentType(MediaType.APPLICATION_JSON).content(cuerpoCancelacion(MOTIVO, true)))
                 .andExpect(status().isOk());
     }
-
-    // ---------------------------------------------------------------------------- cancelar un curso --
 
     @Test
     void soloUnAdministradorConsultaElImpactoDeCancelarUnCurso() throws Exception {
@@ -119,7 +114,6 @@ class CancelacionYExcepcionesPagoHttpTests extends HttpIntegracionBase {
         assertEquals("CANCELADA", lecciones.findById(sesion.getId()).orElseThrow().getEstado());
         verify(correo, times(1)).sendHtml(any());
 
-        // El alumno que ya tenía acceso conserva la consulta en modo lectura.
         mvc.perform(get("/api/aula/cursos/" + curso.getId()).with(comoAlumno(alumno.getId())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.cursoCancelado").value(true))
@@ -180,7 +174,6 @@ class CancelacionYExcepcionesPagoHttpTests extends HttpIntegracionBase {
                 .andExpect(jsonPath("$.avisosEnviados").value(1));
         verify(correo, times(1)).sendHtml(any());
 
-        // Reenviar otra vez no vuelve a escribirle a quien ya recibió el aviso.
         mvc.perform(post("/api/admin/cursos/" + curso.getId() + "/cancelacion/reenviar-avisos")
                         .with(comoAdministrador(1L)).with(csrf()))
                 .andExpect(status().isOk());
@@ -197,8 +190,6 @@ class CancelacionYExcepcionesPagoHttpTests extends HttpIntegracionBase {
                 .andExpect(jsonPath("$.message").value("Este curso no está cancelado: no hay avisos que reenviar."));
     }
 
-    // ------------------------------------------------------------------------ excepciones de pago --
-
     @Test
     void unPagoAprobadoDespuesDeCancelarElCursoSeRegistraSinAccesoYQuedaParaAtencion() throws Exception {
         Usuario alumno = alumno("Ana");
@@ -213,7 +204,6 @@ class CancelacionYExcepcionesPagoHttpTests extends HttpIntegracionBase {
                 new ResultadoCulqi("APROBADO", "chr_" + pedido, "ord_" + pedido, "BILLETERA", null, null,
                         "venta_exitosa", null, pedido, Instant.parse("2026-10-01T15:00:00Z"), null));
 
-        // El alumno consulta su pedido: Culqi ya lo había aprobado.
         mvc.perform(get("/api/app/pagos/" + pedido).with(comoAlumno(alumno.getId())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estado").value("APROBADO"))

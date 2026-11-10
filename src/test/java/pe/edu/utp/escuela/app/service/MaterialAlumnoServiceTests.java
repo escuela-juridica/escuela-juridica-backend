@@ -38,7 +38,6 @@ import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.security.CurrentUserService.CurrentUser;
 import pe.edu.utp.escuela.app.service.MaterialAlumnoService.ContenidoMaterial;
 
-/** EP04 · HU-023 — Materiales protegidos: sin matrícula con acceso vigente no se lista, ve ni descarga nada. */
 @ExtendWith(MockitoExtension.class)
 class MaterialAlumnoServiceTests {
 

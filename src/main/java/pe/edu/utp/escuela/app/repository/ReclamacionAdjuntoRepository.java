@@ -19,7 +19,6 @@ public interface ReclamacionAdjuntoRepository extends JpaRepository<ReclamacionA
     @Query("select a.reclamacion.id, count(a) from ReclamacionAdjunto a where a.reclamacion.id in :ids group by a.reclamacion.id")
     List<Object[]> contarPorReclamacion(@Param("ids") Collection<Long> ids);
 
-    /** Cantidad de imágenes de cada caso, sin una consulta por fila de la bandeja. */
     default Map<Long, Long> contarImagenes(Collection<Long> ids) {
         Map<Long, Long> conteo = new HashMap<>();
         if (!ids.isEmpty()) {

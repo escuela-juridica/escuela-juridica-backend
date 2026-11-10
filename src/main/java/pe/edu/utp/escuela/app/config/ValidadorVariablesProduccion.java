@@ -37,7 +37,8 @@ public class ValidadorVariablesProduccion implements BeanFactoryPostProcessor, E
             new Variable("esejur.culqi.public-key", "ESEJUR_CULQI_PUBLIC_KEY"),
             new Variable("esejur.culqi.private-key", "ESEJUR_CULQI_PRIVATE_KEY"),
             new Variable("esejur.culqi.webhook-user", "ESEJUR_CULQI_WEBHOOK_USER"),
-            new Variable("esejur.culqi.webhook-password", "ESEJUR_CULQI_WEBHOOK_PASSWORD"));
+            new Variable("esejur.culqi.webhook-password", "ESEJUR_CULQI_WEBHOOK_PASSWORD"),
+            new Variable("esejur.google.client-id", "GOOGLE_CLIENT_ID"));
 
     private static final int LONGITUD_MINIMA_SECRETO_JWT = 32;
     private static final int LONGITUD_MAXIMA_CLAVE_WEBHOOK = 20;
@@ -125,6 +126,10 @@ public class ValidadorVariablesProduccion implements BeanFactoryPostProcessor, E
         if (publica != null && privada != null && publica.startsWith("pk_") && privada.startsWith("sk_")
                 && publica.startsWith("pk_live_") != privada.startsWith("sk_live_")) {
             problemas.add("Las llaves de Culqi mezclan una de pruebas con una de producción");
+        }
+        String googleClientId = v.get("esejur.google.client-id");
+        if (googleClientId != null && !googleClientId.endsWith(".apps.googleusercontent.com")) {
+            problemas.add(n.get("esejur.google.client-id") + " debe terminar en .apps.googleusercontent.com");
         }
         if (entorno.getProperty("security.cookie.secure", "false").equals("false")) {
             problemas.add("security.cookie.secure debe ser true en producción");

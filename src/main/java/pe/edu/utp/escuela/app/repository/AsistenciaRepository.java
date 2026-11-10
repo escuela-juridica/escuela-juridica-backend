@@ -15,12 +15,6 @@ import pe.edu.utp.escuela.app.entity.Asistencia;
 
 public interface AsistenciaRepository extends JpaRepository<Asistencia, Long> {
 
-    /**
-     * HU-045 — Universo y filtros del reporte, compartidos por la página, el conteo y la
-     * exportación para que pantalla y Excel nunca discrepen: un registro por alumno y sesión en
-     * vivo, de cursos EN_VIVO/HIBRIDO, solo sesiones NO canceladas y POSTERIORES a la matrícula
-     * (el mismo denominador que usa el porcentaje de asistencia de HU-026).
-     */
     String ALCANCE_REPORTE = """
             from Leccion l
             join l.modulo mo join mo.curso c
@@ -69,7 +63,6 @@ public interface AsistenciaRepository extends JpaRepository<Asistencia, Long> {
 
     boolean existsByMatricula_IdAndLeccion_Id(Long matriculaId, Long leccionId);
 
-    /** HU-027: asistencia de una sesión con el alumno ya resuelto, para el modal "Corregir". */
     @Query("""
             select a from Asistencia a
             join fetch a.matricula m
@@ -99,8 +92,6 @@ public interface AsistenciaRepository extends JpaRepository<Asistencia, Long> {
             @Param("restringir") boolean restringir,
             @Param("matriculaIds") Collection<Long> matriculaIds);
 
-    /** HU-045: matrículas en alcance del reporte (por curso, modalidad y texto), sobre las que se
-     * calcula el cumplimiento del mínimo antes de filtrar filas por cumplimiento. */
     @Query("""
             select distinct new pe.edu.utp.escuela.app.dto.MatriculaAlcanceRow(m.id, c.id) from Matricula m
             join m.curso c join m.usuario u join u.persona p

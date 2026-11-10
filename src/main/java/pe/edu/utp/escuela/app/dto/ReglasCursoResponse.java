@@ -3,7 +3,6 @@ package pe.edu.utp.escuela.app.dto;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/** Configuración académica que controla la certificación de una convocatoria. */
 public record ReglasCursoResponse(
         boolean requiereExamenes,
         boolean requiereProgreso,

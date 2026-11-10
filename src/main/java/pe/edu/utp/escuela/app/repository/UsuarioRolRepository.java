@@ -50,7 +50,6 @@ public interface UsuarioRolRepository extends JpaRepository<UsuarioRol, UsuarioR
             """)
     boolean usuarioTieneRol(@Param("usuarioId") Long usuarioId, @Param("codigoRol") String codigoRol);
 
-    /** Validacion puntual para operaciones de negocio sobre otra cuenta (por ejemplo HU-019). */
     @Query(value = """
             select exists (
                 select 1 from usuario_rol ur

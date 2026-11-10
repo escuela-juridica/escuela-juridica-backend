@@ -39,7 +39,6 @@ import pe.edu.utp.escuela.app.security.CurrentUserService;
 import pe.edu.utp.escuela.app.security.CurrentUserService.CurrentUser;
 import pe.edu.utp.escuela.app.util.TextNormalizer;
 
-/** HU-013 — Configurar exámenes, preguntas y alternativas. */
 @ExtendWith(MockitoExtension.class)
 class ExamenServiceTests {
 
@@ -88,11 +87,8 @@ class ExamenServiceTests {
                 FinalidadExamen.FINAL, 1, 90, false, false, MostrarRespuestas.AL_APROBAR, null, true, 3);
     }
 
-    // ---------------------------------------------------------------- Exámenes --
-
     @Test
     void crearExamenDeModuloValidoQuedaEnEstadoEditable() {
-        // HU-013 Escenario 1 (configuración del examen).
         Curso curso = cursoEnEstado("BORRADOR");
         Modulo modulo = moduloDe(curso);
         when(cursos.findById(100L)).thenReturn(Optional.of(curso));
@@ -167,7 +163,6 @@ class ExamenServiceTests {
         when(cursos.findById(100L)).thenReturn(Optional.of(curso));
         when(examenes.existsByCurso_IdAndTituloIgnoreCase(100L, "Examen práctica")).thenReturn(false);
 
-        // PRACTICA siempre tiene maximoIntentos=null, así que AL_AGOTAR nunca aplica aquí.
         CrearExamenRequest peticion = new CrearExamenRequest(null, "Examen práctica", null, TipoExamen.PRACTICA,
                 FinalidadExamen.FINAL, 5, 90, false, false, MostrarRespuestas.AL_AGOTAR, null, true, 3);
 
@@ -191,7 +186,6 @@ class ExamenServiceTests {
 
     @Test
     void actualizarExamenConCursoIniciadoCambiandoDiasDeRevisionLanzaValidacion() {
-        // HU-013 Escenario 3 (restricción temporal).
         Curso curso = cursoEnEstado("EN_CURSO");
         Examen examen = new Examen();
         examen.setId(50L);
@@ -273,11 +267,8 @@ class ExamenServiceTests {
         assertFalse(respuesta.activo());
     }
 
-    // ---------------------------------------------------------------- Preguntas --
-
     @Test
     void crearPreguntaSeleccionUnicaConUnaCorrectaFunciona() {
-        // HU-013 Escenario 2 (banco de preguntas).
         Examen examen = new Examen();
         examen.setId(50L);
         when(examenes.findById(50L)).thenReturn(Optional.of(examen));
@@ -385,8 +376,6 @@ class ExamenServiceTests {
 
         assertTrue(respuesta.opciones().isEmpty());
     }
-
-    // ---------------------------------------------------------------- Eliminar (HU-016 apoyo) --
 
     @Test
     void eliminarExamenConCursoEnBorradorLoElimina() {

@@ -131,7 +131,6 @@ public class ReporteMatriculaExport {
 
             Sheet hoja = libro.createSheet("Reporte de matrículas");
 
-            // Estilo de encabezados
             CellStyle estiloEncabezado = libro.createCellStyle();
             estiloEncabezado.setFillForegroundColor(
                     IndexedColors.DARK_BLUE.getIndex());
@@ -143,7 +142,6 @@ public class ReporteMatriculaExport {
             fuente.setColor(IndexedColors.WHITE.getIndex());
             estiloEncabezado.setFont(fuente);
 
-            // Crear encabezados
             Row encabezado = hoja.createRow(0);
 
             for (int i = 0; i < ENCABEZADOS.length; i++) {
@@ -152,7 +150,6 @@ public class ReporteMatriculaExport {
                 celda.setCellStyle(estiloEncabezado);
             }
 
-            // Agregar las matrículas
             int numeroFila = 1;
 
             for (ReporteMatriculaResponse fila : filas) {
@@ -177,7 +174,6 @@ public class ReporteMatriculaExport {
                 }
             }
 
-            // Ajustar el ancho de las columnas
             for (int i = 0; i < ENCABEZADOS.length; i++) {
                 hoja.autoSizeColumn(i);
             }

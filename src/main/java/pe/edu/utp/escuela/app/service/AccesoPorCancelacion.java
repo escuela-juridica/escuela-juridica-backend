@@ -5,12 +5,6 @@ import java.time.ZoneId;
 import pe.edu.utp.escuela.app.entity.Curso;
 import pe.edu.utp.escuela.app.entity.Matricula;
 
-/**
- * HU-038 — Quién conserva la consulta de un curso CANCELADO. Solo quien ya tenía contenido disponible al momento de
- * cancelar: matrícula no cancelada individualmente, cuenta habilitada, acceso vigente y curso ya iniciado. La
- * cancelación nunca habilita contenido nuevo: si el curso no había comenzado (o el acceso ya había vencido) no hay
- * nada que consultar. Es una sola regla compartida por el aula, los materiales y los exámenes para que no diverja.
- */
 final class AccesoPorCancelacion {
 
     private AccesoPorCancelacion() {

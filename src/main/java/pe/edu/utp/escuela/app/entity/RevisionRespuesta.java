@@ -15,8 +15,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** HU-030 — Calificación humana de una respuesta abierta. Es un historial: cada publicación
- * agrega una fila con el puntaje, la observación para el alumno y quién la revisó. */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -39,7 +37,6 @@ public class RevisionRespuesta {
     @Column(name = "puntaje_asignado", nullable = false, precision = 6, scale = 2)
     private BigDecimal puntajeAsignado;
 
-    /** Retroalimentación opcional, visible para el alumno junto con su resultado. */
     @Column(columnDefinition = "text")
     private String observacion;
 

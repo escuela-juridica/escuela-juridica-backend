@@ -16,11 +16,6 @@ import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.stereotype.Service;
 import pe.edu.utp.escuela.app.exception.ResourceNotFoundException;
 
-/**
- * Referencia opaca y firmada que identifica una cuenta pendiente en la URL de PF-005, sin exponer
- * un id secuencial adivinable ni el correo. No autoriza verificar el código; solo permite recuperar
- * el contexto (correo) cuando se pierde el estado de navegación, por ejemplo al recargar la página.
- */
 @Service
 public class ReferenciaVerificacionService {
 

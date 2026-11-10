@@ -19,9 +19,6 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
 import pe.edu.utp.escuela.app.dto.ReportePagoResponse;
 
-/** HU-042 — Exportación a Excel del reporte de pagos. Escribe exactamente las filas que recibe (las mismas de la
- * pantalla con los mismos filtros) y cierra con el total de pagos confirmados. Nunca incluye tokens, llaves ni
- * datos de tarjeta. */
 @Component
 public class ReportePagoExport {
 

@@ -5,7 +5,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
-/** HU-039 — Constancia que ve la persona al presentar su queja o reclamo: copia de lo presentado y el plazo. */
 public record ReclamacionConstanciaResponse(
         String codigo,
         String tipo,

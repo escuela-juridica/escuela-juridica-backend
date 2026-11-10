@@ -14,10 +14,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/**
- * HU-047 — Resultado comunicado por Culqi para un pago. El identificador es único: una confirmación repetida
- * se reconoce y no vuelve a producir efectos (pago, matrícula, acceso, cupo, constancia o correo).
- */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -40,7 +36,6 @@ public class EventoPago {
     @Column(name = "estado_informado", nullable = false, length = 20)
     private String estadoInformado;
 
-    /** Contenido mínimo para soporte; nunca datos sensibles de tarjeta. */
     @Column(columnDefinition = "text")
     private String contenido;
 
