@@ -34,6 +34,7 @@ import pe.edu.utp.escuela.app.entity.Leccion;
 import pe.edu.utp.escuela.app.entity.Modulo;
 import pe.edu.utp.escuela.app.entity.LogroCertificacion;
 import pe.edu.utp.escuela.app.entity.Matricula;
+import pe.edu.utp.escuela.app.entity.IntentoExamen;
 import pe.edu.utp.escuela.app.entity.Notificacion;
 import pe.edu.utp.escuela.app.entity.Persona;
 import pe.edu.utp.escuela.app.entity.ReglaCurso;
@@ -49,6 +50,7 @@ import pe.edu.utp.escuela.app.repository.CertificadoFirmanteRepository;
 import pe.edu.utp.escuela.app.repository.CertificadoRepository;
 import pe.edu.utp.escuela.app.repository.ConfiguracionInstitucionalRepository;
 import pe.edu.utp.escuela.app.repository.CursoFirmanteRepository;
+import pe.edu.utp.escuela.app.repository.IntentoExamenRepository;
 import pe.edu.utp.escuela.app.repository.LeccionRepository;
 import pe.edu.utp.escuela.app.repository.ModuloRepository;
 import pe.edu.utp.escuela.app.repository.LogroCertificacionRepository;
@@ -69,6 +71,7 @@ public class CertificacionService {
             DateTimeFormatter.ofPattern("d 'de' MMMM 'de' yyyy", Locale.forLanguageTag("es-PE"));
 
     private final MatriculaRepository matriculas;
+    private final IntentoExamenRepository intentosExamen;
     private final LogroCertificacionRepository logros;
     private final CertificadoRepository certificados;
     private final CertificadoFirmanteRepository certificadoFirmantes;
@@ -210,8 +213,6 @@ public class CertificacionService {
                 Situacion s = evaluar(matricula);
                 if (s.emitirYa()) {
                     emitir(s, "AUTOMATICA");
-                } else if ("PENDIENTE_DATOS".equals(s.estado())) {
-                    pedirDatos(matricula);
                 }
             });
         } catch (RuntimeException e) {
@@ -249,6 +250,11 @@ public class CertificacionService {
 
         Instant ahora = clock.instant();
         boolean cursoCancelado = "CANCELADO".equals(curso.getEstadoCurso().getCodigo());
+        if (regla.isNotaDelUltimoIntento() && logro.getFechaFinalizacion() != null && !avance.cumpleTodo()) {
+            logro.setFechaFinalizacion(null);
+            matricula.setFechaFinalizacion(null);
+            matriculas.save(matricula);
+        }
         if (logro.getFechaFinalizacion() == null && condicionesActivas && avance.cumpleTodo() && !cursoCancelado) {
             logro.setFechaFinalizacion(ahora);
             matricula.setFechaFinalizacion(ahora);
@@ -256,6 +262,10 @@ public class CertificacionService {
         }
         boolean finalizado = logro.getFechaFinalizacion() != null;
         int espera = regla.getDiasEsperaCertificado();
+        boolean examenEnCurso = finalizado && hayExamenCalificadoEnCurso(matricula, ahora);
+        String avisoNuevosIntentos = regla.isNotaDelUltimoIntento()
+                ? ". Hasta entonces, si rindes otro intento, su nota reemplazará a la actual."
+                : ". Hasta entonces puedes mejorar tu nota con los intentos disponibles.";
 
         LocalDate fechaBase = null;
         Instant programada = null;
@@ -277,7 +287,7 @@ public class CertificacionService {
                 estado = "PROGRAMADO";
                 mensaje = espera > 0
                         ? "Cumpliste los requisitos. Tu certificado se emitirá automáticamente el "
-                                + FECHA_LARGA.format(programada.atZone(LIMA)) + ". Hasta entonces puedes mejorar tu nota con los intentos disponibles."
+                                + FECHA_LARGA.format(programada.atZone(LIMA)) + avisoNuevosIntentos
                         : "Cumpliste los requisitos. Podrás generar tu certificado desde el "
                                 + FECHA_LARGA.format(programada.atZone(LIMA)) + ".";
             } else if (!datos) {
@@ -285,12 +295,21 @@ public class CertificacionService {
                 mensaje = "Confirma tus nombres y apellidos tal como quieres que aparezcan en tu certificado.";
             } else if (espera > 0) {
                 estado = "PROGRAMADO";
-                mensaje = "Tu certificado se está emitiendo.";
-                emitirYa = true;
+                mensaje = examenEnCurso
+                        ? "Tienes un examen en curso. Tu certificado se emitirá cuando lo termines."
+                        : "Tu certificado se está emitiendo.";
+                emitirYa = !examenEnCurso;
+            } else if (examenEnCurso) {
+                estado = "PENDIENTE_REQUISITOS";
+                mensaje = "Tienes un examen en curso. Envíalo o espera a que termine su tiempo para poder generar tu certificado.";
             } else {
                 estado = "LISTO_PARA_EMITIR";
-                mensaje = "Cumpliste todos los requisitos. Genera tu certificado ahora o sigue mejorando tu nota: "
-                        + "al generarlo, tu nota y nivel quedan definitivos y se cierran los nuevos intentos calificados.";
+                mensaje = regla.isNotaDelUltimoIntento()
+                        ? "Cumpliste todos los requisitos. Genera tu certificado ahora con la nota de tu último intento. "
+                                + "Si rindes otro intento, su nota reemplazará a la actual; al generarlo, tu nota y nivel quedan "
+                                + "definitivos y se cierran los nuevos intentos calificados."
+                        : "Cumpliste todos los requisitos. Genera tu certificado ahora o sigue mejorando tu nota: "
+                                + "al generarlo, tu nota y nivel quedan definitivos y se cierran los nuevos intentos calificados.";
             }
         }
 
@@ -305,6 +324,13 @@ public class CertificacionService {
         logros.save(logro);
         return new Situacion(matricula, avance, logro, null, estado, mensaje, emitirYa, fechaBase, espera,
                 condicionesActivas, nota, nivel);
+    }
+
+    private boolean hayExamenCalificadoEnCurso(Matricula matricula, Instant ahora) {
+        return intentosExamen.findByMatricula_IdOrderByIniciadoEnAsc(matricula.getId()).stream()
+                .filter(IntentoExamen::estaEnProgreso)
+                .filter(i -> "CALIFICADO".equals(i.getExamen().getTipo()))
+                .anyMatch(i -> i.getExpiraEn() == null || ahora.isBefore(i.getExpiraEn()));
     }
 
     private static String nivelPara(ReglaCurso regla, Curso curso, BigDecimal nota) {
@@ -447,16 +473,6 @@ public class CertificacionService {
             }
         }
         throw new IllegalStateException("No pudimos generar un código único para el certificado.");
-    }
-
-    private void pedirDatos(Matricula matricula) {
-        String tipo = "CERT_DATOS_" + matricula.getId();
-        if (notificaciones.existsByUsuario_IdAndTipo(matricula.getUsuario().getId(), tipo)) {
-            return;
-        }
-        enviar(matricula, tipo, "Confirma tus datos para emitir tu certificado", "mail/certificado-datos.html",
-                Map.of("alumno", matricula.getUsuario().getPersona().getNombres(), "curso", matricula.getCurso().getTitulo(),
-                        "enlace", frontendBaseUrl + "/aula/" + matricula.getCurso().getId()));
     }
 
     private void avisarCertificado(Matricula matricula, Certificado certificado) {

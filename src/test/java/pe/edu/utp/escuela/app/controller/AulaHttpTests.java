@@ -79,7 +79,7 @@ class AulaHttpTests extends HttpIntegracionBase {
                 .andExpect(jsonPath("$.modulos[0].lecciones[0].estado").value("DISPONIBLE"))
                 .andExpect(jsonPath("$.modulos[0].lecciones[1].estado").value("BLOQUEADA"))
                 .andExpect(jsonPath("$.modulos[0].lecciones[1].motivoBloqueo")
-                        .value("Completa la lección anterior: Lección 1"))
+                        .value("Completa la lección anterior: Módulo 1 - Lección 1"))
                 .andExpect(jsonPath("$.ultimaLeccionIdValida").value(lecciones[0].getId()));
     }
 
@@ -92,7 +92,7 @@ class AulaHttpTests extends HttpIntegracionBase {
         mvc.perform(post("/api/app/lecciones/" + lecciones[1].getId() + "/completar")
                         .with(comoAlumno(alumno.getId())).with(csrf()))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Completa la lección anterior: Lección 1"));
+                .andExpect(jsonPath("$.message").value("Completa la lección anterior: Módulo 1 - Lección 1"));
         assertEquals(0, progreso.count());
 
         mvc.perform(post("/api/app/lecciones/" + lecciones[0].getId() + "/completar")

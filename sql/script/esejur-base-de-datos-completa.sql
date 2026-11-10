@@ -535,11 +535,13 @@ CREATE TABLE regla_curso (
                              asistencia_minima numeric(5,2) NOT NULL DEFAULT 80,
                              secuencia_obligatoria boolean NOT NULL DEFAULT true,
                              dias_espera_certificado integer NOT NULL DEFAULT 0,
+                             criterio_nota varchar(10) NOT NULL DEFAULT 'MEJOR',
                              bloqueado_en timestamptz,
                              creado_en timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
                              modificado_en timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
                              CONSTRAINT pk_regla_curso PRIMARY KEY (regla_curso_id),
                              CONSTRAINT uq_regla_curso_curso UNIQUE (curso_id),
+                             CONSTRAINT ck_regla_curso_criterio_nota CHECK (criterio_nota IN ('MEJOR','ULTIMA')),
                              CONSTRAINT fk_regla_curso_curso FOREIGN KEY (curso_id) REFERENCES curso(curso_id)
 );
 COMMENT ON TABLE regla_curso IS 'Reglas academicas y de certificacion propias de cada curso.';
@@ -555,6 +557,7 @@ COMMENT ON COLUMN regla_curso.umbral_video IS 'Porcentaje de video necesario par
 COMMENT ON COLUMN regla_curso.asistencia_minima IS 'Porcentaje minimo de asistencia cuando aplica.';
 COMMENT ON COLUMN regla_curso.secuencia_obligatoria IS 'Indica si modulos y lecciones avanzan en orden.';
 COMMENT ON COLUMN regla_curso.dias_espera_certificado IS 'Dias de espera antes de emitir el certificado; cero es inmediato.';
+COMMENT ON COLUMN regla_curso.criterio_nota IS 'Nota de cada examen calificado que cuenta para certificar: MEJOR usa la mas alta de sus intentos; ULTIMA usa la del ultimo intento calificado.';
 COMMENT ON COLUMN regla_curso.bloqueado_en IS 'Momento desde el cual la configuracion no cambia.';
 COMMENT ON COLUMN regla_curso.creado_en IS 'Fecha y hora de creacion.';
 COMMENT ON COLUMN regla_curso.modificado_en IS 'Fecha y hora de ultima modificacion.';
