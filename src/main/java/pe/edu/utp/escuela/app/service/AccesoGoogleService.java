@@ -20,6 +20,7 @@ import pe.edu.utp.escuela.app.exception.PendingEmailVerificationException;
 import pe.edu.utp.escuela.app.integration.ContextoGoogleRegistroIntegration.Identidad;
 import pe.edu.utp.escuela.app.integration.GoogleCredentialVerifierIntegration;
 import pe.edu.utp.escuela.app.repository.UsuarioRepository;
+import pe.edu.utp.escuela.app.util.NombrePropio;
 
 @Service
 @RequiredArgsConstructor
@@ -78,8 +79,8 @@ public class AccesoGoogleService {
     }
 
     private Optional<Usuario> crearCuenta(Identidad identidad) {
-        String nombres = enMayusculas(identidad.nombres());
-        String apellidos = enMayusculas(identidad.apellidos());
+        String nombres = conFormatoDeNombre(identidad.nombres());
+        String apellidos = conFormatoDeNombre(identidad.apellidos());
         if (nombres.isEmpty() || apellidos.isEmpty()) {
             return Optional.empty();
         }
@@ -93,10 +94,10 @@ public class AccesoGoogleService {
         return usuarios.findByGoogleSubject(identidad.subject());
     }
 
-    private String enMayusculas(String valor) {
+    private String conFormatoDeNombre(String valor) {
         if (valor == null) {
             return "";
         }
-        return valor.strip().replaceAll("\\s+", " ").toUpperCase(Locale.of("es", "PE"));
+        return NombrePropio.formatear(valor.strip().replaceAll("\\s+", " "));
     }
 }

@@ -76,9 +76,10 @@ public class RegistroPersistencia {
                     "documentoIdentidad", "El documento ya se encuentra registrado.");
         }
         Persona persona = new Persona();
-        persona.setNombres(textos.requireText(nombres, "Nombres"));
-        persona.setApellidoPaterno(textos.requireText(paterno, "Apellidos"));
-        persona.setApellidoMaterno(textos.trimToNull(materno));
+        persona.actualizarNombres(
+                textos.requireText(nombres, "Nombres"),
+                textos.requireText(paterno, "Apellidos"),
+                textos.trimToNull(materno));
         persona.setTelefono(textos.trimToNull(telefono));
         persona.setDocumentoIdentidad(doc);
         persona.setFotoUrl(textos.trimToNull(foto));

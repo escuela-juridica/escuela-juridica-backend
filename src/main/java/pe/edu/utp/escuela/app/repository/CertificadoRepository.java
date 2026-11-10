@@ -26,7 +26,7 @@ public interface CertificadoRepository extends JpaRepository<Certificado, Long> 
     boolean existsByCodigo(String codigo);
 
     @EntityGraph(attributePaths = {"logro", "logro.matricula", "logro.matricula.curso"})
-    List<Certificado> findByLogro_Matricula_Usuario_IdOrderByEmitidoEnDesc(Long usuarioId);
+    Page<Certificado> findByLogro_Matricula_Usuario_Id(Long usuarioId, Pageable pageable);
 
     String ALCANCE_REPORTE = """
             from Certificado c

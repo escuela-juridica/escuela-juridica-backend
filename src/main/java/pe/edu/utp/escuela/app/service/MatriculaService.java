@@ -199,6 +199,26 @@ public class MatriculaService {
     }
 
     @Transactional
+    public Page<MatriculaResponse> misCursosPaginados(boolean completados, String busqueda, Pageable pageable) {
+        procesarVencimientos();
+        Usuario usuario = usuarioActualAlumno();
+        return matriculas.buscarDelAlumno(usuario.getId(), completados, patronDeBusqueda(busqueda), pageable)
+                .map(m -> respuesta(m, null));
+    }
+
+    @Transactional(readOnly = true)
+    public long contarMisCursos(boolean completados) {
+        Usuario usuario = usuarioActualAlumno();
+        return completados ? matriculas.countByUsuario_IdAndFechaFinalizacionIsNotNull(usuario.getId())
+                : matriculas.countByUsuario_IdAndFechaFinalizacionIsNull(usuario.getId());
+    }
+
+    private static String patronDeBusqueda(String busqueda) {
+        String texto = busqueda == null ? "" : busqueda.strip().toLowerCase();
+        return "%" + texto.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
+    }
+
+    @Transactional
     public Page<MatriculaAdministrativaResponse> listarAdministrativas(
             Long usuarioId, Long cursoId, String estado, Pageable pageable) {
         procesarVencimientos();

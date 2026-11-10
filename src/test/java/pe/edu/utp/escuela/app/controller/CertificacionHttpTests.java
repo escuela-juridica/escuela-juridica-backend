@@ -176,14 +176,17 @@ class CertificacionHttpTests extends HttpIntegracionBase {
 
         mvc.perform(get("/api/app/certificados").with(comoAlumno(alumno.getId())))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].codigo").value(codigo))
-                .andExpect(jsonPath("$[0].estado").value("VIGENTE"))
-                .andExpect(jsonPath("$[0].descargaUrl").value("/api/app/certificados/" + codigo + "/descargar"));
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.size").value(10))
+                .andExpect(jsonPath("$.items[0].codigo").value(codigo))
+                .andExpect(jsonPath("$.items[0].estado").value("VIGENTE"))
+                .andExpect(jsonPath("$.items[0].descargaUrl").value("/api/app/certificados/" + codigo + "/descargar"));
 
         mvc.perform(get("/api/app/certificados").with(comoAlumno(otro.getId())))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
+                .andExpect(jsonPath("$.items.length()").value(0))
+                .andExpect(jsonPath("$.totalElements").value(0));
 
         mvc.perform(get("/api/app/certificados/" + codigo + "/descargar").with(comoAlumno(alumno.getId())))
                 .andExpect(status().isOk())
@@ -229,8 +232,8 @@ class CertificacionHttpTests extends HttpIntegracionBase {
                 .andExpect(jsonPath("$.motivoAnulacion").doesNotExist());
 
         mvc.perform(get("/api/app/certificados").with(comoAlumno(alumno.getId())))
-                .andExpect(jsonPath("$[0].estado").value("ANULADO"))
-                .andExpect(jsonPath("$[0].descargaUrl").doesNotExist());
+                .andExpect(jsonPath("$.items[0].estado").value("ANULADO"))
+                .andExpect(jsonPath("$.items[0].descargaUrl").doesNotExist());
 
         mvc.perform(get("/api/app/certificados/" + codigo + "/descargar").with(comoAlumno(alumno.getId())))
                 .andExpect(status().isBadRequest())

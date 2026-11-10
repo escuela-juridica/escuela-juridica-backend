@@ -110,6 +110,7 @@ CREATE TABLE persona (
                          foto_url text,
                          cargo_profesional varchar(180),
                          biografia_profesional text,
+                         certificado_nombres_pendientes boolean NOT NULL DEFAULT true,
                          activo boolean NOT NULL DEFAULT true,
                          creado_en timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
                          modificado_en timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -121,6 +122,7 @@ COMMENT ON COLUMN persona.persona_id IS 'Identificador interno de la persona.';
 COMMENT ON COLUMN persona.nombres IS 'Nombres de la persona.';
 COMMENT ON COLUMN persona.apellido_paterno IS 'Apellido paterno.';
 COMMENT ON COLUMN persona.apellido_materno IS 'Apellido materno opcional.';
+COMMENT ON COLUMN persona.certificado_nombres_pendientes IS 'true si la persona aun debe confirmar sus nombres tal como se imprimen en los certificados; false cuando ya los confirmo y no se vuelve a pedir hasta que cambie sus nombres o apellidos.';
 COMMENT ON COLUMN persona.telefono IS 'Telefono opcional.';
 COMMENT ON COLUMN persona.documento_identidad IS 'Documento opcional; no se imprime en certificados.';
 COMMENT ON COLUMN persona.foto_url IS 'Ubicacion de la fotografia opcional.';
@@ -2710,14 +2712,14 @@ INSERT INTO curso
  horas_academicas, beneficios, creado_por_usuario_id, publicado_en)
 SELECT 'procedimiento-administrativo-practico',
        'Procedimiento Administrativo Practico',
-       'Curso gratuito, corto y aplicado, sobre el procedimiento administrativo general. En cuatro modulos recorres los principios y la competencia, las etapas y los actos administrativos, los recursos administrativos y el silencio administrativo. Cada leccion incluye video, material descargable en PDF y lecturas recomendadas, y al final rindes un examen de 30 minutos con correccion automatica y obtienes tu certificado al instante.',
+       'Diplomado gratuito y aplicado sobre el procedimiento administrativo general. En cuatro modulos recorres los principios y la competencia, las etapas y los actos administrativos, los recursos administrativos y el silencio administrativo. Cada leccion incluye video, material descargable en PDF y lecturas recomendadas, y al final rindes un examen de 30 minutos con correccion automatica y obtienes tu certificado al instante, con tu nota final y las 120 horas academicas.',
        '/uploads/portadas/31-1793741001012.jpg',
        tc.tipo_curso_id, ct.categoria_tematica_id, ec.entidad_certificadora_id, 'VIRTUAL', 'GRATUITO',
-       es.estado_curso_id, true, 0.00, 8.00,
-       ARRAY['Matricula gratuita con acceso inmediato','Cuatro modulos con 8 lecciones en video','Material descargable en PDF y lecturas recomendadas','Examen final de 30 minutos con correccion automatica','Certificado al instante al aprobar'],
+       es.estado_curso_id, true, 0.00, 120.00,
+       ARRAY['Matricula gratuita con acceso inmediato','Cuatro modulos con 8 lecciones en video','Material descargable en PDF y lecturas recomendadas','Examen final de 30 minutos con correccion automatica','Certificado al instante al aprobar, con tu nota y 120 horas academicas'],
        a.usuario_id, CURRENT_TIMESTAMP
 FROM tipo_curso tc, categoria_tematica ct, entidad_certificadora ec, estado_curso es, usuario a
-WHERE tc.codigo = 'CURSO' AND ct.codigo = 'DERECHO_ADMINISTRATIVO'
+WHERE tc.codigo = 'DIPLOMADO' AND ct.codigo = 'DERECHO_ADMINISTRATIVO'
   AND ec.nombre = 'Colegio de Abogados de Lima' AND es.codigo = 'PUBLICADO'
   AND a.correo = 'admin@escuelajuridica.edu.pe';
 

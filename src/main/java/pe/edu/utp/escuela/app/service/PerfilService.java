@@ -48,9 +48,10 @@ public class PerfilService {
             throw new DuplicateResourceException("El documento ya se encuentra registrado.");
         }
 
-        persona.setNombres(textNormalizer.requireText(entrada.nombres(), "Nombres"));
-        persona.setApellidoPaterno(textNormalizer.requireText(entrada.apellidoPaterno(), "Apellido paterno"));
-        persona.setApellidoMaterno(textNormalizer.trimToNull(entrada.apellidoMaterno()));
+        persona.actualizarNombres(
+                textNormalizer.requireText(entrada.nombres(), "Nombres"),
+                textNormalizer.requireText(entrada.apellidoPaterno(), "Apellido paterno"),
+                textNormalizer.trimToNull(entrada.apellidoMaterno()));
         persona.setTelefono(textNormalizer.trimToNull(entrada.telefono()));
         persona.setDocumentoIdentidad(documento);
 

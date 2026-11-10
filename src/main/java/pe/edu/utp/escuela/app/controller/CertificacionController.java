@@ -4,9 +4,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 import pe.edu.utp.escuela.app.dto.CertificacionResponse;
 import pe.edu.utp.escuela.app.dto.ConfirmarDatosRequest;
 import pe.edu.utp.escuela.app.dto.MiCertificadoResponse;
+import pe.edu.utp.escuela.app.dto.PageResponse;
 import pe.edu.utp.escuela.app.service.CertificacionService;
 import pe.edu.utp.escuela.app.service.CertificacionService.Descarga;
 import pe.edu.utp.escuela.app.service.MisCertificadosService;
@@ -70,11 +72,15 @@ public class CertificacionController {
 
     @GetMapping("/certificados")
     @Operation(summary = "Listar mis certificados",
-            description = "Solo los del alumno autenticado, del más reciente al más antiguo. Un certificado anulado "
-                    + "se lista como no válido y sin enlace de descarga.")
+            description = "Solo los del alumno autenticado, del más reciente al más antiguo, paginados (10 por "
+                    + "defecto, máximo 50). Un certificado anulado se lista como no válido y sin enlace de descarga.")
     @ApiResponse(responseCode = "403", description = "La cuenta autenticada no tiene rol Alumno")
-    public List<MiCertificadoResponse> misCertificados() {
-        return misCertificados.listar();
+    public PageResponse<MiCertificadoResponse> misCertificados(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        int tamano = Math.min(Math.max(size, 1), 50);
+        Sort orden = Sort.by(Sort.Direction.DESC, "emitidoEn").and(Sort.by(Sort.Direction.DESC, "id"));
+        return PageResponse.from(misCertificados.listar(PageRequest.of(Math.max(page, 0), tamano, orden)));
     }
 
     @GetMapping("/certificados/{codigo}/descargar")

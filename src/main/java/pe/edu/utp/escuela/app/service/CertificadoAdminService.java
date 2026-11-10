@@ -392,7 +392,11 @@ public class CertificadoAdminService {
         AvanceAcademico avance = avanceAcademico.calcular(m);
         LogroCertificacion logro = logros.findByMatricula_Id(m.getId()).orElse(null);
         Certificado certificado = certificados.findByLogro_Matricula_Id(m.getId()).orElse(null);
-        boolean datos = logro != null && logro.getDatosConfirmadosEn() != null && logro.getNombresConfirmados() != null;
+        pe.edu.utp.escuela.app.entity.Persona persona = m.getUsuario().getPersona();
+        boolean datosDelLogro = logro != null && logro.getDatosConfirmadosEn() != null && logro.getNombresConfirmados() != null;
+        boolean datos = datosDelLogro || !persona.isCertificadoNombresPendientes();
+        String nombresConfirmados = datosDelLogro ? logro.getNombresConfirmados()
+                : datos ? persona.nombreCompleto() : null;
         Instant finalizacion = logro == null ? null : logro.getFechaFinalizacion();
         String nivel = certificado != null ? certificado.getNivel() : nivelProyectado(m, avance);
         Certificado vigente = certificado != null && Certificado.VIGENTE.equals(certificado.getEstado()) ? certificado : null;
@@ -402,7 +406,7 @@ public class CertificadoAdminService {
         return new EmisionManualSituacionResponse(m.getId(), m.getUsuario().getPersona().nombreCompleto(),
                 m.getUsuario().getCorreo(), m.getCurso().getTitulo(), m.getCurso().getModalidad(), m.getEstado(),
                 m.getFechaMatricula(), finalizacion, m.getFechaMatricula().atZone(LIMA).toLocalDate(),
-                LocalDate.now(clock.withZone(LIMA)), datos, datos ? logro.getNombresConfirmados() : null,
+                LocalDate.now(clock.withZone(LIMA)), datos, nombresConfirmados,
                 certificado != null ? certificado.getNotaImpresa() : avance.notaFinal(), nivel, entidad,
                 horasDelCurso(m, vigente), tipoCurso(m, vigente), fechaInicio(m, vigente),
                 vigente != null ? vigente.getFechaFinImpresa() : fechaFinDelCurso(m), firmantesImpresos(m, vigente),

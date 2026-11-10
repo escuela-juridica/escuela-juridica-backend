@@ -29,6 +29,27 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Long> {
     @EntityGraph(attributePaths = { "curso", "curso.estadoCurso", "usuario", "usuario.persona" })
     List<Matricula> findByUsuario_IdOrderByFechaMatriculaDesc(Long usuarioId);
 
+    @EntityGraph(attributePaths = { "curso", "curso.estadoCurso", "usuario", "usuario.persona" })
+    @Query(value = """
+            select m from Matricula m join m.curso c
+            where m.usuario.id = :usuarioId
+              and ((:completados = true and m.fechaFinalizacion is not null)
+                or (:completados = false and m.fechaFinalizacion is null))
+              and lower(c.titulo) like :patron escape '!'
+            """, countQuery = """
+            select count(m) from Matricula m join m.curso c
+            where m.usuario.id = :usuarioId
+              and ((:completados = true and m.fechaFinalizacion is not null)
+                or (:completados = false and m.fechaFinalizacion is null))
+              and lower(c.titulo) like :patron escape '!'
+            """)
+    Page<Matricula> buscarDelAlumno(@Param("usuarioId") Long usuarioId, @Param("completados") boolean completados,
+            @Param("patron") String patron, Pageable pageable);
+
+    long countByUsuario_IdAndFechaFinalizacionIsNull(Long usuarioId);
+
+    long countByUsuario_IdAndFechaFinalizacionIsNotNull(Long usuarioId);
+
     @EntityGraph(attributePaths = { "curso", "usuario", "usuario.persona" })
     List<Matricula> findAllByOrderByFechaMatriculaDesc();
 

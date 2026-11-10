@@ -102,9 +102,10 @@ public class AdminUsuariosService {
             throw new DuplicateResourceException("El documento ya se encuentra registrado.");
         }
 
-        persona.setNombres(textos.requireText(p.nombres(), "Nombres"));
-        persona.setApellidoPaterno(textos.requireText(p.apellidoPaterno(), "Apellido paterno"));
-        persona.setApellidoMaterno(textos.trimToNull(p.apellidoMaterno()));
+        persona.actualizarNombres(
+                textos.requireText(p.nombres(), "Nombres"),
+                textos.requireText(p.apellidoPaterno(), "Apellido paterno"),
+                textos.trimToNull(p.apellidoMaterno()));
         persona.setTelefono(textos.trimToNull(p.telefono()));
         persona.setDocumentoIdentidad(documento);
 

@@ -120,9 +120,8 @@ public class CertificacionService {
                     : "Tu certificado ya fue emitido: sus datos no se pueden cambiar.");
         }
         Persona persona = matricula.getUsuario().getPersona();
-        persona.setNombres(limpiar(peticion.nombres()));
-        persona.setApellidoPaterno(limpiar(peticion.apellidoPaterno()));
-        persona.setApellidoMaterno(limpiarOpcional(peticion.apellidoMaterno()));
+        persona.confirmarNombres(limpiar(peticion.nombres()), limpiar(peticion.apellidoPaterno()),
+                limpiarOpcional(peticion.apellidoMaterno()));
         personas.save(persona);
 
         logro.setNombresConfirmados(persona.nombreCompleto());
@@ -273,7 +272,7 @@ public class CertificacionService {
                 fechaBase = curso.getFechaFin();
             }
             programada = fechaBase.plusDays(espera).atStartOfDay(LIMA).toInstant();
-            boolean datos = logro.getDatosConfirmadosEn() != null;
+            boolean datos = !matricula.getUsuario().getPersona().isCertificadoNombresPendientes();
             if (ahora.isBefore(programada)) {
                 estado = "PROGRAMADO";
                 mensaje = espera > 0
@@ -354,7 +353,8 @@ public class CertificacionService {
         c.setEstado(Certificado.VIGENTE);
         c.setTipoEmision(tipoEmision);
         c.setNivel(s.nivel());
-        c.setNombresImpresos(logro.getNombresConfirmados());
+        c.setNombresImpresos("MANUAL".equals(tipoEmision) && logro.getNombresConfirmados() != null
+                ? logro.getNombresConfirmados() : matricula.getUsuario().getPersona().nombreCompleto());
         c.setTituloCursoImpreso(curso.getTitulo());
         c.setTipoCursoImpreso(curso.getTipoCurso() != null ? curso.getTipoCurso().getNombre() : "Curso");
         c.setTemarioImpreso(temarioDe(curso));
@@ -508,7 +508,7 @@ public class CertificacionService {
                 s.nota(), s.nivel(), entidad, logro.getFechaFinalizacion(), s.fechaBase(),
                 logro.getFechaEmisionProgramada(), s.espera(), s.espera() > 0,
                 new DatosCertificado(p.getNombres(), p.getApellidoPaterno(), p.getApellidoMaterno(),
-                        logro.getDatosConfirmadosEn() != null, logro.getDatosConfirmadosEn()),
+                        !p.isCertificadoNombresPendientes(), logro.getDatosConfirmadosEn()),
                 finalizado && !emitido,
                 !emitido && fechaLlegada && "LISTO_PARA_EMITIR".equals(s.estado()),
                 emitidoDto);

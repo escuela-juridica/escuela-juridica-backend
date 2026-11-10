@@ -32,6 +32,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import pe.edu.utp.escuela.app.entity.Certificado;
+import pe.edu.utp.escuela.app.util.NombrePropio;
 import pe.edu.utp.escuela.app.entity.CertificadoFirmante;
 
 @Component
@@ -102,7 +103,7 @@ public class CertificadoPdfExport {
 
             l.letrado(c, f.oswald(), 64f, NEGRO, "CERTIFICADO", 962, 277, 3.6f);
             l.centrado(c, f.normal(), 42.2f, NEGRO, "Otorgado a", 966, 367);
-            l.centradoAjustado(c, f.cursiva(), 111f, 1740f, NEGRO, cert.getNombresImpresos(), 971, 500);
+            l.centradoAjustado(c, f.cursiva(), 111f, 1740f, NEGRO, NombrePropio.formatear(cert.getNombresImpresos()), 971, 500);
 
             String tipo = cert.getTipoCursoImpreso() == null ? "CURSO" : cert.getTipoCursoImpreso().toUpperCase(LOCALE);
             String frase ="POR HABER PARTICIPADO Y APROBADO " + articulo(tipo) + " " + tipo + ":";
