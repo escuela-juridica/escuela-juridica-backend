@@ -2870,7 +2870,7 @@ FROM (SELECT l.leccion_id, row_number() OVER (ORDER BY m.orden, l.orden) AS n
 ) v(n, orden, titulo, descarga, referencia) ON v.n = x.n
          JOIN recurso r ON r.referencia = v.referencia OR r.referencia LIKE '%/' || v.referencia;
 
--- Examen final: 4 preguntas de seleccion unica (una por modulo, 10 puntos c/u), 3 intentos, 30 minutos de tiempo limite.
+-- Examen final: 4 preguntas de seleccion unica (una por modulo, 5 puntos c/u, 20 en total), 3 intentos, 30 minutos de tiempo limite.
 -- Modo SECUENCIAL: una pregunta por vez con "Siguiente", sin volver atras, y no se puede avanzar sin responder.
 INSERT INTO examen
 (curso_id, modulo_id, titulo, descripcion, tipo, finalidad, orden, maximo_intentos, tiempo_limite_minutos,
@@ -2882,7 +2882,7 @@ SELECT c.curso_id, NULL, 'Examen final del curso',
 FROM curso c WHERE c.url_amigable = 'procedimiento-administrativo-practico';
 
 INSERT INTO pregunta (examen_id, tipo, enunciado, puntaje, orden)
-SELECT e.examen_id, 'SELECCION_UNICA', v.enunciado, 10, v.orden
+SELECT e.examen_id, 'SELECCION_UNICA', v.enunciado, 5, v.orden
 FROM examen e
          JOIN curso c ON c.curso_id = e.curso_id AND c.url_amigable = 'procedimiento-administrativo-practico'
          CROSS JOIN (VALUES
