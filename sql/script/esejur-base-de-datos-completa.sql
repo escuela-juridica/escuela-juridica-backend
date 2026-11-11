@@ -535,11 +535,13 @@ CREATE TABLE regla_curso (
                              asistencia_minima numeric(5,2) NOT NULL DEFAULT 80,
                              secuencia_obligatoria boolean NOT NULL DEFAULT true,
                              dias_espera_certificado integer NOT NULL DEFAULT 0,
+                             criterio_nota varchar(10) NOT NULL DEFAULT 'MEJOR',
                              bloqueado_en timestamptz,
                              creado_en timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
                              modificado_en timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
                              CONSTRAINT pk_regla_curso PRIMARY KEY (regla_curso_id),
                              CONSTRAINT uq_regla_curso_curso UNIQUE (curso_id),
+                             CONSTRAINT ck_regla_curso_criterio_nota CHECK (criterio_nota IN ('MEJOR','ULTIMA')),
                              CONSTRAINT fk_regla_curso_curso FOREIGN KEY (curso_id) REFERENCES curso(curso_id)
 );
 COMMENT ON TABLE regla_curso IS 'Reglas academicas y de certificacion propias de cada curso.';
@@ -555,6 +557,7 @@ COMMENT ON COLUMN regla_curso.umbral_video IS 'Porcentaje de video necesario par
 COMMENT ON COLUMN regla_curso.asistencia_minima IS 'Porcentaje minimo de asistencia cuando aplica.';
 COMMENT ON COLUMN regla_curso.secuencia_obligatoria IS 'Indica si modulos y lecciones avanzan en orden.';
 COMMENT ON COLUMN regla_curso.dias_espera_certificado IS 'Dias de espera antes de emitir el certificado; cero es inmediato.';
+COMMENT ON COLUMN regla_curso.criterio_nota IS 'Nota de cada examen calificado que cuenta para certificar: MEJOR usa la mas alta de sus intentos; ULTIMA usa la del ultimo intento calificado.';
 COMMENT ON COLUMN regla_curso.bloqueado_en IS 'Momento desde el cual la configuracion no cambia.';
 COMMENT ON COLUMN regla_curso.creado_en IS 'Fecha y hora de creacion.';
 COMMENT ON COLUMN regla_curso.modificado_en IS 'Fecha y hora de ultima modificacion.';
@@ -2867,7 +2870,7 @@ FROM (SELECT l.leccion_id, row_number() OVER (ORDER BY m.orden, l.orden) AS n
 ) v(n, orden, titulo, descarga, referencia) ON v.n = x.n
          JOIN recurso r ON r.referencia = v.referencia OR r.referencia LIKE '%/' || v.referencia;
 
--- Examen final: 4 preguntas de seleccion unica (una por modulo, 10 puntos c/u), 3 intentos, 30 minutos de tiempo limite.
+-- Examen final: 4 preguntas de seleccion unica (una por modulo, 5 puntos c/u, 20 en total), 3 intentos, 30 minutos de tiempo limite.
 -- Modo SECUENCIAL: una pregunta por vez con "Siguiente", sin volver atras, y no se puede avanzar sin responder.
 INSERT INTO examen
 (curso_id, modulo_id, titulo, descripcion, tipo, finalidad, orden, maximo_intentos, tiempo_limite_minutos,
@@ -2879,7 +2882,7 @@ SELECT c.curso_id, NULL, 'Examen final del curso',
 FROM curso c WHERE c.url_amigable = 'procedimiento-administrativo-practico';
 
 INSERT INTO pregunta (examen_id, tipo, enunciado, puntaje, orden)
-SELECT e.examen_id, 'SELECCION_UNICA', v.enunciado, 10, v.orden
+SELECT e.examen_id, 'SELECCION_UNICA', v.enunciado, 5, v.orden
 FROM examen e
          JOIN curso c ON c.curso_id = e.curso_id AND c.url_amigable = 'procedimiento-administrativo-practico'
          CROSS JOIN (VALUES

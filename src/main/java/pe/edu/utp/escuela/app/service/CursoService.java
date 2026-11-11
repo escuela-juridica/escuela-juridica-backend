@@ -357,6 +357,7 @@ public class CursoService {
         regla.setAsistenciaMinima(p.asistenciaMinima());
         regla.setSecuenciaObligatoria(p.secuenciaObligatoria());
         regla.setDiasEsperaCertificado(p.diasEsperaCertificado());
+        regla.setCriterioNota(p.criterioNota() == null ? ReglaCurso.MEJOR : p.criterioNota());
         curso.setFechaCierreMatricula(p.fechaCierreMatricula());
         reglasCurso.save(regla);
         return reglasDe(regla, curso);
@@ -391,7 +392,7 @@ public class CursoService {
         return new ReglasCursoResponse(r.isRequiereExamenes(), r.isRequiereProgreso(), r.isRequiereAsistencia(),
                 r.getNotaMinima(), r.getNotaRefrendado(), r.getProgresoMinimo(), r.getUmbralVideo(),
                 r.getAsistenciaMinima(), r.isSecuenciaObligatoria(), r.getDiasEsperaCertificado(),
-                c.getFechaCierreMatricula(), r.getBloqueadoEn() != null || cursoIniciado(c));
+                r.getCriterioNota(), c.getFechaCierreMatricula(), r.getBloqueadoEn() != null || cursoIniciado(c));
     }
 
     private boolean cursoIniciado(Curso curso) {

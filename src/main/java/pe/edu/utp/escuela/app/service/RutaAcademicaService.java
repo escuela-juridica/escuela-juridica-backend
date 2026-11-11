@@ -176,7 +176,7 @@ public class RutaAcademicaService {
         Map<Long, EstadoExamen> estados = new LinkedHashMap<>();
         for (Examen examen : activos) {
             String motivo = motivoNoHabilitado(examen, matricula, regla, leccionesPorModulo, completadas, ahora);
-            estados.put(examen.getId(), estadoDe(examen, intentosPorExamen.getOrDefault(examen.getId(), List.of()),
+            estados.put(examen.getId(), estadoDe(examen, regla, intentosPorExamen.getOrDefault(examen.getId(), List.of()),
                     extrasPorExamen.getOrDefault(examen.getId(), 0L).intValue(), certificadoEmitido, motivo));
         }
 
@@ -208,7 +208,8 @@ public class RutaAcademicaService {
                         if (previaObligatoria != null
                                 && !Boolean.TRUE.equals(completadas.get(previaObligatoria.getId()))) {
                             bloqueos.put(leccion.getId(),
-                                    "Completa la lección anterior: " + previaObligatoria.getTitulo());
+                                    "Completa la lección anterior: Módulo " + previaObligatoria.getModulo().getOrden()
+                                            + " - " + previaObligatoria.getTitulo());
                         } else if (!examenesPendientes.isEmpty()) {
                             bloqueos.put(leccion.getId(), motivoExamenes(examenesPendientes));
                         }
@@ -230,16 +231,24 @@ public class RutaAcademicaService {
                 examenesPorModulo, examenesFinales, calificados, aprobados, notas, estados);
     }
 
-    private EstadoExamen estadoDe(Examen examen, List<IntentoExamen> delExamen, int extras,
+    private EstadoExamen estadoDe(Examen examen, ReglaCurso regla, List<IntentoExamen> delExamen, int extras,
             boolean certificadoEmitido, String motivoNoHabilitado) {
         List<IntentoExamen> ordenados = delExamen.stream()
                 .sorted(Comparator.comparing(IntentoExamen::getNumeroIntento)).toList();
         IntentoExamen enProgreso = ordenados.stream().filter(IntentoExamen::estaEnProgreso).findFirst().orElse(null);
         IntentoExamen pendiente = ordenados.stream().filter(IntentoExamen::estaPendienteRevision).findFirst().orElse(null);
-        boolean aprobado = ordenados.stream().anyMatch(i -> Boolean.TRUE.equals(i.getAprobado()));
-        BigDecimal mejor = ordenados.stream()
-                .filter(i -> IntentoExamen.CALIFICADO.equals(i.getEstado()) && i.getNota() != null)
-                .map(IntentoExamen::getNota).max(Comparator.naturalOrder()).orElse(null);
+        List<IntentoExamen> calificados = ordenados.stream()
+                .filter(i -> IntentoExamen.CALIFICADO.equals(i.getEstado()) && i.getNota() != null).toList();
+        boolean aprobado;
+        BigDecimal mejor;
+        if (regla.isNotaDelUltimoIntento()) {
+            IntentoExamen ultimo = calificados.isEmpty() ? null : calificados.get(calificados.size() - 1);
+            aprobado = ultimo != null && Boolean.TRUE.equals(ultimo.getAprobado());
+            mejor = ultimo == null ? null : ultimo.getNota();
+        } else {
+            aprobado = ordenados.stream().anyMatch(i -> Boolean.TRUE.equals(i.getAprobado()));
+            mejor = calificados.stream().map(IntentoExamen::getNota).max(Comparator.naturalOrder()).orElse(null);
+        }
         Integer permitidos = "PRACTICA".equals(examen.getTipo()) || examen.getMaximoIntentos() == null
                 ? null : examen.getMaximoIntentos() + extras;
         return new EstadoExamen(examen, ordenados, ordenados.size(), permitidos, enProgreso, pendiente, aprobado,

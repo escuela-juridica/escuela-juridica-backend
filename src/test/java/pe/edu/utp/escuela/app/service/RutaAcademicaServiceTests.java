@@ -118,8 +118,8 @@ class RutaAcademicaServiceTests {
         RutaAcademica ruta = service.calcular(matricula);
 
         assertNull(ruta.motivoBloqueo(11L));
-        assertEquals("Completa la lección anterior: Lección 11", ruta.motivoBloqueo(12L));
-        assertEquals("Completa la lección anterior: Lección 12", ruta.motivoBloqueo(21L));
+        assertEquals("Completa la lección anterior: Módulo 1 - Lección 11", ruta.motivoBloqueo(12L));
+        assertEquals("Completa la lección anterior: Módulo 1 - Lección 12", ruta.motivoBloqueo(21L));
         assertEquals(List.of(11L, 12L, 21L), ruta.globalOrden().stream().map(Leccion::getId).toList());
     }
 
@@ -133,7 +133,7 @@ class RutaAcademicaServiceTests {
 
         assertNull(ruta.motivoBloqueo(11L));
         assertNull(ruta.motivoBloqueo(12L));
-        assertEquals("Completa la lección anterior: Lección 12", ruta.motivoBloqueo(21L));
+        assertEquals("Completa la lección anterior: Módulo 1 - Lección 12", ruta.motivoBloqueo(21L));
         assertTrue(ruta.completadas().get(11L));
     }
 

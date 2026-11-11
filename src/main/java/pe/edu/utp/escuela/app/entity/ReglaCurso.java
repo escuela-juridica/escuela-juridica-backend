@@ -22,6 +22,9 @@ import lombok.Setter;
 @Table(name = "regla_curso")
 public class ReglaCurso {
 
+    public static final String MEJOR = "MEJOR";
+    public static final String ULTIMA = "ULTIMA";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "regla_curso_id")
@@ -61,6 +64,13 @@ public class ReglaCurso {
     @Column(name = "dias_espera_certificado", nullable = false)
     private Integer diasEsperaCertificado = 0;
 
+    @Column(name = "criterio_nota", nullable = false, length = 10)
+    private String criterioNota = MEJOR;
+
     @Column(name = "bloqueado_en")
     private Instant bloqueadoEn;
+
+    public boolean isNotaDelUltimoIntento() {
+        return ULTIMA.equals(criterioNota);
+    }
 }
