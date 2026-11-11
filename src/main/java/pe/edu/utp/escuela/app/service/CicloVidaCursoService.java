@@ -180,6 +180,7 @@ public class CicloVidaCursoService {
         reglaCopia.setAsistenciaMinima(reglaOrigen.getAsistenciaMinima());
         reglaCopia.setSecuenciaObligatoria(reglaOrigen.isSecuenciaObligatoria());
         reglaCopia.setDiasEsperaCertificado(reglaOrigen.getDiasEsperaCertificado());
+        reglaCopia.setCriterioNota(reglaOrigen.getCriterioNota());
         reglasCurso.saveAndFlush(reglaCopia);
 
         int orden = 1;

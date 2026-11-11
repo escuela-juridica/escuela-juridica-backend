@@ -32,6 +32,7 @@ public record ExamenFichaResponse(
         BigDecimal mejorNota,
         String modoNavegacion,
         boolean permiteOmitirPreguntas,
+        String criterioNota,
         List<IntentoResumenResponse> intentos) {
 
     public ExamenFichaResponse {

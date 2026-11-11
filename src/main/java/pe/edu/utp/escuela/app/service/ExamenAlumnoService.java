@@ -117,7 +117,7 @@ public class ExamenAlumnoService {
                 estado.agotadoSinAprobar(), ctx.soloLectura(),
                 estado.enProgreso() == null ? null : estado.enProgreso().getId(),
                 estado.aprobado(), estado.mejorNota(), examen.getModoNavegacion(),
-                examen.isPermiteOmitirPreguntas(), historial);
+                examen.isPermiteOmitirPreguntas(), regla.getCriterioNota(), historial);
     }
 
     @Transactional(noRollbackFor = BusinessValidationException.class)

@@ -14,6 +14,7 @@ public record ReglasCursoResponse(
         BigDecimal asistenciaMinima,
         boolean secuenciaObligatoria,
         int diasEsperaCertificado,
+        String criterioNota,
         LocalDate fechaCierreMatricula,
         boolean bloqueada) {
 }
