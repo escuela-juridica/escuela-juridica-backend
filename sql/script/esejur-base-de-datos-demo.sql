@@ -1,7 +1,7 @@
 -- ESEJUR - Base de datos de demostracion con tres cursos completos
 -- PostgreSQL 15+
 -- ADVERTENCIA: este archivo elimina las tablas funcionales existentes, reconstruye
--- toda la estructura y carga unicamente los datos base y tres cursos gratuitos de demostracion.
+-- toda la estructura y carga unicamente los datos base y cuatro cursos de demostracion: tres de pago y uno gratuito.
 -- Ejecutar unicamente cuando se quiera instalar o reiniciar completamente la base.
 
 BEGIN;
@@ -1682,23 +1682,23 @@ FROM (VALUES
 
 
 -- =============================================================================
--- DEMOSTRACION: TRES CURSOS COMPLETOS (matricularse gratis, estudiar y obtener el certificado)
+-- DEMOSTRACION: CUATRO CURSOS COMPLETOS (matricularse, estudiar y obtener el certificado; tres de pago y uno gratuito)
 -- =============================================================================
 -- Cuenta:  alumno.demo@escuelajuridica.edu.pe   Contrasena: Marco1415@
 --          (cambia el correo por uno propio si quieres recibir los avisos de matricula y de certificado)
 -- Cursos:  1) "Procedimiento Administrativo Practico", 2) "Contratacion Publica Practica" y
---          3) "Redaccion Juridica Practica": los tres iguales en estructura (diplomado GRATUITO, virtual, publicado)
+--          3) "Redaccion Juridica Practica" y 4) "Introduccion al Procedimiento Administrativo" (GRATUITO):
+--          los cuatro iguales en estructura (diplomado virtual y publicado; los tres primeros PAGADOS a S/ 120.00, S/ 150.00 y S/ 180.00)
 --          8 lecciones en 4 modulos, cada una con su video de YouTube, material descargable en PDF y
 --          lecturas recomendadas, + examen final de 4 preguntas (30 minutos) de correccion automatica.
 --          Los PDF viven en uploads/cursos/1/, uploads/cursos/2/ y uploads/cursos/3/ (los cursos reciben los ids 1, 2 y 3):
---          copiar esas carpetas junto con el script.
--- El alumno NO tiene matricula: el recorrido empieza en la ficha del curso con "Matricularme gratis".
---   1. Se matricula sin pago (matricula gratuita) y entra al aula.
+--          copiar esas carpetas junto con el script. El curso 4 reutiliza los materiales de uploads/cursos/1/.
+-- El alumno NO tiene matricula: el recorrido empieza en la ficha del curso con "Matricularme".
+--   1. Se matricula (paga en linea; el curso 4 es gratuito y se matricula sin pago) y entra al aula.
 --   2. Completa las 8 lecciones de los 4 modulos en orden.
 --   3. Rinde el examen final (la respuesta correcta es siempre la primera alternativa).
 --   4. Confirma sus nombres y genera el certificado: sale al instante (0 dias de espera), sin
---      intervencion de administracion, con nivel REFRENDADO si la nota llega a 14 (el curso tiene
---      entidad certificadora).
+--      intervencion de administracion, con nivel NORMAL (la escuela no refrenda certificados).
 -- Los contenidos, correos y enlaces son datos de demostracion.
 
 -- Alumno de demostracion (sin matriculas: el recorrido empieza en la ficha de cada curso).
@@ -1725,15 +1725,15 @@ INSERT INTO curso
  horas_academicas, beneficios, creado_por_usuario_id, publicado_en)
 SELECT 'procedimiento-administrativo-practico',
        'Procedimiento Administrativo Practico',
-       'Diplomado gratuito y aplicado sobre el procedimiento administrativo general. En cuatro modulos recorres los principios y la competencia, las etapas y los actos administrativos, los recursos administrativos y el silencio administrativo. Cada leccion incluye video, material descargable en PDF y lecturas recomendadas, y al final rindes un examen de 30 minutos con correccion automatica y obtienes tu certificado al instante, con tu nota final y las 120 horas academicas.',
+       'Diplomado aplicado sobre el procedimiento administrativo general. En cuatro modulos recorres los principios y la competencia, las etapas y los actos administrativos, los recursos administrativos y el silencio administrativo. Cada leccion incluye video, material descargable en PDF y lecturas recomendadas, y al final rindes un examen de 30 minutos con correccion automatica y obtienes tu certificado al instante, con tu nota final y las 120 horas academicas.',
        '/uploads/portadas/31-1793741001012.jpg',
-       tc.tipo_curso_id, ct.categoria_tematica_id, ec.entidad_certificadora_id, 'VIRTUAL', 'GRATUITO',
-       es.estado_curso_id, true, 0.00, 120.00,
-       ARRAY['Matricula gratuita con acceso inmediato','Cuatro modulos con 8 lecciones en video','Material descargable en PDF y lecturas recomendadas','Examen final de 30 minutos con correccion automatica','Certificado al instante al aprobar, con tu nota y 120 horas academicas'],
+       tc.tipo_curso_id, ct.categoria_tematica_id, NULL, 'VIRTUAL', 'PAGADO',
+       es.estado_curso_id, true, 120.00, 120.00,
+       ARRAY['Matricula con acceso inmediato tras el pago','Cuatro modulos con 8 lecciones en video','Material descargable en PDF y lecturas recomendadas','Examen final de 30 minutos con correccion automatica','Certificado al instante al aprobar, con tu nota y 120 horas academicas'],
        a.usuario_id, CURRENT_TIMESTAMP
-FROM tipo_curso tc, categoria_tematica ct, entidad_certificadora ec, estado_curso es, usuario a
+FROM tipo_curso tc, categoria_tematica ct, estado_curso es, usuario a
 WHERE tc.codigo = 'DIPLOMADO' AND ct.codigo = 'DERECHO_ADMINISTRATIVO'
-  AND ec.nombre = 'Colegio de Abogados de Lima' AND es.codigo = 'PUBLICADO'
+  AND es.codigo = 'PUBLICADO'
   AND a.correo = 'admin@escuelajuridica.edu.pe';
 
 -- Codigo de registro del curso practico: el siguiente numero de su tipo en el anio en curso.
@@ -1935,15 +1935,15 @@ INSERT INTO curso
  horas_academicas, beneficios, creado_por_usuario_id, publicado_en)
 SELECT 'contratacion-publica-practica',
        'Contratacion Publica Practica',
-       'Diplomado gratuito y aplicado sobre la contratacion publica. En cuatro modulos recorres los fundamentos y los actores de la contratacion, los procedimientos de seleccion, la ejecucion del contrato y la solucion de controversias. Cada leccion incluye video, material descargable en PDF y lecturas recomendadas, y al final rindes un examen de 30 minutos con correccion automatica y obtienes tu certificado al instante, con tu nota final y las 120 horas academicas.',
+       'Diplomado aplicado sobre la contratacion publica. En cuatro modulos recorres los fundamentos y los actores de la contratacion, los procedimientos de seleccion, la ejecucion del contrato y la solucion de controversias. Cada leccion incluye video, material descargable en PDF y lecturas recomendadas, y al final rindes un examen de 30 minutos con correccion automatica y obtienes tu certificado al instante, con tu nota final y las 120 horas academicas.',
        '/uploads/portadas/2-1793741001012.jpg',
-       tc.tipo_curso_id, ct.categoria_tematica_id, ec.entidad_certificadora_id, 'VIRTUAL', 'GRATUITO',
-       es.estado_curso_id, true, 0.00, 120.00,
-       ARRAY['Matricula gratuita con acceso inmediato','Cuatro modulos con 8 lecciones en video','Material descargable en PDF y lecturas recomendadas','Examen final de 30 minutos con correccion automatica','Certificado al instante al aprobar, con tu nota y 120 horas academicas'],
+       tc.tipo_curso_id, ct.categoria_tematica_id, NULL, 'VIRTUAL', 'PAGADO',
+       es.estado_curso_id, true, 150.00, 120.00,
+       ARRAY['Matricula con acceso inmediato tras el pago','Cuatro modulos con 8 lecciones en video','Material descargable en PDF y lecturas recomendadas','Examen final de 30 minutos con correccion automatica','Certificado al instante al aprobar, con tu nota y 120 horas academicas'],
        a.usuario_id, CURRENT_TIMESTAMP
-FROM tipo_curso tc, categoria_tematica ct, entidad_certificadora ec, estado_curso es, usuario a
+FROM tipo_curso tc, categoria_tematica ct, estado_curso es, usuario a
 WHERE tc.codigo = 'DIPLOMADO' AND ct.codigo = 'CONTRATACIONES_ESTADO'
-  AND ec.nombre = 'Colegio de Abogados de Lima' AND es.codigo = 'PUBLICADO'
+  AND es.codigo = 'PUBLICADO'
   AND a.correo = 'admin@escuelajuridica.edu.pe';
 
 UPDATE curso c
@@ -2133,15 +2133,15 @@ INSERT INTO curso
  horas_academicas, beneficios, creado_por_usuario_id, publicado_en)
 SELECT 'redaccion-juridica-practica',
        'Redaccion Juridica Practica',
-       'Diplomado gratuito y aplicado sobre redaccion juridica. En cuatro modulos aprendes a escribir con claridad, a estructurar un escrito judicial, a leer y entender las resoluciones, y a citar y revisar tus textos. Cada leccion incluye video, material descargable en PDF y lecturas recomendadas, y al final rindes un examen de 30 minutos con correccion automatica y obtienes tu certificado al instante, con tu nota final y las 120 horas academicas.',
+       'Diplomado aplicado sobre redaccion juridica. En cuatro modulos aprendes a escribir con claridad, a estructurar un escrito judicial, a leer y entender las resoluciones, y a citar y revisar tus textos. Cada leccion incluye video, material descargable en PDF y lecturas recomendadas, y al final rindes un examen de 30 minutos con correccion automatica y obtienes tu certificado al instante, con tu nota final y las 120 horas academicas.',
        '/uploads/portadas/9-1793741001012.jpg',
-       tc.tipo_curso_id, ct.categoria_tematica_id, ec.entidad_certificadora_id, 'VIRTUAL', 'GRATUITO',
-       es.estado_curso_id, true, 0.00, 120.00,
-       ARRAY['Matricula gratuita con acceso inmediato','Cuatro modulos con 8 lecciones en video','Material descargable en PDF y lecturas recomendadas','Examen final de 30 minutos con correccion automatica','Certificado al instante al aprobar, con tu nota y 120 horas academicas'],
+       tc.tipo_curso_id, ct.categoria_tematica_id, NULL, 'VIRTUAL', 'PAGADO',
+       es.estado_curso_id, true, 180.00, 120.00,
+       ARRAY['Matricula con acceso inmediato tras el pago','Cuatro modulos con 8 lecciones en video','Material descargable en PDF y lecturas recomendadas','Examen final de 30 minutos con correccion automatica','Certificado al instante al aprobar, con tu nota y 120 horas academicas'],
        a.usuario_id, CURRENT_TIMESTAMP
-FROM tipo_curso tc, categoria_tematica ct, entidad_certificadora ec, estado_curso es, usuario a
+FROM tipo_curso tc, categoria_tematica ct, estado_curso es, usuario a
 WHERE tc.codigo = 'DIPLOMADO' AND ct.codigo = 'HABILIDADES_PROFESIONALES'
-  AND ec.nombre = 'Colegio de Abogados de Lima' AND es.codigo = 'PUBLICADO'
+  AND es.codigo = 'PUBLICADO'
   AND a.correo = 'admin@escuelajuridica.edu.pe';
 
 UPDATE curso c
@@ -2321,6 +2321,175 @@ FROM pregunta p
                    (4, 'El nombre o numero de la norma y el articulo exacto', true, 1),
                    (4, 'Solo el anio de la norma', false, 2),
                    (4, 'Solo el nombre de quien redacta el escrito', false, 3)
+) v(pregunta_orden, texto, correcta, orden) ON v.pregunta_orden = p.orden;
+
+
+-- ----------------------------------------------------------------------------
+-- CURSO 4: Introduccion al Procedimiento Administrativo (gratuito, con los mismos materiales del curso 1)
+-- ----------------------------------------------------------------------------
+INSERT INTO curso
+(url_amigable, titulo, descripcion, imagen_portada_url, tipo_curso_id, categoria_tematica_id,
+ entidad_certificadora_id, modalidad, tipo_venta, estado_curso_id, destacado, precio_regular,
+ horas_academicas, beneficios, creado_por_usuario_id, publicado_en)
+SELECT 'introduccion-procedimiento-administrativo',
+       'Introduccion al Procedimiento Administrativo',
+       'Diplomado gratuito y aplicado sobre el procedimiento administrativo general. En cuatro modulos recorres los principios y la competencia, las etapas y los actos administrativos, los recursos administrativos y el silencio administrativo. Cada leccion incluye video, material descargable en PDF y lecturas recomendadas, y al final rindes un examen de 30 minutos con correccion automatica y obtienes tu certificado al instante, con tu nota final y las 120 horas academicas.',
+       '/uploads/portadas/15-1793741001012.jpg',
+       tc.tipo_curso_id, ct.categoria_tematica_id, NULL, 'VIRTUAL', 'GRATUITO',
+       es.estado_curso_id, true, 0.00, 120.00,
+       ARRAY['Matricula gratuita con acceso inmediato','Cuatro modulos con 8 lecciones en video','Material descargable en PDF y lecturas recomendadas','Examen final de 30 minutos con correccion automatica','Certificado al instante al aprobar, con tu nota y 120 horas academicas'],
+       a.usuario_id, CURRENT_TIMESTAMP
+FROM tipo_curso tc, categoria_tematica ct, estado_curso es, usuario a
+WHERE tc.codigo = 'DIPLOMADO' AND ct.codigo = 'DERECHO_ADMINISTRATIVO'
+  AND es.codigo = 'PUBLICADO'
+  AND a.correo = 'admin@escuelajuridica.edu.pe';
+
+-- Codigo de registro del curso practico: el siguiente numero de su tipo en el anio en curso.
+UPDATE curso c
+SET anio_registro = EXTRACT(YEAR FROM CURRENT_DATE)::int,
+    numero_registro = (SELECT COALESCE(MAX(x.numero_registro),0) + 1 FROM curso x
+                       WHERE x.tipo_curso_id = c.tipo_curso_id AND x.anio_registro = EXTRACT(YEAR FROM CURRENT_DATE)::int)
+WHERE c.url_amigable = 'introduccion-procedimiento-administrativo';
+UPDATE curso c
+SET codigo_registro = to_char(c.numero_registro,'FM00') || '-' || tc.sigla_registro || '_' || c.anio_registro
+FROM tipo_curso tc
+WHERE tc.tipo_curso_id = c.tipo_curso_id AND c.url_amigable = 'introduccion-procedimiento-administrativo';
+
+INSERT INTO historial_estado_curso (curso_id, estado_nuevo_id, realizado_por_usuario_id)
+SELECT c.curso_id, c.estado_curso_id, c.creado_por_usuario_id
+FROM curso c WHERE c.url_amigable = 'introduccion-procedimiento-administrativo';
+
+INSERT INTO curso_docente (curso_id, persona_id, orden)
+SELECT c.curso_id, p.persona_id, 1
+FROM curso c, persona p
+WHERE c.url_amigable = 'introduccion-procedimiento-administrativo'
+  AND p.nombres = 'Miguel Bryan' AND p.apellido_paterno = 'Saldivar';
+
+INSERT INTO curso_firmante (curso_id, firmante_id, orden)
+SELECT c.curso_id, f.firmante_id, row_number() OVER (ORDER BY f.firmante_id)
+FROM curso c CROSS JOIN firmante f
+WHERE c.url_amigable = 'introduccion-procedimiento-administrativo';
+
+-- Todo el progreso y el examen son obligatorios; el certificado se genera de inmediato (sin dias de espera).
+INSERT INTO regla_curso
+(curso_id, requiere_examenes, requiere_progreso, requiere_asistencia, nota_minima, nota_refrendado,
+ progreso_minimo, umbral_video, asistencia_minima, secuencia_obligatoria, dias_espera_certificado)
+SELECT c.curso_id, true, true, false, 12, 14, 100, 50, 80, true, 0
+FROM curso c WHERE c.url_amigable = 'introduccion-procedimiento-administrativo';
+
+INSERT INTO modulo (curso_id, titulo, descripcion, orden)
+SELECT c.curso_id, v.titulo, v.descripcion, v.orden
+FROM curso c
+         CROSS JOIN (VALUES
+                         ('Fundamentos del procedimiento', 'Principios y reglas basicas del procedimiento administrativo.', 1),
+                         ('Etapas y actos del procedimiento', 'Inicio, instruccion y resolucion del procedimiento, y validez del acto administrativo.', 2),
+                         ('Recursos administrativos', 'Reconsideracion, apelacion y revision: cuando proceden y ante quien se presentan.', 3),
+                         ('Silencio administrativo y practica', 'Efectos del silencio administrativo y aplicacion a un caso completo.', 4)
+) v(titulo, descripcion, orden)
+WHERE c.url_amigable = 'introduccion-procedimiento-administrativo';
+
+INSERT INTO leccion
+(modulo_id, titulo, descripcion, orden, tipo, estado, es_obligatoria, es_vista_previa)
+SELECT m.modulo_id, v.titulo, v.descripcion, v.orden, 'GRABADA', 'PROGRAMADA', true, v.vista_previa
+FROM modulo m
+         JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'introduccion-procedimiento-administrativo'
+         JOIN (VALUES
+                   (1, 'Principios del procedimiento administrativo', 'Legalidad, debido procedimiento, impulso de oficio, razonabilidad e informalismo: los principios que guian toda actuacion de la autoridad y protegen al administrado. Al terminar sabras reconocerlos en un caso real.', 1, true),
+                   (1, 'Sujetos y competencia', 'Quien es el administrado, quien es la autoridad y como se determina la competencia. Veras por que un acto emitido por una autoridad incompetente puede ser declarado nulo y como se delega la competencia.', 2, false),
+                   (2, 'Etapas del procedimiento', 'Inicio a instancia de parte o de oficio, instruccion con pruebas y alegatos, y resolucion. Descarga el esquema de etapas para repasar cada fase con ejemplos.', 1, false),
+                   (2, 'El acto administrativo y su notificacion', 'Los cinco requisitos de validez del acto administrativo (competencia, objeto, finalidad publica, motivacion y procedimiento regular) y por que la notificacion determina desde cuando produce efectos.', 2, false),
+                   (3, 'Recurso de reconsideracion', 'Cuando conviene presentarlo, por que exige nueva prueba y por que es facultativo. Incluye el cuadro comparativo de recursos y un modelo de escrito para consultar.', 1, false),
+                   (3, 'Recursos de apelacion y de revision', 'Diferencias con la reconsideracion, a quien se dirige cada recurso, el plazo de 15 dias habiles y el efecto de dejarlo vencer. Se revisa tambien el caracter excepcional de la revision.', 2, false),
+                   (4, 'Silencio administrativo positivo y negativo', 'Que ocurre cuando la entidad no responde dentro del plazo. Aprenderas a distinguir el silencio positivo del negativo y que puede hacer el administrado en cada caso.', 1, false),
+                   (4, 'Resolucion de un caso practico', 'Aplica todo lo aprendido con el caso de la licencia de funcionamiento de la panaderia La Espiga. Descarga el caso, resuelvelo y compara con las respuestas orientativas antes del examen final.', 2, false)
+) v(modulo_orden, titulo, descripcion, orden, vista_previa) ON v.modulo_orden = m.orden;
+
+INSERT INTO material_leccion (leccion_id, recurso_id, titulo, orden)
+SELECT x.leccion_id, r.recurso_id, 'Video de la leccion', 1
+FROM (SELECT l.leccion_id, row_number() OVER (ORDER BY m.orden, l.orden) AS n
+      FROM leccion l
+               JOIN modulo m ON m.modulo_id = l.modulo_id
+               JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'introduccion-procedimiento-administrativo') x
+         JOIN (VALUES
+    (1, 'https://www.youtube.com/watch?v=XBQrVaNEaSQ'),
+    (2, 'https://www.youtube.com/watch?v=_Py4rKyRfhs'),
+    (3, 'https://www.youtube.com/watch?v=ft7bDurQeCw'),
+    (4, 'https://www.youtube.com/watch?v=LqIs_BcFXR0'),
+    (5, 'https://www.youtube.com/watch?v=TpNvLOLaELw'),
+    (6, 'https://www.youtube.com/watch?v=B-YO34e1e3I'),
+    (7, 'https://www.youtube.com/watch?v=p0ezIaA7PhQ'),
+    (8, 'https://www.youtube.com/watch?v=XBQrVaNEaSQ&parte=8')
+) v(n, url) ON v.n = x.n
+         JOIN recurso r ON r.referencia = v.url;
+
+INSERT INTO material_leccion (leccion_id, recurso_id, titulo, orden, permite_descarga)
+SELECT x.leccion_id, r.recurso_id, v.titulo, v.orden, v.descarga
+FROM (SELECT l.leccion_id, row_number() OVER (ORDER BY m.orden, l.orden) AS n
+      FROM leccion l
+               JOIN modulo m ON m.modulo_id = l.modulo_id
+               JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'introduccion-procedimiento-administrativo') x
+         JOIN (VALUES
+                   (1, 2, 'TUO de la Ley 27444 (texto oficial vigente)', true, 'tuo-ley-27444-decreto-supremo-006-2026-jus.pdf'),
+                   (1, 3, 'Lectura: estudio preliminar del nuevo TUO', false, 'https://lpderecho.pe/estudio-preliminar-del-tuo-de-la-ley-27444-ley-del-procedimiento-administrativo-general-decreto-supremo-006-2026-jus/'),
+                   (2, 2, 'TUO de la Ley 27444 (texto oficial vigente)', true, 'tuo-ley-27444-decreto-supremo-006-2026-jus.pdf'),
+                   (2, 3, 'Lectura: el principio de legalidad', false, 'https://lpderecho.pe/jurisprudencia-articulo-iv-num-1-1-ley-27444-principio-de-legalidad/'),
+                   (3, 2, 'Esquema: etapas del procedimiento', true, 'esquema-etapas-del-procedimiento-administrativo.pdf'),
+                   (4, 2, 'Esquema: etapas y requisitos del acto administrativo', true, 'esquema-etapas-del-procedimiento-administrativo.pdf'),
+                   (5, 2, 'Cuadro comparativo de recursos administrativos', true, 'cuadro-recursos-administrativos.pdf'),
+                   (5, 3, 'Lectura: recursos administrativos', false, 'https://lpderecho.pe/recursos-administrativos-reconsideracion-apelacion-revision/'),
+                   (5, 4, 'Modelos de recursos impugnatorios', false, 'https://lpderecho.pe/modelos-recursos-impugnatorios-administrativos/'),
+                   (6, 2, 'Cuadro comparativo de recursos administrativos', true, 'cuadro-recursos-administrativos.pdf'),
+                   (6, 3, 'Lectura: plazos y efectos de los recursos', false, 'https://lpderecho.pe/plazos-efectos-recursos-reconsideracion-apelacion/'),
+                   (7, 2, 'Lectura: silencios administrativos tras el D. Leg. 1272', false, 'https://lpderecho.pe/textos-unicos-procedimientos-administrativos-silencios-administrativos-modificaciones-ley-procedimiento-administrativo-general-mediante-decreto-legislativo-1272/'),
+                   (7, 3, 'Noticia: nuevo TUO de la Ley del Procedimiento Administrativo General', false, 'https://www.gob.pe/institucion/minjus/noticias/1386239-minjusdh-simplifica-tramites-y-publica-nuevo-texto-unico-de-la-ley-del-procedimiento-administrativo-general'),
+                   (8, 2, 'Caso practico: la licencia de la panaderia La Espiga', true, 'caso-practico-silencio-administrativo.pdf'),
+                   (8, 3, 'TUO de la Ley 27444 (texto oficial vigente)', true, 'tuo-ley-27444-decreto-supremo-006-2026-jus.pdf')
+) v(n, orden, titulo, descarga, referencia) ON v.n = x.n
+         JOIN recurso r ON r.referencia = v.referencia OR r.referencia LIKE '%/' || v.referencia;
+
+-- Examen final: 4 preguntas de seleccion unica (una por modulo, 5 puntos c/u, 20 en total), 3 intentos, 30 minutos de tiempo limite.
+-- Modo SECUENCIAL: una pregunta por vez con "Siguiente", sin volver atras, y no se puede avanzar sin responder.
+INSERT INTO examen
+(curso_id, modulo_id, titulo, descripcion, tipo, finalidad, orden, maximo_intentos, tiempo_limite_minutos,
+ barajar_preguntas, barajar_opciones, mostrar_respuestas, bloquea_siguiente_modulo, dias_revision,
+ modo_navegacion, permite_omitir_preguntas)
+SELECT c.curso_id, NULL, 'Examen final del curso',
+       'Responde las cuatro preguntas. Tienes 30 minutos desde que inicias; la nota se calcula automaticamente al enviar.',
+       'CALIFICADO', 'FINAL', 1, 3, 30, false, false, 'AL_APROBAR', false, 3, 'SECUENCIAL', false
+FROM curso c WHERE c.url_amigable = 'introduccion-procedimiento-administrativo';
+
+INSERT INTO pregunta (examen_id, tipo, enunciado, puntaje, orden)
+SELECT e.examen_id, 'SELECCION_UNICA', v.enunciado, 5, v.orden
+FROM examen e
+         JOIN curso c ON c.curso_id = e.curso_id AND c.url_amigable = 'introduccion-procedimiento-administrativo'
+         CROSS JOIN (VALUES
+                         (1, 'Que principio exige que la autoridad administrativa actue solo dentro de las facultades que la ley le atribuye?'),
+                         (2, 'En que etapa del procedimiento la autoridad recaba pruebas y verifica los hechos?'),
+                         (3, 'Que recurso se presenta ante la misma autoridad que emitio el acto, sustentado en nueva prueba?'),
+                         (4, 'Cual es el efecto del silencio administrativo positivo?')
+) v(orden, enunciado);
+
+-- La respuesta correcta de cada pregunta es siempre la primera opcion (sin barajar), para recorrer el examen rapido en las pruebas:
+-- pregunta 1 = "Principio de legalidad"; pregunta 2 = "Instruccion"; pregunta 3 = "Recurso de reconsideracion";
+-- pregunta 4 = "La solicitud se considera aprobada".
+INSERT INTO opcion_pregunta (pregunta_id, texto, es_correcta, orden)
+SELECT p.pregunta_id, v.texto, v.correcta, v.orden
+FROM pregunta p
+         JOIN examen e ON e.examen_id = p.examen_id
+         JOIN curso c ON c.curso_id = e.curso_id AND c.url_amigable = 'introduccion-procedimiento-administrativo'
+         JOIN (VALUES
+                   (1, 'Principio de legalidad', true, 1),
+                   (1, 'Principio de informalismo', false, 2),
+                   (1, 'Principio de celeridad', false, 3),
+                   (2, 'Instruccion', true, 1),
+                   (2, 'Inicio', false, 2),
+                   (2, 'Resolucion', false, 3),
+                   (3, 'Recurso de reconsideracion', true, 1),
+                   (3, 'Recurso de apelacion', false, 2),
+                   (3, 'Recurso de revision', false, 3),
+                   (4, 'La solicitud se considera aprobada', true, 1),
+                   (4, 'La solicitud se considera denegada', false, 2),
+                   (4, 'El procedimiento queda suspendido', false, 3)
 ) v(pregunta_orden, texto, correcta, orden) ON v.pregunta_orden = p.orden;
 
 COMMIT;
