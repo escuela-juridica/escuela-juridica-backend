@@ -389,6 +389,11 @@ public class CertificacionService {
         c.setHorasImpresas(curso.getHorasAcademicas() != null ? curso.getHorasAcademicas() : BigDecimal.ZERO);
         LocalDate inicio = curso.getFechaInicio();
         LocalDate fin = curso.getFechaFin();
+        if (inicio == null && fin == null) {
+            inicio = matricula.getFechaActivacion() != null
+                    ? matricula.getFechaActivacion().atZone(LIMA).toLocalDate() : null;
+            fin = logro.getFechaFinalizacion() != null ? logro.getFechaFinalizacion().atZone(LIMA).toLocalDate() : hoy;
+        }
         c.setFechaInicioImpresa(inicio);
         c.setFechaFinImpresa(fin);
         c.setLugarEmision(configuracion.findByCodigo("LUGAR_EMISION_CERTIFICADO")
