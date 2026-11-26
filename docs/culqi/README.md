@@ -76,9 +76,50 @@ Reinicia el backend. Si arranca sin error, las llaves están presentes.
 1. Inicia sesión como alumno y matricúlate en un curso de pago.
 2. Debe abrirse el checkout de Culqi.
 3. Paga con una tarjeta de prueba, por ejemplo la Visa `4111 1111 1111 1111`, con cualquier fecha futura y CVV `123`.
-   Las demás tarjetas (rechazos, fondos insuficientes) y los datos de prueba de Yape están en la
-   documentación de Culqi: <https://docs.culqi.com/es/documentacion/pruebas>.
+   Las demás tarjetas (rechazos) y los datos de Yape están en la sección 4.4.
 4. Comprueba el resultado (sección 6).
+
+### 4.4 Datos de prueba
+
+Solo funcionan con las llaves de integración (`pk_test_` / `sk_test_`); no mueven dinero real. Fuente:
+<https://docs.culqi.com/es/documentacion/pagos-online/tarjetas-de-prueba/>.
+
+**Tarjetas aprobadas**
+
+| Marca | Número | Mes/Año | CVV |
+|---|---|---|---|
+| Visa (débito) | `4111 1111 1111 1111` | 09/30 | 123 |
+| Visa (crédito) | `4111 1111 1010 1113` | 09/30 | 123 |
+| Mastercard | `5111 1111 1111 1118` | 12/30 | 039 |
+| Amex | `3712 1212 1212 122` | 12/30 | 2841 |
+| Diners | `360012 1212 1210` | 12/30 | 964 |
+
+**Tarjetas rechazadas**
+
+| Motivo | Marca | Número | Mes/Año | CVV |
+|---|---|---|---|---|
+| Fondos insuficientes (`insufficient_funds`) | Visa | `4000 0400 0000 0008` | 03/30 | 295 |
+| Tarjeta robada (`stolen_card`) | Visa | `4000 0200 0000 0000` | 10/30 | 354 |
+| Tarjeta perdida (`lost_card`) | Visa | `4000 0300 0000 0009` | 08/30 | 360 |
+| Contactar al emisor (`contact_issuer`) | Mastercard | `5400 0000 0000 0005` | 01/30 | 492 |
+| CVV incorrecto (`incorrect_cvv`) | Mastercard | `5400 0200 0000 0003` | 07/30 | 203 |
+| Emisor no disponible (`issuer_not_available`) | Amex | `3700 010000 00000` | 04/30 | 2511 |
+| Operación denegada por el emisor (`issuer_decline_operation`) | Amex | `3700 020000 00008` | 05/30 | 1810 |
+| Tarjeta inválida (`invalid_card`) | Diners | `3600 000000 0008` | 09/30 | 683 |
+| Error de procesamiento (`processing_error`) | Diners | `3600 010000 0007` | 12/30 | 820 |
+| Fraudulenta (`fraudulent`) | Diners | `3600 020000 0006` | 01/30 | 230 |
+
+Culqi también publica tarjetas Visa con códigos internos de error (`4111 1100 0000 0013` a
+`4111 1100 0000 0070`, CVV `123`) y tarjetas de autenticación 3DS; están en la misma página.
+
+**Yape**
+
+| Caso | Celular | Código de aprobación |
+|---|---|---|
+| Pago aprobado | `900 000 001` | Cualquier código de 6 dígitos |
+| Pago rechazado | No documentado por Culqi | — |
+
+Culqi no publica un dato de prueba para un Yape rechazado. Para probar un rechazo, usa una tarjeta rechazada.
 
 ## 5. Probar billeteras (Plin): URL pública con cloudflared
 

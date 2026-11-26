@@ -1680,40 +1680,108 @@ FROM (VALUES
      ) v(nombres, apellido, cargo, imagen)
          JOIN persona p ON p.nombres = v.nombres AND p.apellido_paterno = v.apellido;
 
+INSERT INTO curso
+(url_amigable, titulo, descripcion, imagen_portada_url, tipo_curso_id, categoria_tematica_id,
+ entidad_certificadora_id, modalidad, tipo_venta, estado_curso_id, destacado, precio_regular,
+ horas_academicas, beneficios, creado_por_usuario_id, publicado_en)
+SELECT 'procedimiento-administrativo-practico',
+       'Procedimiento Administrativo Practico',
+       'Diplomado aplicado sobre el procedimiento administrativo general. En cuatro modulos recorres los principios y la competencia, las etapas y los actos administrativos, los recursos administrativos y el silencio administrativo. Cada leccion incluye video, material descargable en PDF y lecturas recomendadas, y al final rindes un examen de 30 minutos con correccion automatica y obtienes tu certificado al instante, con tu nota final y las 120 horas academicas.',
+       '/uploads/portadas/31-1793741001012.jpg',
+       tc.tipo_curso_id, ct.categoria_tematica_id, NULL, 'VIRTUAL', 'PAGADO',
+       es.estado_curso_id, true, 120.00, 120.00,
+       ARRAY['Matricula con acceso inmediato tras el pago','Cuatro modulos con 8 lecciones en video','Material descargable en PDF y lecturas recomendadas','Examen final de 30 minutos con correccion automatica','Certificado al instante al aprobar, con tu nota y 120 horas academicas'],
+       a.usuario_id, CURRENT_TIMESTAMP
+FROM tipo_curso tc, categoria_tematica ct, estado_curso es, usuario a
+WHERE tc.codigo = 'DIPLOMADO' AND ct.codigo = 'DERECHO_ADMINISTRATIVO'
+  AND es.codigo = 'PUBLICADO'
+  AND a.correo = 'admin@escuelajuridica.edu.pe';
+
+INSERT INTO curso
+(url_amigable, titulo, descripcion, imagen_portada_url, tipo_curso_id, categoria_tematica_id,
+ entidad_certificadora_id, modalidad, tipo_venta, estado_curso_id, destacado, precio_regular,
+ horas_academicas, beneficios, creado_por_usuario_id, publicado_en)
+SELECT 'contratacion-publica-practica',
+       'Contratacion Publica Practica',
+       'Diplomado aplicado sobre la contratacion publica. En cuatro modulos recorres los fundamentos y los actores de la contratacion, los procedimientos de seleccion, la ejecucion del contrato y la solucion de controversias. Cada leccion incluye video, material descargable en PDF y lecturas recomendadas, y al final rindes un examen de 30 minutos con correccion automatica y obtienes tu certificado al instante, con tu nota final y las 120 horas academicas.',
+       '/uploads/portadas/2-1793741001012.jpg',
+       tc.tipo_curso_id, ct.categoria_tematica_id, NULL, 'VIRTUAL', 'PAGADO',
+       es.estado_curso_id, true, 150.00, 120.00,
+       ARRAY['Matricula con acceso inmediato tras el pago','Cuatro modulos con 8 lecciones en video','Material descargable en PDF y lecturas recomendadas','Examen final de 30 minutos con correccion automatica','Certificado al instante al aprobar, con tu nota y 120 horas academicas'],
+       a.usuario_id, CURRENT_TIMESTAMP
+FROM tipo_curso tc, categoria_tematica ct, estado_curso es, usuario a
+WHERE tc.codigo = 'DIPLOMADO' AND ct.codigo = 'CONTRATACIONES_ESTADO'
+  AND es.codigo = 'PUBLICADO'
+  AND a.correo = 'admin@escuelajuridica.edu.pe';
+
+INSERT INTO curso
+(url_amigable, titulo, descripcion, imagen_portada_url, tipo_curso_id, categoria_tematica_id,
+ entidad_certificadora_id, modalidad, tipo_venta, estado_curso_id, destacado, precio_regular,
+ horas_academicas, beneficios, creado_por_usuario_id, publicado_en)
+SELECT 'redaccion-juridica-practica',
+       'Redaccion Juridica Practica',
+       'Diplomado aplicado sobre redaccion juridica. En cuatro modulos aprendes a escribir con claridad, a estructurar un escrito judicial, a leer y entender las resoluciones, y a citar y revisar tus textos. Cada leccion incluye video, material descargable en PDF y lecturas recomendadas, y al final rindes un examen de 30 minutos con correccion automatica y obtienes tu certificado al instante, con tu nota final y las 120 horas academicas.',
+       '/uploads/portadas/9-1793741001012.jpg',
+       tc.tipo_curso_id, ct.categoria_tematica_id, NULL, 'VIRTUAL', 'PAGADO',
+       es.estado_curso_id, true, 180.00, 120.00,
+       ARRAY['Matricula con acceso inmediato tras el pago','Cuatro modulos con 8 lecciones en video','Material descargable en PDF y lecturas recomendadas','Examen final de 30 minutos con correccion automatica','Certificado al instante al aprobar, con tu nota y 120 horas academicas'],
+       a.usuario_id, CURRENT_TIMESTAMP
+FROM tipo_curso tc, categoria_tematica ct, estado_curso es, usuario a
+WHERE tc.codigo = 'DIPLOMADO' AND ct.codigo = 'HABILIDADES_PROFESIONALES'
+  AND es.codigo = 'PUBLICADO'
+  AND a.correo = 'admin@escuelajuridica.edu.pe';
+
+INSERT INTO curso
+(url_amigable, titulo, descripcion, imagen_portada_url, tipo_curso_id, categoria_tematica_id,
+ entidad_certificadora_id, modalidad, tipo_venta, estado_curso_id, destacado, precio_regular,
+ horas_academicas, beneficios, creado_por_usuario_id, publicado_en)
+SELECT 'introduccion-procedimiento-administrativo',
+       'Introduccion al Procedimiento Administrativo',
+       'Diplomado gratuito y aplicado sobre el procedimiento administrativo general. En cuatro modulos recorres los principios y la competencia, las etapas y los actos administrativos, los recursos administrativos y el silencio administrativo. Cada leccion incluye video, material descargable en PDF y lecturas recomendadas, y al final rindes un examen de 30 minutos con correccion automatica y obtienes tu certificado al instante, con tu nota final y las 120 horas academicas.',
+       '/uploads/portadas/15-1793741001012.jpg',
+       tc.tipo_curso_id, ct.categoria_tematica_id, NULL, 'VIRTUAL', 'GRATUITO',
+       es.estado_curso_id, true, 0.00, 120.00,
+       ARRAY['Matricula gratuita con acceso inmediato','Cuatro modulos con 8 lecciones en video','Material descargable en PDF y lecturas recomendadas','Examen final de 30 minutos con correccion automatica','Certificado al instante al aprobar, con tu nota y 120 horas academicas'],
+       a.usuario_id, CURRENT_TIMESTAMP
+FROM tipo_curso tc, categoria_tematica ct, estado_curso es, usuario a
+WHERE tc.codigo = 'DIPLOMADO' AND ct.codigo = 'DERECHO_ADMINISTRATIVO'
+  AND es.codigo = 'PUBLICADO'
+  AND a.correo = 'admin@escuelajuridica.edu.pe';
+
 -- Los cursos virtuales tambien llevan fechas (solo inicio o un rango inicio-fin); el certificado imprime ese periodo.
 -- Catalogo: fechas relativas al dia de ejecucion, para que siempre queden coherentes (cursos en marcha,
 -- proximos a iniciar y con matricula abierta).
 WITH datos(slug,titulo,descripcion,imagen,tipo,categoria,entidad,modalidad,venta,estado,destacado,precio,promocion,inicio,fin,cierre,cupo,horas,beneficios) AS (VALUES
-                                                                                                                                                                    ('derecho-registral-notarial','Derecho Registral y Notarial','Programa integral que articula la funcion registral y la funcion notarial: calificacion de titulos, principios registrales, publicidad registral, escrituras publicas y responsabilidad del notario. Incluye el analisis de resoluciones del Tribunal Registral y casos practicos de inscripcion.','/uploads/portadas/1-1793741001012.jpg','DIPLOMADO','DERECHO_REGISTRAL','Colegio de Abogados de Lima','VIRTUAL','PAGADO','PUBLICADO',true,650.00,450.00,(CURRENT_DATE-90),(CURRENT_DATE+60),NULL::date,NULL::integer,120.00,ARRAY['Acceso inmediato a todos los materiales','Casos practicos con resoluciones del Tribunal Registral','Acompanamiento academico durante el programa','Certificado refrendado por el Colegio de Abogados de Lima']::text[]),
-                                                                                                                                                                    ('contrataciones-estado','Contrataciones del Estado','Formacion aplicada sobre la Ley de Contrataciones del Estado y su reglamento: planificacion, procedimientos de seleccion, ejecucion contractual, controversias y responsabilidad del funcionario. Combina clases grabadas con sesiones en vivo de analisis de casos.','/uploads/portadas/2-1793741001012.jpg','ESPECIALIZACION','CONTRATACIONES_ESTADO','Colegio de Abogados de Lima','HIBRIDO','PAGADO','PUBLICADO',true,380.00,NULL::numeric,(CURRENT_DATE-18),(CURRENT_DATE+78),(CURRENT_DATE+4),40,96.00,ARRAY['Clases grabadas y sesiones en vivo con el docente','Analisis de bases estandar y casos de procedimientos de seleccion','Acompanamiento academico','Certificado refrendado por el Colegio de Abogados de Lima']::text[]),
+                                                                                                                                                                    ('derecho-registral-notarial','Derecho Registral y Notarial','Programa integral que articula la funcion registral y la funcion notarial: calificacion de titulos, principios registrales, publicidad registral, escrituras publicas y responsabilidad del notario. Incluye el analisis de resoluciones del Tribunal Registral y casos practicos de inscripcion.','/uploads/portadas/1-1793741001012.jpg','DIPLOMADO','DERECHO_REGISTRAL',NULL,'VIRTUAL','PAGADO','PUBLICADO',true,650.00,450.00,(CURRENT_DATE-90),(CURRENT_DATE+60),NULL::date,NULL::integer,120.00,ARRAY['Acceso inmediato a todos los materiales','Casos practicos con resoluciones del Tribunal Registral','Acompanamiento academico durante el programa','Certificado de aprobacion']::text[]),
+                                                                                                                                                                    ('contrataciones-estado','Contrataciones del Estado','Formacion aplicada sobre la Ley de Contrataciones del Estado y su reglamento: planificacion, procedimientos de seleccion, ejecucion contractual, controversias y responsabilidad del funcionario. Combina clases grabadas con sesiones en vivo de analisis de casos.','/uploads/portadas/2-1793741001012.jpg','ESPECIALIZACION','CONTRATACIONES_ESTADO',NULL,'HIBRIDO','PAGADO','PUBLICADO',true,380.00,NULL::numeric,(CURRENT_DATE-18),(CURRENT_DATE+78),(CURRENT_DATE+4),40,96.00,ARRAY['Clases grabadas y sesiones en vivo con el docente','Analisis de bases estandar y casos de procedimientos de seleccion','Acompanamiento academico','Certificado de aprobacion']::text[]),
                                                                                                                                                                     ('litigacion-penal','Litigacion Oral en el Proceso Penal','Entrenamiento practico en litigacion oral para el proceso penal acusatorio: construccion de la teoria del caso, alegatos, interrogatorio y contraexamen, y manejo de objeciones. Las sesiones en vivo se desarrollan como simulaciones de audiencia.','/uploads/portadas/3-1793741001012.jpg','CURSO','DERECHO_PENAL',NULL::text,'EN_VIVO','PAGADO','PUBLICADO',false,290.00,NULL::numeric,(CURRENT_DATE+10),(CURRENT_DATE+66),(CURRENT_DATE+9),35,48.00,ARRAY['Sesiones en vivo con simulacion de audiencias','Retroalimentacion individual del docente','Material de apoyo y guias de practica','Certificado de participacion segun cumplimiento']::text[]),
-                                                                                                                                                                    ('derecho-laboral','Derecho Laboral y Procesal Laboral','Diplomado que recorre la relacion individual de trabajo y el proceso laboral: contratacion, derechos y beneficios, extincion del vinculo, y las etapas y audiencias de la Nueva Ley Procesal del Trabajo, con modelos de escritos y casos resueltos.','/uploads/portadas/4-1793741001012.jpg','DIPLOMADO','DERECHO_LABORAL','Colegio de Abogados de Lima Sur','VIRTUAL','PAGADO','EN_CURSO',true,700.00,520.00,(CURRENT_DATE-45),NULL::date,NULL::date,NULL::integer,132.00,ARRAY['Acceso inmediato a los materiales','Modelos de demandas y escritos laborales','Casos resueltos por modulo','Certificado refrendado por el Colegio de Abogados de Lima Sur']::text[]),
+                                                                                                                                                                    ('derecho-laboral','Derecho Laboral y Procesal Laboral','Diplomado que recorre la relacion individual de trabajo y el proceso laboral: contratacion, derechos y beneficios, extincion del vinculo, y las etapas y audiencias de la Nueva Ley Procesal del Trabajo, con modelos de escritos y casos resueltos.','/uploads/portadas/4-1793741001012.jpg','DIPLOMADO','DERECHO_LABORAL',NULL,'VIRTUAL','PAGADO','EN_CURSO',true,700.00,520.00,(CURRENT_DATE-45),NULL::date,NULL::date,NULL::integer,132.00,ARRAY['Acceso inmediato a los materiales','Modelos de demandas y escritos laborales','Casos resueltos por modulo','Certificado de aprobacion']::text[]),
                                                                                                                                                                     ('procedimiento-administrativo','Procedimiento Administrativo General','Seminario de dos jornadas sobre el procedimiento administrativo general: principios, validez y eficacia del acto administrativo, recursos y silencio administrativo, con casos practicos de la gestion publica. Actividad gratuita con cupos limitados.','/uploads/portadas/5-1793741001012.jpg','SEMINARIO','DERECHO_ADMINISTRATIVO',NULL::text,'EN_VIVO','GRATUITO','PUBLICADO',false,0.00,NULL::numeric,(CURRENT_DATE+6),(CURRENT_DATE+7),(CURRENT_DATE+5),100,16.00,ARRAY['Participacion gratuita','Dos jornadas en vivo de ocho horas','Casos practicos de entidades publicas','Constancia de participacion']::text[]),
-                                                                                                                                                                    ('gestion-publica','Gestion Publica y Modernizacion del Estado','Diplomado orientado a funcionarios y profesionales del sector publico: gestion por resultados, planeamiento y presupuesto, politica de modernizacion, integridad publica y gobierno digital. Combina clases grabadas con talleres en vivo.','/uploads/portadas/6-1793741001012.jpg','DIPLOMADO','GESTION_PUBLICA','Ilustre Colegio de Abogados de Canete','HIBRIDO','PAGADO','PUBLICADO',true,620.00,490.00,(CURRENT_DATE+21),(CURRENT_DATE+120),(CURRENT_DATE+20),50,120.00,ARRAY['Clases grabadas y talleres en vivo','Herramientas de planeamiento y seguimiento de resultados','Acompanamiento academico','Certificado refrendado por el Colegio de Abogados de Canete']::text[]),
+                                                                                                                                                                    ('gestion-publica','Gestion Publica y Modernizacion del Estado','Diplomado orientado a funcionarios y profesionales del sector publico: gestion por resultados, planeamiento y presupuesto, politica de modernizacion, integridad publica y gobierno digital. Combina clases grabadas con talleres en vivo.','/uploads/portadas/6-1793741001012.jpg','DIPLOMADO','GESTION_PUBLICA',NULL,'HIBRIDO','PAGADO','PUBLICADO',true,620.00,490.00,(CURRENT_DATE+21),(CURRENT_DATE+120),(CURRENT_DATE+20),50,120.00,ARRAY['Clases grabadas y talleres en vivo','Herramientas de planeamiento y seguimiento de resultados','Acompanamiento academico','Certificado de aprobacion']::text[]),
                                                                                                                                                                     ('funcion-notarial','Derecho Notarial y Funcion Notarial','Curso sobre la funcion notarial y sus instrumentos: naturaleza de la fe publica, actos que requieren escritura publica, actas notariales y asuntos no contenciosos de competencia notarial. Orientado a abogados, asistentes y personal de notarias.','/uploads/portadas/7-1793741001012.jpg','CURSO','DERECHO_NOTARIAL',NULL::text,'VIRTUAL','PAGADO','PUBLICADO',false,320.00,NULL::numeric,(CURRENT_DATE-30),NULL::date,NULL::date,NULL::integer,32.00,ARRAY['Acceso inmediato a los materiales','Modelos de instrumentos publicos','Acompanamiento academico','Certificado de aprobacion']::text[]),
-                                                                                                                                                                    ('saneamiento-inmuebles','Saneamiento Fisico Legal de Inmuebles','Especializacion para regularizar la situacion fisica y legal de predios: estudio de titulos, cargas y gravamenes, prescripcion adquisitiva, rectificacion de areas y linderos, y formalizacion de la propiedad ante el registro.','/uploads/portadas/8-1793741001012.jpg','ESPECIALIZACION','DERECHO_INMOBILIARIO','Colegio de Abogados de Lima','VIRTUAL','PAGADO','PUBLICADO',true,360.00,290.00,(CURRENT_DATE-20),(CURRENT_DATE+60),NULL::date,NULL::integer,72.00,ARRAY['Acceso inmediato a los materiales','Lista de verificacion para estudios de titulos','Casos de saneamiento resueltos','Certificado refrendado por el Colegio de Abogados de Lima']::text[]),
+                                                                                                                                                                    ('saneamiento-inmuebles','Saneamiento Fisico Legal de Inmuebles','Especializacion para regularizar la situacion fisica y legal de predios: estudio de titulos, cargas y gravamenes, prescripcion adquisitiva, rectificacion de areas y linderos, y formalizacion de la propiedad ante el registro.','/uploads/portadas/8-1793741001012.jpg','ESPECIALIZACION','DERECHO_INMOBILIARIO',NULL,'VIRTUAL','PAGADO','PUBLICADO',true,360.00,290.00,(CURRENT_DATE-20),(CURRENT_DATE+60),NULL::date,NULL::integer,72.00,ARRAY['Acceso inmediato a los materiales','Lista de verificacion para estudios de titulos','Casos de saneamiento resueltos','Certificado de aprobacion']::text[]),
                                                                                                                                                                     ('redaccion-juridica','Redaccion Juridica Profesional','Taller practico para escribir con claridad, precision y orden: estructura de escritos, resoluciones y opiniones legales, correccion de estilo y errores frecuentes. Participacion gratuita con acceso inmediato.','/uploads/portadas/9-1793741001012.jpg','TALLER','DERECHO_ADMINISTRATIVO',NULL::text,'VIRTUAL','GRATUITO','PUBLICADO',false,0.00,NULL::numeric,(CURRENT_DATE-15),NULL::date,NULL::date,NULL::integer,20.00,ARRAY['Participacion gratuita','Ejercicios con correccion modelo','Plantillas de escritos','Constancia de participacion']::text[]),
                                                                                                                                                                     ('tributacion-empresarial','Tributacion Empresarial','Programa de actualizacion sobre las obligaciones tributarias de la empresa: Impuesto a la Renta, IGV y comprobantes de pago, procedimiento de fiscalizacion, reclamaciones y planificacion tributaria para reducir contingencias.','/uploads/portadas/10-1793741001012.jpg','PROGRAMA_ACTUALIZACION','DERECHO_TRIBUTARIO',NULL::text,'VIRTUAL','PAGADO','PUBLICADO',false,280.00,NULL::numeric,(CURRENT_DATE-60),NULL::date,NULL::date,NULL::integer,40.00,ARRAY['Acceso inmediato a los materiales','Casos de fiscalizacion y contingencias','Esquemas de cumplimiento tributario','Certificado de aprobacion']::text[]),
-                                                                                                                                                                    ('arbitraje-contrataciones','Arbitraje en Contrataciones Publicas','Curso sobre el arbitraje en las controversias derivadas de contratos con el Estado: convenio arbitral, constitucion del tribunal, desarrollo del proceso, laudo, anulacion y ejecucion, con casos y modelos de escritos.','/uploads/portadas/11-1793741001012.jpg','CURSO','ARBITRAJE','Colegio de Abogados de Lima','HIBRIDO','PAGADO','PUBLICADO',false,410.00,350.00,(CURRENT_DATE+35),(CURRENT_DATE+105),(CURRENT_DATE+34),45,64.00,ARRAY['Clases grabadas y sesiones en vivo','Modelos de escritos arbitrales','Casos de laudos y anulaciones','Certificado refrendado por el Colegio de Abogados de Lima']::text[]),
-                                                                                                                                                                    ('derecho-urbanistico','Derecho Urbanistico','Especializacion sobre el regimen juridico del suelo y la ciudad: planeamiento y zonificacion, parametros urbanisticos, habilitaciones urbanas, licencias de edificacion y conformidad de obra, con casos de gobiernos locales.','/uploads/portadas/12-1793741001012.jpg','ESPECIALIZACION','DERECHO_URBANISTICO','Colegio de Abogados de Lima Sur','VIRTUAL','PAGADO','PUBLICADO',true,390.00,NULL::numeric,(CURRENT_DATE-50),(CURRENT_DATE+45),NULL::date,NULL::integer,72.00,ARRAY['Acceso inmediato a los materiales','Casos de licencias y habilitaciones','Acompanamiento academico','Certificado refrendado por el Colegio de Abogados de Lima Sur']::text[]),
+                                                                                                                                                                    ('arbitraje-contrataciones','Arbitraje en Contrataciones Publicas','Curso sobre el arbitraje en las controversias derivadas de contratos con el Estado: convenio arbitral, constitucion del tribunal, desarrollo del proceso, laudo, anulacion y ejecucion, con casos y modelos de escritos.','/uploads/portadas/11-1793741001012.jpg','CURSO','ARBITRAJE',NULL,'HIBRIDO','PAGADO','PUBLICADO',false,410.00,350.00,(CURRENT_DATE+35),(CURRENT_DATE+105),(CURRENT_DATE+34),45,64.00,ARRAY['Clases grabadas y sesiones en vivo','Modelos de escritos arbitrales','Casos de laudos y anulaciones','Certificado de aprobacion']::text[]),
+                                                                                                                                                                    ('derecho-urbanistico','Derecho Urbanistico','Especializacion sobre el regimen juridico del suelo y la ciudad: planeamiento y zonificacion, parametros urbanisticos, habilitaciones urbanas, licencias de edificacion y conformidad de obra, con casos de gobiernos locales.','/uploads/portadas/12-1793741001012.jpg','ESPECIALIZACION','DERECHO_URBANISTICO',NULL,'VIRTUAL','PAGADO','PUBLICADO',true,390.00,NULL::numeric,(CURRENT_DATE-50),(CURRENT_DATE+45),NULL::date,NULL::integer,72.00,ARRAY['Acceso inmediato a los materiales','Casos de licencias y habilitaciones','Acompanamiento academico','Certificado de aprobacion']::text[]),
                                                                                                                                                                     ('argumentacion-juridica','Argumentacion Juridica','Taller de casos practicos para construir y evaluar argumentos juridicos: estructura de un argumento, falacias frecuentes, argumentacion en escritos y audiencias, y refutacion de contraargumentos. Participacion gratuita.','/uploads/portadas/13-1793741001012.jpg','TALLER_CASOS_PRACTICOS','HABILIDADES_PROFESIONALES',NULL::text,'VIRTUAL','GRATUITO','PUBLICADO',false,0.00,NULL::numeric,(CURRENT_DATE-10),(CURRENT_DATE+30),NULL::date,NULL::integer,18.00,ARRAY['Participacion gratuita','Casos practicos con solucion comentada','Guia de falacias frecuentes','Constancia de participacion']::text[]),
                                                                                                                                                                     ('congreso-gestion-publica','Innovacion y Gestion Publica','Congreso de dos jornadas con conferencias sobre modernizacion, innovacion, integridad y gobierno digital en el sector publico, a cargo de especialistas y funcionarios con experiencia en gestion.','/uploads/portadas/14-1793741001012.jpg','CONGRESO_CONFERENCIA','GESTION_PUBLICA',NULL::text,'EN_VIVO','PAGADO','PUBLICADO',false,180.00,NULL::numeric,(CURRENT_DATE+45),(CURRENT_DATE+46),(CURRENT_DATE+44),200,16.00,ARRAY['Dos jornadas de conferencias en vivo','Presentaciones de los ponentes','Espacio de preguntas con los expositores','Certificado de asistencia']::text[]),
                                                                                                                                                                     ('in-house-procedimiento','Procedimiento Administrativo en la Entidad','Programa in-house disenado a la medida de una entidad: aplicacion del procedimiento administrativo general a sus propios tramites, gestion de expedientes y notificaciones, con casos tomados de la operacion de la institucion.','/uploads/portadas/15-1793741001012.jpg','IN_HOUSE','DERECHO_ADMINISTRATIVO',NULL::text,'VIRTUAL','PAGADO','BORRADOR',false,900.00,NULL::numeric,NULL::date,NULL::date,NULL::date,30,24.00,ARRAY['Contenido adaptado a la entidad','Casos de la propia institucion','Grupo reducido','Certificado de participacion']::text[]),
-                                                                    ('delitos-administracion-publica','Delitos contra la Administracion Publica','Diplomado sobre los delitos cometidos por funcionarios y particulares contra la administracion publica: cohecho, colusion, peculado y negociacion incompatible, con su investigacion y defensa en el proceso penal. Combina clases grabadas con sesiones en vivo de analisis de casos reales.','/uploads/portadas/16-1793741001012.jpg','DIPLOMADO','DERECHO_PENAL','Colegio de Abogados de Lima','HIBRIDO','PAGADO','PUBLICADO',true,680.00,540.00,(CURRENT_DATE+25),(CURRENT_DATE+115),(CURRENT_DATE+24),60,120.00,ARRAY['Clases grabadas y sesiones en vivo con el docente','Casos reales de corrupcion de funcionarios','Modelos de escritos y estrategias de defensa','Certificado refrendado por el Colegio de Abogados de Lima']::text[]),
+                                                                    ('delitos-administracion-publica','Delitos contra la Administracion Publica','Diplomado sobre los delitos cometidos por funcionarios y particulares contra la administracion publica: cohecho, colusion, peculado y negociacion incompatible, con su investigacion y defensa en el proceso penal. Combina clases grabadas con sesiones en vivo de analisis de casos reales.','/uploads/portadas/16-1793741001012.jpg','DIPLOMADO','DERECHO_PENAL',NULL,'HIBRIDO','PAGADO','PUBLICADO',true,680.00,540.00,(CURRENT_DATE+25),(CURRENT_DATE+115),(CURRENT_DATE+24),60,120.00,ARRAY['Clases grabadas y sesiones en vivo con el docente','Casos reales de corrupcion de funcionarios','Modelos de escritos y estrategias de defensa','Certificado de aprobacion']::text[]),
                                                                     ('proceso-civil-estrategia','Proceso Civil: Estrategia y Practica Forense','Curso practico que recorre el proceso civil desde la demanda hasta la ejecucion de la sentencia: postulacion del proceso, saneamiento, actuacion probatoria, medios impugnatorios y medidas cautelares, con modelos de escritos listos para adaptar.','/uploads/portadas/17-1793741001012.jpg','CURSO','DERECHO_CIVIL',NULL::text,'VIRTUAL','PAGADO','PUBLICADO',false,300.00,NULL::numeric,(CURRENT_DATE-12),NULL::date,NULL::date,NULL::integer,40.00,ARRAY['Acceso inmediato a los materiales','Modelos de demandas, contestaciones y recursos','Casos resueltos por etapa del proceso','Certificado de aprobacion']::text[]),
-                                                                    ('contratos-responsabilidad-civil','Contratos y Responsabilidad Civil','Especializacion sobre la teoria general del contrato y la responsabilidad civil: formacion y validez del acto juridico, contratos tipicos, incumplimiento y resolucion, y reparacion del dano contractual y extracontractual, con jurisprudencia de la Corte Suprema.','/uploads/portadas/18-1793741001012.jpg','ESPECIALIZACION','DERECHO_CIVIL','Colegio de Abogados de Lima Sur','VIRTUAL','PAGADO','PUBLICADO',true,350.00,280.00,(CURRENT_DATE-25),(CURRENT_DATE+50),NULL::date,NULL::integer,80.00,ARRAY['Acceso inmediato a los materiales','Clausulas modelo y listas de verificacion contractual','Jurisprudencia comentada','Certificado refrendado por el Colegio de Abogados de Lima Sur']::text[]),
+                                                                    ('contratos-responsabilidad-civil','Contratos y Responsabilidad Civil','Especializacion sobre la teoria general del contrato y la responsabilidad civil: formacion y validez del acto juridico, contratos tipicos, incumplimiento y resolucion, y reparacion del dano contractual y extracontractual, con jurisprudencia de la Corte Suprema.','/uploads/portadas/18-1793741001012.jpg','ESPECIALIZACION','DERECHO_CIVIL',NULL,'VIRTUAL','PAGADO','PUBLICADO',true,350.00,280.00,(CURRENT_DATE-25),(CURRENT_DATE+50),NULL::date,NULL::integer,80.00,ARRAY['Acceso inmediato a los materiales','Clausulas modelo y listas de verificacion contractual','Jurisprudencia comentada','Certificado de aprobacion']::text[]),
                                                                     ('procesos-constitucionales','Procesos Constitucionales: Amparo y Habeas Corpus','Seminario gratuito de dos jornadas sobre los procesos de tutela de derechos fundamentales: habeas corpus, amparo, habeas data y cumplimiento, con enfasis en los requisitos de procedencia y en la jurisprudencia del Tribunal Constitucional.','/uploads/portadas/19-1793741001012.jpg','SEMINARIO','DERECHO_CONSTITUCIONAL',NULL::text,'EN_VIVO','GRATUITO','PUBLICADO',false,0.00,NULL::numeric,(CURRENT_DATE+12),(CURRENT_DATE+13),(CURRENT_DATE+11),120,16.00,ARRAY['Participacion gratuita','Dos jornadas en vivo con casos del Tribunal Constitucional','Material de apoyo y jurisprudencia seleccionada','Constancia de participacion']::text[]),
                                                                     ('compliance-corporativo','Compliance y Responsabilidad de la Persona Juridica','Programa de actualizacion sobre los modelos de prevencion de delitos en la empresa: responsabilidad administrativa de las personas juridicas, mapa de riesgos, canal de denuncias, debida diligencia y supervision del programa de cumplimiento.','/uploads/portadas/20-1793741001012.jpg','PROGRAMA_ACTUALIZACION','DERECHO_EMPRESARIAL',NULL::text,'VIRTUAL','PAGADO','PUBLICADO',false,340.00,NULL::numeric,(CURRENT_DATE-8),NULL::date,NULL::date,NULL::integer,48.00,ARRAY['Acceso inmediato a los materiales','Plantillas de politicas y codigo de conducta','Casos de implementacion en empresas','Certificado de aprobacion']::text[]),
-                                                                    ('derecho-societario','Derecho Societario y Gobierno Corporativo','Diplomado sobre la constitucion y el funcionamiento de las sociedades: tipos societarios, organos de gobierno, deberes de los administradores, operaciones de reorganizacion y buenas practicas de gobierno corporativo. Clases grabadas y talleres en vivo.','/uploads/portadas/21-1793741001012.jpg','DIPLOMADO','DERECHO_EMPRESARIAL','Colegio de Abogados de Lima','HIBRIDO','PAGADO','PUBLICADO',true,720.00,590.00,(CURRENT_DATE+40),(CURRENT_DATE+130),(CURRENT_DATE+39),50,128.00,ARRAY['Clases grabadas y talleres en vivo','Modelos de pactos, actas y estatutos','Casos de reorganizacion societaria','Certificado refrendado por el Colegio de Abogados de Lima']::text[]),
+                                                                    ('derecho-societario','Derecho Societario y Gobierno Corporativo','Diplomado sobre la constitucion y el funcionamiento de las sociedades: tipos societarios, organos de gobierno, deberes de los administradores, operaciones de reorganizacion y buenas practicas de gobierno corporativo. Clases grabadas y talleres en vivo.','/uploads/portadas/21-1793741001012.jpg','DIPLOMADO','DERECHO_EMPRESARIAL',NULL,'HIBRIDO','PAGADO','PUBLICADO',true,720.00,590.00,(CURRENT_DATE+40),(CURRENT_DATE+130),(CURRENT_DATE+39),50,128.00,ARRAY['Clases grabadas y talleres en vivo','Modelos de pactos, actas y estatutos','Casos de reorganizacion societaria','Certificado de aprobacion']::text[]),
                                                                     ('seguridad-social-pensiones','Seguridad Social y Regimen Pensionario','Curso sobre el sistema de seguridad social en el Peru: salud, pensiones y riesgos del trabajo. Aborda el Sistema Nacional de Pensiones, el Sistema Privado de Pensiones, los requisitos de acceso y el procedimiento para reclamar prestaciones.','/uploads/portadas/22-1793741001012.jpg','CURSO','DERECHO_LABORAL',NULL::text,'VIRTUAL','PAGADO','EN_CURSO',false,260.00,NULL::numeric,(CURRENT_DATE-20),NULL::date,NULL::date,NULL::integer,36.00,ARRAY['Acceso inmediato a los materiales','Simuladores de calculo de pension','Casos de reclamaciones resueltos','Certificado de aprobacion']::text[]),
                                                                     ('negociacion-colectiva','Negociacion Colectiva y Relaciones Sindicales','Taller de casos practicos sobre la negociacion colectiva: derecho de sindicacion, pliego de reclamos, estrategias de negociacion, convencion colectiva y solucion de conflictos laborales. Dos jornadas en vivo con simulaciones de mesa de negociacion.','/uploads/portadas/23-1793741001012.jpg','TALLER_CASOS_PRACTICOS','DERECHO_LABORAL',NULL::text,'EN_VIVO','PAGADO','PUBLICADO',false,150.00,NULL::numeric,(CURRENT_DATE+15),(CURRENT_DATE+16),(CURRENT_DATE+14),40,12.00,ARRAY['Dos jornadas en vivo con simulacion de negociacion','Modelos de pliego de reclamos y convencion colectiva','Retroalimentacion individual del docente','Certificado de participacion']::text[]),
-                                                                    ('obras-publicas-ejecucion','Obras Publicas: Ejecucion, Valorizaciones y Liquidacion','Especializacion dirigida a abogados, supervisores y residentes sobre la ejecucion de obras publicas: inicio del plazo, cuaderno de obra, adicionales y deductivos, ampliaciones de plazo, valorizaciones, recepcion y liquidacion del contrato de obra.','/uploads/portadas/24-1793741001012.jpg','ESPECIALIZACION','CONTRATACIONES_ESTADO','Colegio de Abogados de Lima','HIBRIDO','PAGADO','PUBLICADO',true,420.00,340.00,(CURRENT_DATE-5),(CURRENT_DATE+85),(CURRENT_DATE+6),45,96.00,ARRAY['Clases grabadas y sesiones en vivo','Formatos de valorizacion y liquidacion de obra','Casos de controversias en ejecucion contractual','Certificado refrendado por el Colegio de Abogados de Lima']::text[]),
+                                                                    ('obras-publicas-ejecucion','Obras Publicas: Ejecucion, Valorizaciones y Liquidacion','Especializacion dirigida a abogados, supervisores y residentes sobre la ejecucion de obras publicas: inicio del plazo, cuaderno de obra, adicionales y deductivos, ampliaciones de plazo, valorizaciones, recepcion y liquidacion del contrato de obra.','/uploads/portadas/24-1793741001012.jpg','ESPECIALIZACION','CONTRATACIONES_ESTADO',NULL,'HIBRIDO','PAGADO','PUBLICADO',true,420.00,340.00,(CURRENT_DATE-5),(CURRENT_DATE+85),(CURRENT_DATE+6),45,96.00,ARRAY['Clases grabadas y sesiones en vivo','Formatos de valorizacion y liquidacion de obra','Casos de controversias en ejecucion contractual','Certificado de aprobacion']::text[]),
                                                                     ('tributacion-municipal','Tributacion Municipal y Cobranza Coactiva','Curso sobre los tributos que administran las municipalidades: impuesto predial, alcabala, arbitrios y licencias. Incluye el procedimiento de cobranza coactiva, las medidas cautelares y los medios de defensa del contribuyente.','/uploads/portadas/25-1793741001012.jpg','CURSO','DERECHO_TRIBUTARIO',NULL::text,'VIRTUAL','PAGADO','PUBLICADO',false,290.00,NULL::numeric,(CURRENT_DATE-35),NULL::date,NULL::date,NULL::integer,40.00,ARRAY['Acceso inmediato a los materiales','Casos de fiscalizacion y cobranza coactiva','Modelos de reclamaciones y apelaciones','Certificado de aprobacion']::text[]),
                                                                     ('conciliacion-extrajudicial','Conciliacion Extrajudicial y Mediacion','Taller gratuito sobre los mecanismos alternativos de solucion de conflictos: la conciliacion extrajudicial, el rol del conciliador, tecnicas de comunicacion y negociacion, y la redaccion del acta de acuerdo.','/uploads/portadas/26-1793741001012.jpg','TALLER','HABILIDADES_PROFESIONALES',NULL::text,'VIRTUAL','GRATUITO','PUBLICADO',false,0.00,NULL::numeric,(CURRENT_DATE-5),(CURRENT_DATE+25),NULL::date,NULL::integer,16.00,ARRAY['Participacion gratuita','Ejercicios de role play con guia de observacion','Modelos de acta de conciliacion','Constancia de participacion']::text[]),
                                                                     ('oratoria-juridica','Oratoria y Comunicacion Juridica','Taller practico para mejorar la exposicion oral del abogado: manejo de la voz y el lenguaje corporal, estructura del discurso, control del nerviosismo y tecnicas para alegatos e informes orales. Dos jornadas en vivo con practica grabada y comentada.','/uploads/portadas/27-1793741001012.jpg','TALLER','HABILIDADES_PROFESIONALES',NULL::text,'EN_VIVO','PAGADO','PUBLICADO',false,120.00,NULL::numeric,(CURRENT_DATE+18),(CURRENT_DATE+19),(CURRENT_DATE+17),40,12.00,ARRAY['Dos jornadas en vivo con practica individual','Retroalimentacion sobre tu exposicion','Guia de preparacion de informes orales','Constancia de participacion']::text[]),
-                                                                    ('catastro-registro-predios','Catastro y Registro de Predios','Curso sobre la articulacion entre el catastro y el registro de predios: identificacion y georreferenciacion, planos y memorias descriptivas, independizaciones, acumulaciones y correccion de discrepancias entre la realidad fisica y la partida registral.','/uploads/portadas/28-1793741001012.jpg','CURSO','DERECHO_REGISTRAL','Colegio de Abogados de Lima','VIRTUAL','PAGADO','PUBLICADO',false,310.00,250.00,(CURRENT_DATE-40),NULL::date,NULL::date,NULL::integer,44.00,ARRAY['Acceso inmediato a los materiales','Ejemplos de planos y memorias descriptivas','Casos de inscripcion resueltos','Certificado refrendado por el Colegio de Abogados de Lima']::text[]),
-                                                                    ('derecho-ambiental','Derecho Ambiental y Evaluacion de Impacto','Especializacion sobre el marco juridico ambiental: principios, instrumentos de gestion, evaluacion de impacto ambiental, fiscalizacion y sanciones, y responsabilidad por dano ambiental, con enfasis en proyectos de inversion y consulta previa.','/uploads/portadas/29-1793741001012.jpg','ESPECIALIZACION','DERECHO_AMBIENTAL','Ilustre Colegio de Abogados de Canete','VIRTUAL','PAGADO','PUBLICADO',false,380.00,NULL::numeric,(CURRENT_DATE+30),(CURRENT_DATE+100),NULL::date,NULL::integer,72.00,ARRAY['Acceso inmediato a los materiales','Casos de evaluacion de impacto y fiscalizacion','Acompanamiento academico','Certificado refrendado por el Ilustre Colegio de Abogados de Canete']::text[]),
-                                                                    ('congreso-derecho-notarial-registral','Congreso Nacional de Derecho Notarial y Registral','Congreso de dos jornadas con conferencias y paneles sobre la funcion notarial y la funcion registral: tecnologia en la fe publica, seguridad juridica del trafico inmobiliario, responsabilidad del notario y criterios del Tribunal Registral.','/uploads/portadas/30-1793741001012.jpg','CONGRESO_CONFERENCIA','DERECHO_NOTARIAL','Colegio de Abogados de Lima','EN_VIVO','PAGADO','PUBLICADO',true,150.00,NULL::numeric,(CURRENT_DATE+60),(CURRENT_DATE+61),(CURRENT_DATE+59),250,16.00,ARRAY['Dos jornadas de conferencias en vivo','Presentaciones de los ponentes','Espacio de preguntas con los expositores','Certificado de asistencia']::text[])
+                                                                    ('catastro-registro-predios','Catastro y Registro de Predios','Curso sobre la articulacion entre el catastro y el registro de predios: identificacion y georreferenciacion, planos y memorias descriptivas, independizaciones, acumulaciones y correccion de discrepancias entre la realidad fisica y la partida registral.','/uploads/portadas/28-1793741001012.jpg','CURSO','DERECHO_REGISTRAL',NULL,'VIRTUAL','PAGADO','PUBLICADO',false,310.00,250.00,(CURRENT_DATE-40),NULL::date,NULL::date,NULL::integer,44.00,ARRAY['Acceso inmediato a los materiales','Ejemplos de planos y memorias descriptivas','Casos de inscripcion resueltos','Certificado de aprobacion']::text[]),
+                                                                    ('derecho-ambiental','Derecho Ambiental y Evaluacion de Impacto','Especializacion sobre el marco juridico ambiental: principios, instrumentos de gestion, evaluacion de impacto ambiental, fiscalizacion y sanciones, y responsabilidad por dano ambiental, con enfasis en proyectos de inversion y consulta previa.','/uploads/portadas/29-1793741001012.jpg','ESPECIALIZACION','DERECHO_AMBIENTAL',NULL,'VIRTUAL','PAGADO','PUBLICADO',false,380.00,NULL::numeric,(CURRENT_DATE+30),(CURRENT_DATE+100),NULL::date,NULL::integer,72.00,ARRAY['Acceso inmediato a los materiales','Casos de evaluacion de impacto y fiscalizacion','Acompanamiento academico','Certificado de aprobacion']::text[]),
+                                                                    ('congreso-derecho-notarial-registral','Congreso Nacional de Derecho Notarial y Registral','Congreso de dos jornadas con conferencias y paneles sobre la funcion notarial y la funcion registral: tecnologia en la fe publica, seguridad juridica del trafico inmobiliario, responsabilidad del notario y criterios del Tribunal Registral.','/uploads/portadas/30-1793741001012.jpg','CONGRESO_CONFERENCIA','DERECHO_NOTARIAL',NULL,'EN_VIVO','PAGADO','PUBLICADO',true,150.00,NULL::numeric,(CURRENT_DATE+60),(CURRENT_DATE+61),(CURRENT_DATE+59),250,16.00,ARRAY['Dos jornadas de conferencias en vivo','Presentaciones de los ponentes','Espacio de preguntas con los expositores','Certificado de asistencia']::text[])
 )
 INSERT INTO curso
     (url_amigable,titulo,descripcion,imagen_portada_url,tipo_curso_id,categoria_tematica_id,
@@ -2437,7 +2505,7 @@ WHERE matricula_id=(
 INSERT INTO logro_certificacion
 (matricula_id,estado,nota_final,progreso_final,asistencia_final,nivel,
  fecha_finalizacion,fecha_emision_programada,datos_confirmados_en,nombres_confirmados)
-SELECT m.matricula_id,'EMITIDO',16,100,NULL,'REFRENDADO',m.fecha_finalizacion,
+SELECT m.matricula_id,'EMITIDO',16,100,NULL,'NORMAL',m.fecha_finalizacion,
        m.fecha_finalizacion,m.fecha_finalizacion,'Gabriel Antonio Mayanga Cabrera'
 FROM matricula m JOIN usuario u ON u.usuario_id=m.usuario_id
                  JOIN curso c ON c.curso_id=m.curso_id
@@ -2593,7 +2661,7 @@ WHERE u.correo IN ('gabriel.mayanga@escuelajuridica.edu.pe','joel.saldana@escuel
 INSERT INTO logro_certificacion
 (matricula_id,estado,nota_final,progreso_final,nivel,fecha_finalizacion,fecha_emision_programada,
  datos_confirmados_en,nombres_confirmados)
-SELECT m.matricula_id,'EMITIDO',17,100,'REFRENDADO',m.fecha_finalizacion,m.fecha_finalizacion,
+SELECT m.matricula_id,'EMITIDO',17,100,'NORMAL',m.fecha_finalizacion,m.fecha_finalizacion,
        m.fecha_finalizacion,'Juan Jose Morales Velasquez'
 FROM matricula m JOIN usuario u ON u.usuario_id=m.usuario_id
                  JOIN curso c ON c.curso_id=m.curso_id
@@ -2678,21 +2746,23 @@ FROM pago p JOIN matricula m ON m.matricula_id=p.matricula_id
 WHERE p.numero_pedido='PED-EP06-0002';
 
 -- =============================================================================
--- DEMOSTRACION: FLUJO COMPLETO DE UN ALUMNO (matricularse gratis, estudiar y obtener el certificado)
+-- DEMOSTRACION: CUATRO CURSOS COMPLETOS (matricularse, estudiar y obtener el certificado; tres de pago y uno gratuito)
 -- =============================================================================
 -- Cuenta:  alumno.demo@escuelajuridica.edu.pe   Contrasena: Marco1415@
 --          (cambia el correo por uno propio si quieres recibir los avisos de matricula y de certificado)
--- Curso:   "Procedimiento Administrativo Practico" (GRATUITO, virtual, publicado)
+-- Cursos:  1) "Procedimiento Administrativo Practico", 2) "Contratacion Publica Practica" y
+--          3) "Redaccion Juridica Practica" y 4) "Introduccion al Procedimiento Administrativo" (GRATUITO):
+--          los cuatro iguales en estructura (diplomado virtual y publicado; los tres primeros PAGADOS a S/ 120.00, S/ 150.00 y S/ 180.00)
 --          8 lecciones en 4 modulos, cada una con su video de YouTube, material descargable en PDF y
 --          lecturas recomendadas, + examen final de 4 preguntas (30 minutos) de correccion automatica.
---          Los PDF viven en uploads/cursos/31/ (el curso recibe el id 31): copiar esa carpeta junto con el script.
--- El alumno NO tiene matricula: el recorrido empieza en la ficha del curso con "Matricularme gratis".
---   1. Se matricula sin pago (matricula gratuita) y entra al aula.
+--          Los PDF viven en uploads/cursos/1/, uploads/cursos/2/ y uploads/cursos/3/ (los cursos reciben los ids 1, 2 y 3):
+--          copiar esas carpetas junto con el script. Los cuatro cursos se crean al inicio de los cursos (ids 1 a 4) para encabezar el catalogo; su contenido se carga en este bloque. El curso 4 reutiliza los materiales de uploads/cursos/1/.
+-- El alumno NO tiene matricula: el recorrido empieza en la ficha del curso con "Matricularme".
+--   1. Se matricula (paga en linea; el curso 4 es gratuito y se matricula sin pago) y entra al aula.
 --   2. Completa las 8 lecciones de los 4 modulos en orden.
---   3. Rinde el examen final (alternativas correctas: ver el comentario de cada pregunta).
+--   3. Rinde el examen final (la respuesta correcta es siempre la primera alternativa).
 --   4. Confirma sus nombres y genera el certificado: sale al instante (0 dias de espera), sin
---      intervencion de administracion, con nivel REFRENDADO si la nota llega a 14 (el curso tiene
---      entidad certificadora).
+--      intervencion de administracion, con nivel NORMAL (la escuela no refrenda certificados).
 -- Los contenidos, correos y enlaces son datos de demostracion.
 
 INSERT INTO persona (nombres, apellido_paterno, apellido_materno, telefono)
@@ -2709,55 +2779,19 @@ SELECT u.usuario_id, r.rol_id, true
 FROM usuario u JOIN rol r ON r.codigo = 'ROLE_ALUMNO'
 WHERE u.correo = 'alumno.demo@escuelajuridica.edu.pe';
 
-INSERT INTO curso
-(url_amigable, titulo, descripcion, imagen_portada_url, tipo_curso_id, categoria_tematica_id,
- entidad_certificadora_id, modalidad, tipo_venta, estado_curso_id, destacado, precio_regular,
- horas_academicas, beneficios, creado_por_usuario_id, publicado_en)
-SELECT 'procedimiento-administrativo-practico',
-       'Procedimiento Administrativo Practico',
-       'Diplomado gratuito y aplicado sobre el procedimiento administrativo general. En cuatro modulos recorres los principios y la competencia, las etapas y los actos administrativos, los recursos administrativos y el silencio administrativo. Cada leccion incluye video, material descargable en PDF y lecturas recomendadas, y al final rindes un examen de 30 minutos con correccion automatica y obtienes tu certificado al instante, con tu nota final y las 120 horas academicas.',
-       '/uploads/portadas/31-1793741001012.jpg',
-       tc.tipo_curso_id, ct.categoria_tematica_id, ec.entidad_certificadora_id, 'VIRTUAL', 'GRATUITO',
-       es.estado_curso_id, true, 0.00, 120.00,
-       ARRAY['Matricula gratuita con acceso inmediato','Cuatro modulos con 8 lecciones en video','Material descargable en PDF y lecturas recomendadas','Examen final de 30 minutos con correccion automatica','Certificado al instante al aprobar, con tu nota y 120 horas academicas'],
-       a.usuario_id, CURRENT_TIMESTAMP
-FROM tipo_curso tc, categoria_tematica ct, entidad_certificadora ec, estado_curso es, usuario a
-WHERE tc.codigo = 'DIPLOMADO' AND ct.codigo = 'DERECHO_ADMINISTRATIVO'
-  AND ec.nombre = 'Colegio de Abogados de Lima' AND es.codigo = 'PUBLICADO'
-  AND a.correo = 'admin@escuelajuridica.edu.pe';
+UPDATE regla_curso SET progreso_minimo = 100
+WHERE curso_id IN (SELECT curso_id FROM curso WHERE url_amigable IN
+    ('procedimiento-administrativo-practico', 'contratacion-publica-practica',
+     'redaccion-juridica-practica', 'introduccion-procedimiento-administrativo'));
 
--- Codigo de registro del curso practico: el siguiente numero de su tipo en el anio en curso.
-UPDATE curso c
-SET anio_registro = EXTRACT(YEAR FROM CURRENT_DATE)::int,
-    numero_registro = (SELECT COALESCE(MAX(x.numero_registro),0) + 1 FROM curso x
-                       WHERE x.tipo_curso_id = c.tipo_curso_id AND x.anio_registro = EXTRACT(YEAR FROM CURRENT_DATE)::int)
-WHERE c.url_amigable = 'procedimiento-administrativo-practico';
-UPDATE curso c
-SET codigo_registro = to_char(c.numero_registro,'FM00') || '-' || tc.sigla_registro || '_' || c.anio_registro
-FROM tipo_curso tc
-WHERE tc.tipo_curso_id = c.tipo_curso_id AND c.url_amigable = 'procedimiento-administrativo-practico';
-
-INSERT INTO historial_estado_curso (curso_id, estado_nuevo_id, realizado_por_usuario_id)
-SELECT c.curso_id, c.estado_curso_id, c.creado_por_usuario_id
-FROM curso c WHERE c.url_amigable = 'procedimiento-administrativo-practico';
-
+-- ----------------------------------------------------------------------------
+-- CURSO 1: Procedimiento Administrativo Practico
+-- ----------------------------------------------------------------------------
 INSERT INTO curso_docente (curso_id, persona_id, orden)
 SELECT c.curso_id, p.persona_id, 1
 FROM curso c, persona p
 WHERE c.url_amigable = 'procedimiento-administrativo-practico'
   AND p.nombres = 'Miguel Bryan' AND p.apellido_paterno = 'Saldivar';
-
-INSERT INTO curso_firmante (curso_id, firmante_id, orden)
-SELECT c.curso_id, f.firmante_id, row_number() OVER (ORDER BY f.firmante_id)
-FROM curso c CROSS JOIN firmante f
-WHERE c.url_amigable = 'procedimiento-administrativo-practico';
-
--- Todo el progreso y el examen son obligatorios; el certificado se genera de inmediato (sin dias de espera).
-INSERT INTO regla_curso
-(curso_id, requiere_examenes, requiere_progreso, requiere_asistencia, nota_minima, nota_refrendado,
- progreso_minimo, umbral_video, asistencia_minima, secuencia_obligatoria, dias_espera_certificado)
-SELECT c.curso_id, true, true, false, 12, 14, 100, 50, 80, true, 0
-FROM curso c WHERE c.url_amigable = 'procedimiento-administrativo-practico';
 
 INSERT INTO modulo (curso_id, titulo, descripcion, orden)
 SELECT c.curso_id, v.titulo, v.descripcion, v.orden
@@ -2900,6 +2934,442 @@ SELECT p.pregunta_id, v.texto, v.correcta, v.orden
 FROM pregunta p
          JOIN examen e ON e.examen_id = p.examen_id
          JOIN curso c ON c.curso_id = e.curso_id AND c.url_amigable = 'procedimiento-administrativo-practico'
+         JOIN (VALUES
+                   (1, 'Principio de legalidad', true, 1),
+                   (1, 'Principio de informalismo', false, 2),
+                   (1, 'Principio de celeridad', false, 3),
+                   (2, 'Instruccion', true, 1),
+                   (2, 'Inicio', false, 2),
+                   (2, 'Resolucion', false, 3),
+                   (3, 'Recurso de reconsideracion', true, 1),
+                   (3, 'Recurso de apelacion', false, 2),
+                   (3, 'Recurso de revision', false, 3),
+                   (4, 'La solicitud se considera aprobada', true, 1),
+                   (4, 'La solicitud se considera denegada', false, 2),
+                   (4, 'El procedimiento queda suspendido', false, 3)
+) v(pregunta_orden, texto, correcta, orden) ON v.pregunta_orden = p.orden;
+
+-- ----------------------------------------------------------------------------
+-- CURSO 2: Contratacion Publica Practica
+-- ----------------------------------------------------------------------------
+INSERT INTO curso_docente (curso_id, persona_id, orden)
+SELECT c.curso_id, p.persona_id, 1
+FROM curso c, persona p
+WHERE c.url_amigable = 'contratacion-publica-practica'
+  AND p.nombres = 'Carlos Alberto' AND p.apellido_paterno = 'Mendoza';
+
+INSERT INTO modulo (curso_id, titulo, descripcion, orden)
+SELECT c.curso_id, v.titulo, v.descripcion, v.orden
+FROM curso c
+         CROSS JOIN (VALUES
+                         ('Fundamentos de la contratacion publica', 'Principios, actores y el requerimiento: el punto de partida de toda contratacion.', 1),
+                         ('Procedimientos de seleccion', 'Como se elige el procedimiento, que contienen las bases y como se otorga la buena pro.', 2),
+                         ('Ejecucion del contrato', 'Garantias, adelantos, penalidades, ampliaciones de plazo y prestaciones adicionales.', 3),
+                         ('Controversias y cierre', 'Conformidad, pago y mecanismos para resolver desacuerdos, con un caso practico completo.', 4)
+) v(titulo, descripcion, orden)
+WHERE c.url_amigable = 'contratacion-publica-practica';
+
+INSERT INTO leccion
+(modulo_id, titulo, descripcion, orden, tipo, estado, es_obligatoria, es_vista_previa)
+SELECT m.modulo_id, v.titulo, v.descripcion, v.orden, 'GRABADA', 'PROGRAMADA', true, v.vista_previa
+FROM modulo m
+         JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'contratacion-publica-practica'
+         JOIN (VALUES
+                   (1, 'Principios y actores de la contratacion publica', 'Los principios que guian toda contratacion (transparencia, libre concurrencia e igualdad de trato), quienes intervienen (entidad, area usuaria y proveedores) y por que el requerimiento es el punto de partida.', 1, true),
+                   (1, 'El requerimiento y el valor estimado', 'Como se redacta un requerimiento claro, por que debe evitar descripciones ambiguas y como se sustenta el valor estimado con un estudio de mercado.', 2, false),
+                   (2, 'Como elegir el procedimiento de seleccion', 'Criterios generales para escoger el procedimiento segun el objeto y el monto de la contratacion. Descarga el cuadro de documentos clave para repasar el expediente.', 1, false),
+                   (2, 'Bases, ofertas y buena pro', 'Que contienen las bases, como se presentan y evaluan las ofertas y que significa que se otorgue la buena pro. Consulta el buscador publico para ver procedimientos reales.', 2, false),
+                   (3, 'Contrato, garantias y adelantos', 'Como se perfecciona el contrato, para que sirven las garantias y en que casos se entregan adelantos al contratista.', 1, false),
+                   (3, 'Penalidades, ampliaciones y adicionales', 'Que ocurre cuando hay atrasos: penalidades por mora, solicitud de ampliacion de plazo y reglas para las prestaciones adicionales.', 2, false),
+                   (4, 'Conformidad, recepcion y pago', 'Por que la conformidad es indispensable antes del pago y quien debe emitirla. Incluye el esquema de etapas para repasar todo el recorrido.', 1, false),
+                   (4, 'Resolucion de un caso practico', 'Aplica lo aprendido con el caso de la entrega de computadoras de la Municipalidad de Valle Alto: atraso, ampliacion de plazo y prestaciones adicionales. Descarga el caso y compara con las respuestas orientativas.', 2, false)
+) v(modulo_orden, titulo, descripcion, orden, vista_previa) ON v.modulo_orden = m.orden;
+
+INSERT INTO recurso
+(tipo_material_id, tipo, origen, referencia, nombre_archivo, tipo_mime, duracion_segundos,
+ duracion_detectada, youtube_no_listado_confirmado, creado_por_usuario_id)
+SELECT tm.tipo_material_id, 'VIDEO', 'YOUTUBE', v.url || '&leccion=' || x.leccion_id,
+       NULL, 'video/youtube', NULL, false, true, a.usuario_id
+FROM (SELECT l.leccion_id, row_number() OVER (ORDER BY m.orden, l.orden) AS n
+      FROM leccion l
+               JOIN modulo m ON m.modulo_id = l.modulo_id
+               JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'contratacion-publica-practica') x
+         JOIN (VALUES
+    (1, 'https://www.youtube.com/watch?v=ft7bDurQeCw'),
+    (2, 'https://www.youtube.com/watch?v=LqIs_BcFXR0'),
+    (3, 'https://www.youtube.com/watch?v=TpNvLOLaELw'),
+    (4, 'https://www.youtube.com/watch?v=B-YO34e1e3I'),
+    (5, 'https://www.youtube.com/watch?v=p0ezIaA7PhQ'),
+    (6, 'https://www.youtube.com/watch?v=XBQrVaNEaSQ'),
+    (7, 'https://www.youtube.com/watch?v=_Py4rKyRfhs'),
+    (8, 'https://www.youtube.com/watch?v=ft7bDurQeCw')
+) v(n, url) ON v.n = x.n
+         JOIN tipo_material tm ON tm.codigo = 'VIDEO'
+         JOIN usuario a ON a.correo = 'admin@escuelajuridica.edu.pe';
+
+INSERT INTO material_leccion (leccion_id, recurso_id, titulo, orden)
+SELECT x.leccion_id, r.recurso_id, 'Video de la leccion', 1
+FROM (SELECT l.leccion_id, row_number() OVER (ORDER BY m.orden, l.orden) AS n
+      FROM leccion l
+               JOIN modulo m ON m.modulo_id = l.modulo_id
+               JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'contratacion-publica-practica') x
+         JOIN (VALUES
+    (1, 'https://www.youtube.com/watch?v=ft7bDurQeCw'),
+    (2, 'https://www.youtube.com/watch?v=LqIs_BcFXR0'),
+    (3, 'https://www.youtube.com/watch?v=TpNvLOLaELw'),
+    (4, 'https://www.youtube.com/watch?v=B-YO34e1e3I'),
+    (5, 'https://www.youtube.com/watch?v=p0ezIaA7PhQ'),
+    (6, 'https://www.youtube.com/watch?v=XBQrVaNEaSQ'),
+    (7, 'https://www.youtube.com/watch?v=_Py4rKyRfhs'),
+    (8, 'https://www.youtube.com/watch?v=ft7bDurQeCw')
+) v(n, url) ON v.n = x.n
+         JOIN recurso r ON r.referencia = v.url || '&leccion=' || x.leccion_id;
+
+INSERT INTO recurso
+(tipo_material_id, tipo, origen, referencia, nombre_archivo, tipo_mime, tamano_bytes, creado_por_usuario_id)
+SELECT tm.tipo_material_id, v.tipo, v.origen,
+       CASE WHEN v.origen = 'SUBIDO' THEN '/uploads/cursos/' || c.curso_id || '/' || v.referencia ELSE v.referencia END,
+       v.nombre, v.mime, v.tamano, a.usuario_id
+FROM (VALUES
+          ('DOCUMENTO', 'ARCHIVO', 'SUBIDO', 'esquema-etapas-contratacion-publica.pdf', 'Esquema de etapas de una contratacion publica.pdf', 'application/pdf', 4072::bigint),
+          ('DOCUMENTO', 'ARCHIVO', 'SUBIDO', 'cuadro-expediente-de-contratacion.pdf', 'Cuadro de documentos clave del expediente de contratacion.pdf', 'application/pdf', 3883::bigint),
+          ('DOCUMENTO', 'ARCHIVO', 'SUBIDO', 'caso-practico-atraso-y-ampliacion-de-plazo.pdf', 'Caso practico - atraso y ampliacion de plazo.pdf', 'application/pdf', 3901::bigint),
+          ('ENLACE', 'ENLACE', 'EXTERNO', 'https://www.gob.pe/oece', NULL::text, NULL::text, NULL::bigint),
+          ('ENLACE', 'ENLACE', 'EXTERNO', 'https://prod2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml', NULL::text, NULL::text, NULL::bigint),
+          ('ENLACE', 'ENLACE', 'EXTERNO', 'https://www.gob.pe/mef', NULL::text, NULL::text, NULL::bigint)
+) v(tipo_material, tipo, origen, referencia, nombre, mime, tamano)
+         JOIN tipo_material tm ON tm.codigo = v.tipo_material
+         JOIN curso c ON c.url_amigable = 'contratacion-publica-practica'
+         JOIN usuario a ON a.correo = 'admin@escuelajuridica.edu.pe';
+
+INSERT INTO material_leccion (leccion_id, recurso_id, titulo, orden, permite_descarga)
+SELECT x.leccion_id, r.recurso_id, v.titulo, v.orden, v.descarga
+FROM (SELECT l.leccion_id, row_number() OVER (ORDER BY m.orden, l.orden) AS n
+      FROM leccion l
+               JOIN modulo m ON m.modulo_id = l.modulo_id
+               JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'contratacion-publica-practica') x
+         JOIN (VALUES
+                   (1, 2, 'Esquema: etapas de una contratacion publica', true, 'esquema-etapas-contratacion-publica.pdf'),
+                   (1, 3, 'Portal del organismo rector de las contrataciones publicas', false, 'https://www.gob.pe/oece'),
+                   (2, 2, 'Cuadro: documentos clave del expediente de contratacion', true, 'cuadro-expediente-de-contratacion.pdf'),
+                   (3, 2, 'Cuadro: documentos clave del expediente de contratacion', true, 'cuadro-expediente-de-contratacion.pdf'),
+                   (3, 3, 'Buscador publico de procedimientos de seleccion (SEACE)', false, 'https://prod2.seace.gob.pe/seacebus-uiwd-pub/buscadorPublico/buscadorPublico.xhtml'),
+                   (4, 2, 'Esquema: etapas de una contratacion publica', true, 'esquema-etapas-contratacion-publica.pdf'),
+                   (5, 2, 'Cuadro: documentos clave del expediente de contratacion', true, 'cuadro-expediente-de-contratacion.pdf'),
+                   (6, 2, 'Portal del organismo rector de las contrataciones publicas', false, 'https://www.gob.pe/oece'),
+                   (7, 2, 'Portal del Ministerio de Economia y Finanzas', false, 'https://www.gob.pe/mef'),
+                   (7, 3, 'Esquema: etapas de una contratacion publica', true, 'esquema-etapas-contratacion-publica.pdf'),
+                   (8, 2, 'Caso practico: entrega de computadoras y ampliacion de plazo', true, 'caso-practico-atraso-y-ampliacion-de-plazo.pdf'),
+                   (8, 3, 'Cuadro: documentos clave del expediente de contratacion', true, 'cuadro-expediente-de-contratacion.pdf')
+) v(n, orden, titulo, descarga, referencia) ON v.n = x.n
+         JOIN recurso r ON r.referencia = v.referencia OR r.referencia LIKE '%/' || v.referencia;
+
+INSERT INTO examen
+(curso_id, modulo_id, titulo, descripcion, tipo, finalidad, orden, maximo_intentos, tiempo_limite_minutos,
+ barajar_preguntas, barajar_opciones, mostrar_respuestas, bloquea_siguiente_modulo, dias_revision,
+ modo_navegacion, permite_omitir_preguntas)
+SELECT c.curso_id, NULL, 'Examen final del curso',
+       'Responde las cuatro preguntas. Tienes 1 minuto desde que inicias; la nota se calcula automaticamente al enviar.',
+       'CALIFICADO', 'FINAL', 1, 3, 1, false, false, 'AL_APROBAR', false, 3, 'LIBRE', false
+FROM curso c WHERE c.url_amigable = 'contratacion-publica-practica';
+
+INSERT INTO pregunta (examen_id, tipo, enunciado, puntaje, orden)
+SELECT e.examen_id, 'SELECCION_UNICA', v.enunciado, 5, v.orden
+FROM examen e
+         JOIN curso c ON c.curso_id = e.curso_id AND c.url_amigable = 'contratacion-publica-practica'
+         CROSS JOIN (VALUES
+                         (1, 'Que documento describe lo que la entidad necesita contratar, con sus caracteristicas y condiciones?'),
+                         (2, 'En que etapa se evaluan las ofertas y se otorga la buena pro?'),
+                         (3, 'Que acredita que la prestacion se recibio de acuerdo con lo contratado?'),
+                         (4, 'Si surge una controversia durante la ejecucion, que mecanismos suele prever la normativa para resolverla?')
+) v(orden, enunciado);
+
+INSERT INTO opcion_pregunta (pregunta_id, texto, es_correcta, orden)
+SELECT p.pregunta_id, v.texto, v.correcta, v.orden
+FROM pregunta p
+         JOIN examen e ON e.examen_id = p.examen_id
+         JOIN curso c ON c.curso_id = e.curso_id AND c.url_amigable = 'contratacion-publica-practica'
+         JOIN (VALUES
+                   (1, 'El requerimiento', true, 1),
+                   (1, 'El acta de conformidad', false, 2),
+                   (1, 'El comprobante de pago', false, 3),
+                   (2, 'Seleccion', true, 1),
+                   (2, 'Ejecucion contractual', false, 2),
+                   (2, 'Conformidad y pago', false, 3),
+                   (3, 'La conformidad', true, 1),
+                   (3, 'Las bases', false, 2),
+                   (3, 'El requerimiento', false, 3),
+                   (4, 'Conciliacion y arbitraje', true, 1),
+                   (4, 'Solo la via judicial ordinaria', false, 2),
+                   (4, 'Ninguno: la entidad decide siempre', false, 3)
+) v(pregunta_orden, texto, correcta, orden) ON v.pregunta_orden = p.orden;
+
+-- ----------------------------------------------------------------------------
+-- CURSO 3: Redaccion Juridica Practica
+-- ----------------------------------------------------------------------------
+INSERT INTO curso_docente (curso_id, persona_id, orden)
+SELECT c.curso_id, p.persona_id, 1
+FROM curso c, persona p
+WHERE c.url_amigable = 'redaccion-juridica-practica'
+  AND p.nombres = 'Ariana Fiorella' AND p.apellido_paterno = 'Lazaro';
+
+INSERT INTO modulo (curso_id, titulo, descripcion, orden)
+SELECT c.curso_id, v.titulo, v.descripcion, v.orden
+FROM curso c
+         CROSS JOIN (VALUES
+                         ('Claridad y estructura', 'Escribir con orden: ideas, parrafos y la estructura del razonamiento juridico.', 1),
+                         ('El escrito judicial', 'Partes de un escrito, hechos, fundamentos de derecho y medios probatorios.', 2),
+                         ('Resoluciones y dictamenes', 'Como leer una resolucion y por que la motivacion es la base de toda decision.', 3),
+                         ('Estilo, citas y revision', 'Citar normas y jurisprudencia con precision y revisar un escrito antes de presentarlo.', 4)
+) v(titulo, descripcion, orden)
+WHERE c.url_amigable = 'redaccion-juridica-practica';
+
+INSERT INTO leccion
+(modulo_id, titulo, descripcion, orden, tipo, estado, es_obligatoria, es_vista_previa)
+SELECT m.modulo_id, v.titulo, v.descripcion, v.orden, 'GRABADA', 'PROGRAMADA', true, v.vista_previa
+FROM modulo m
+         JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'redaccion-juridica-practica'
+         JOIN (VALUES
+                   (1, 'Escribir con claridad: ideas, parrafos y oraciones', 'Como convertir una idea en un parrafo claro, por que conviene usar oraciones cortas y como evitar rodeos y repeticiones que cansan al lector.', 1, true),
+                   (1, 'Estructura del razonamiento juridico', 'Como ordenar un razonamiento: hechos, norma aplicable y conclusion. Veras por que un escrito ordenado convence mas que uno extenso.', 2, false),
+                   (2, 'Partes de un escrito: sumilla, petitorio y fundamentos', 'Que contiene cada parte de un escrito judicial y como redactar un petitorio claro. Descarga el esquema de partes para tenerlo a la mano.', 1, false),
+                   (2, 'Hechos, derecho y medios probatorios', 'Como narrar los hechos relevantes, sustentarlos con normas y relacionar cada medio probatorio con lo que acredita. Incluye la lista de revision de un escrito.', 2, false),
+                   (3, 'Como leer una resolucion', 'Identificar las partes de una resolucion, distinguir los hechos, el analisis y la decision, y reconocer cuando una resolucion esta bien fundamentada.', 1, false),
+                   (3, 'La motivacion de las decisiones', 'Por que toda decision debe explicar sus razones y que ocurre cuando falta motivacion. Se revisa con ejemplos de resoluciones y dictamenes.', 2, false),
+                   (4, 'Citas de normas y jurisprudencia', 'Como citar una norma con su numero y articulo exactos y como referirte a una sentencia de manera verificable. Consulta los portales oficiales para practicar.', 1, false),
+                   (4, 'Revision de un escrito: caso practico', 'Aplica todo lo aprendido corrigiendo un escrito con problemas de claridad, orden y sustento. Descarga el caso y compara con las respuestas orientativas.', 2, false)
+) v(modulo_orden, titulo, descripcion, orden, vista_previa) ON v.modulo_orden = m.orden;
+
+INSERT INTO recurso
+(tipo_material_id, tipo, origen, referencia, nombre_archivo, tipo_mime, duracion_segundos,
+ duracion_detectada, youtube_no_listado_confirmado, creado_por_usuario_id)
+SELECT tm.tipo_material_id, 'VIDEO', 'YOUTUBE', v.url || '&leccion=' || x.leccion_id,
+       NULL, 'video/youtube', NULL, false, true, a.usuario_id
+FROM (SELECT l.leccion_id, row_number() OVER (ORDER BY m.orden, l.orden) AS n
+      FROM leccion l
+               JOIN modulo m ON m.modulo_id = l.modulo_id
+               JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'redaccion-juridica-practica') x
+         JOIN (VALUES
+    (1, 'https://www.youtube.com/watch?v=TpNvLOLaELw'),
+    (2, 'https://www.youtube.com/watch?v=B-YO34e1e3I'),
+    (3, 'https://www.youtube.com/watch?v=p0ezIaA7PhQ'),
+    (4, 'https://www.youtube.com/watch?v=XBQrVaNEaSQ'),
+    (5, 'https://www.youtube.com/watch?v=_Py4rKyRfhs'),
+    (6, 'https://www.youtube.com/watch?v=ft7bDurQeCw'),
+    (7, 'https://www.youtube.com/watch?v=LqIs_BcFXR0'),
+    (8, 'https://www.youtube.com/watch?v=TpNvLOLaELw')
+) v(n, url) ON v.n = x.n
+         JOIN tipo_material tm ON tm.codigo = 'VIDEO'
+         JOIN usuario a ON a.correo = 'admin@escuelajuridica.edu.pe';
+
+INSERT INTO material_leccion (leccion_id, recurso_id, titulo, orden)
+SELECT x.leccion_id, r.recurso_id, 'Video de la leccion', 1
+FROM (SELECT l.leccion_id, row_number() OVER (ORDER BY m.orden, l.orden) AS n
+      FROM leccion l
+               JOIN modulo m ON m.modulo_id = l.modulo_id
+               JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'redaccion-juridica-practica') x
+         JOIN (VALUES
+    (1, 'https://www.youtube.com/watch?v=TpNvLOLaELw'),
+    (2, 'https://www.youtube.com/watch?v=B-YO34e1e3I'),
+    (3, 'https://www.youtube.com/watch?v=p0ezIaA7PhQ'),
+    (4, 'https://www.youtube.com/watch?v=XBQrVaNEaSQ'),
+    (5, 'https://www.youtube.com/watch?v=_Py4rKyRfhs'),
+    (6, 'https://www.youtube.com/watch?v=ft7bDurQeCw'),
+    (7, 'https://www.youtube.com/watch?v=LqIs_BcFXR0'),
+    (8, 'https://www.youtube.com/watch?v=TpNvLOLaELw')
+) v(n, url) ON v.n = x.n
+         JOIN recurso r ON r.referencia = v.url || '&leccion=' || x.leccion_id;
+
+INSERT INTO recurso
+(tipo_material_id, tipo, origen, referencia, nombre_archivo, tipo_mime, tamano_bytes, creado_por_usuario_id)
+SELECT tm.tipo_material_id, v.tipo, v.origen,
+       CASE WHEN v.origen = 'SUBIDO' THEN '/uploads/cursos/' || c.curso_id || '/' || v.referencia ELSE v.referencia END,
+       v.nombre, v.mime, v.tamano, a.usuario_id
+FROM (VALUES
+          ('DOCUMENTO', 'ARCHIVO', 'SUBIDO', 'esquema-partes-de-un-escrito-judicial.pdf', 'Esquema de partes de un escrito judicial.pdf', 'application/pdf', 3921::bigint),
+          ('DOCUMENTO', 'ARCHIVO', 'SUBIDO', 'lista-de-revision-de-un-escrito.pdf', 'Lista de revision de un escrito.pdf', 'application/pdf', 3435::bigint),
+          ('DOCUMENTO', 'ARCHIVO', 'SUBIDO', 'caso-practico-corregir-un-escrito.pdf', 'Caso practico - corregir un escrito.pdf', 'application/pdf', 3745::bigint),
+          ('ENLACE', 'ENLACE', 'EXTERNO', 'https://www.fundeu.es/', NULL::text, NULL::text, NULL::bigint),
+          ('ENLACE', 'ENLACE', 'EXTERNO', 'https://www.rae.es/dpd/', NULL::text, NULL::text, NULL::bigint),
+          ('ENLACE', 'ENLACE', 'EXTERNO', 'https://www.gob.pe/pj', NULL::text, NULL::text, NULL::bigint),
+          ('ENLACE', 'ENLACE', 'EXTERNO', 'https://www.tc.gob.pe/', NULL::text, NULL::text, NULL::bigint)
+) v(tipo_material, tipo, origen, referencia, nombre, mime, tamano)
+         JOIN tipo_material tm ON tm.codigo = v.tipo_material
+         JOIN curso c ON c.url_amigable = 'redaccion-juridica-practica'
+         JOIN usuario a ON a.correo = 'admin@escuelajuridica.edu.pe';
+
+INSERT INTO material_leccion (leccion_id, recurso_id, titulo, orden, permite_descarga)
+SELECT x.leccion_id, r.recurso_id, v.titulo, v.orden, v.descarga
+FROM (SELECT l.leccion_id, row_number() OVER (ORDER BY m.orden, l.orden) AS n
+      FROM leccion l
+               JOIN modulo m ON m.modulo_id = l.modulo_id
+               JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'redaccion-juridica-practica') x
+         JOIN (VALUES
+                   (1, 2, 'Esquema: partes de un escrito judicial', true, 'esquema-partes-de-un-escrito-judicial.pdf'),
+                   (1, 3, 'Fundeu: recomendaciones de redaccion y estilo', false, 'https://www.fundeu.es/'),
+                   (2, 2, 'Esquema: partes de un escrito judicial', true, 'esquema-partes-de-un-escrito-judicial.pdf'),
+                   (3, 2, 'Esquema: partes de un escrito judicial', true, 'esquema-partes-de-un-escrito-judicial.pdf'),
+                   (3, 3, 'Diccionario panhispanico de dudas (RAE)', false, 'https://www.rae.es/dpd/'),
+                   (4, 2, 'Lista de revision de un escrito', true, 'lista-de-revision-de-un-escrito.pdf'),
+                   (5, 2, 'Portal del Poder Judicial', false, 'https://www.gob.pe/pj'),
+                   (5, 3, 'Portal del Tribunal Constitucional', false, 'https://www.tc.gob.pe/'),
+                   (6, 2, 'Lista de revision de un escrito', true, 'lista-de-revision-de-un-escrito.pdf'),
+                   (7, 2, 'Diccionario panhispanico de dudas (RAE)', false, 'https://www.rae.es/dpd/'),
+                   (7, 3, 'Portal del Tribunal Constitucional', false, 'https://www.tc.gob.pe/'),
+                   (8, 2, 'Caso practico: corrige este escrito', true, 'caso-practico-corregir-un-escrito.pdf'),
+                   (8, 3, 'Lista de revision de un escrito', true, 'lista-de-revision-de-un-escrito.pdf')
+) v(n, orden, titulo, descarga, referencia) ON v.n = x.n
+         JOIN recurso r ON r.referencia = v.referencia OR r.referencia LIKE '%/' || v.referencia;
+
+INSERT INTO examen
+(curso_id, modulo_id, titulo, descripcion, tipo, finalidad, orden, maximo_intentos, tiempo_limite_minutos,
+ barajar_preguntas, barajar_opciones, mostrar_respuestas, bloquea_siguiente_modulo, dias_revision,
+ modo_navegacion, permite_omitir_preguntas)
+SELECT c.curso_id, NULL, 'Examen final del curso',
+       'Responde las cuatro preguntas. Tienes 30 minutos desde que inicias; la nota se calcula automaticamente al enviar.',
+       'CALIFICADO', 'FINAL', 1, 3, 30, false, false, 'AL_APROBAR', false, 3, 'SECUENCIAL', false
+FROM curso c WHERE c.url_amigable = 'redaccion-juridica-practica';
+
+INSERT INTO pregunta (examen_id, tipo, enunciado, puntaje, orden)
+SELECT e.examen_id, 'SELECCION_UNICA', v.enunciado, 5, v.orden
+FROM examen e
+         JOIN curso c ON c.curso_id = e.curso_id AND c.url_amigable = 'redaccion-juridica-practica'
+         CROSS JOIN (VALUES
+                         (1, 'Que parte del escrito resume en una linea su contenido o finalidad?'),
+                         (2, 'Donde se expresa con claridad lo que se solicita al juez?'),
+                         (3, 'Que debe tener una resolucion para explicar por que se decide de una manera?'),
+                         (4, 'Al citar una norma en un escrito, que conviene indicar?')
+) v(orden, enunciado);
+
+INSERT INTO opcion_pregunta (pregunta_id, texto, es_correcta, orden)
+SELECT p.pregunta_id, v.texto, v.correcta, v.orden
+FROM pregunta p
+         JOIN examen e ON e.examen_id = p.examen_id
+         JOIN curso c ON c.curso_id = e.curso_id AND c.url_amigable = 'redaccion-juridica-practica'
+         JOIN (VALUES
+                   (1, 'La sumilla', true, 1),
+                   (1, 'El petitorio', false, 2),
+                   (1, 'Los anexos', false, 3),
+                   (2, 'El petitorio', true, 1),
+                   (2, 'Los medios probatorios', false, 2),
+                   (2, 'El encabezado', false, 3),
+                   (3, 'Motivacion', true, 1),
+                   (3, 'Sumilla', false, 2),
+                   (3, 'Anexos', false, 3),
+                   (4, 'El nombre o numero de la norma y el articulo exacto', true, 1),
+                   (4, 'Solo el anio de la norma', false, 2),
+                   (4, 'Solo el nombre de quien redacta el escrito', false, 3)
+) v(pregunta_orden, texto, correcta, orden) ON v.pregunta_orden = p.orden;
+
+-- ----------------------------------------------------------------------------
+-- CURSO 4: Introduccion al Procedimiento Administrativo (gratuito, con los mismos materiales del curso 1)
+-- ----------------------------------------------------------------------------
+INSERT INTO curso_docente (curso_id, persona_id, orden)
+SELECT c.curso_id, p.persona_id, 1
+FROM curso c, persona p
+WHERE c.url_amigable = 'introduccion-procedimiento-administrativo'
+  AND p.nombres = 'Miguel Bryan' AND p.apellido_paterno = 'Saldivar';
+
+INSERT INTO modulo (curso_id, titulo, descripcion, orden)
+SELECT c.curso_id, v.titulo, v.descripcion, v.orden
+FROM curso c
+         CROSS JOIN (VALUES
+                         ('Fundamentos del procedimiento', 'Principios y reglas basicas del procedimiento administrativo.', 1),
+                         ('Etapas y actos del procedimiento', 'Inicio, instruccion y resolucion del procedimiento, y validez del acto administrativo.', 2),
+                         ('Recursos administrativos', 'Reconsideracion, apelacion y revision: cuando proceden y ante quien se presentan.', 3),
+                         ('Silencio administrativo y practica', 'Efectos del silencio administrativo y aplicacion a un caso completo.', 4)
+) v(titulo, descripcion, orden)
+WHERE c.url_amigable = 'introduccion-procedimiento-administrativo';
+
+INSERT INTO leccion
+(modulo_id, titulo, descripcion, orden, tipo, estado, es_obligatoria, es_vista_previa)
+SELECT m.modulo_id, v.titulo, v.descripcion, v.orden, 'GRABADA', 'PROGRAMADA', true, v.vista_previa
+FROM modulo m
+         JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'introduccion-procedimiento-administrativo'
+         JOIN (VALUES
+                   (1, 'Principios del procedimiento administrativo', 'Legalidad, debido procedimiento, impulso de oficio, razonabilidad e informalismo: los principios que guian toda actuacion de la autoridad y protegen al administrado. Al terminar sabras reconocerlos en un caso real.', 1, true),
+                   (1, 'Sujetos y competencia', 'Quien es el administrado, quien es la autoridad y como se determina la competencia. Veras por que un acto emitido por una autoridad incompetente puede ser declarado nulo y como se delega la competencia.', 2, false),
+                   (2, 'Etapas del procedimiento', 'Inicio a instancia de parte o de oficio, instruccion con pruebas y alegatos, y resolucion. Descarga el esquema de etapas para repasar cada fase con ejemplos.', 1, false),
+                   (2, 'El acto administrativo y su notificacion', 'Los cinco requisitos de validez del acto administrativo (competencia, objeto, finalidad publica, motivacion y procedimiento regular) y por que la notificacion determina desde cuando produce efectos.', 2, false),
+                   (3, 'Recurso de reconsideracion', 'Cuando conviene presentarlo, por que exige nueva prueba y por que es facultativo. Incluye el cuadro comparativo de recursos y un modelo de escrito para consultar.', 1, false),
+                   (3, 'Recursos de apelacion y de revision', 'Diferencias con la reconsideracion, a quien se dirige cada recurso, el plazo de 15 dias habiles y el efecto de dejarlo vencer. Se revisa tambien el caracter excepcional de la revision.', 2, false),
+                   (4, 'Silencio administrativo positivo y negativo', 'Que ocurre cuando la entidad no responde dentro del plazo. Aprenderas a distinguir el silencio positivo del negativo y que puede hacer el administrado en cada caso.', 1, false),
+                   (4, 'Resolucion de un caso practico', 'Aplica todo lo aprendido con el caso de la licencia de funcionamiento de la panaderia La Espiga. Descarga el caso, resuelvelo y compara con las respuestas orientativas antes del examen final.', 2, false)
+) v(modulo_orden, titulo, descripcion, orden, vista_previa) ON v.modulo_orden = m.orden;
+
+INSERT INTO material_leccion (leccion_id, recurso_id, titulo, orden)
+SELECT x.leccion_id, r.recurso_id, 'Video de la leccion', 1
+FROM (SELECT l.leccion_id, row_number() OVER (ORDER BY m.orden, l.orden) AS n
+      FROM leccion l
+               JOIN modulo m ON m.modulo_id = l.modulo_id
+               JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'introduccion-procedimiento-administrativo') x
+         JOIN (VALUES
+    (1, 'https://www.youtube.com/watch?v=XBQrVaNEaSQ'),
+    (2, 'https://www.youtube.com/watch?v=_Py4rKyRfhs'),
+    (3, 'https://www.youtube.com/watch?v=ft7bDurQeCw'),
+    (4, 'https://www.youtube.com/watch?v=LqIs_BcFXR0'),
+    (5, 'https://www.youtube.com/watch?v=TpNvLOLaELw'),
+    (6, 'https://www.youtube.com/watch?v=B-YO34e1e3I'),
+    (7, 'https://www.youtube.com/watch?v=p0ezIaA7PhQ'),
+    (8, 'https://www.youtube.com/watch?v=XBQrVaNEaSQ&parte=8')
+) v(n, url) ON v.n = x.n
+         JOIN recurso r ON r.referencia = v.url;
+
+INSERT INTO material_leccion (leccion_id, recurso_id, titulo, orden, permite_descarga)
+SELECT x.leccion_id, r.recurso_id, v.titulo, v.orden, v.descarga
+FROM (SELECT l.leccion_id, row_number() OVER (ORDER BY m.orden, l.orden) AS n
+      FROM leccion l
+               JOIN modulo m ON m.modulo_id = l.modulo_id
+               JOIN curso c ON c.curso_id = m.curso_id AND c.url_amigable = 'introduccion-procedimiento-administrativo') x
+         JOIN (VALUES
+                   (1, 2, 'TUO de la Ley 27444 (texto oficial vigente)', true, 'tuo-ley-27444-decreto-supremo-006-2026-jus.pdf'),
+                   (1, 3, 'Lectura: estudio preliminar del nuevo TUO', false, 'https://lpderecho.pe/estudio-preliminar-del-tuo-de-la-ley-27444-ley-del-procedimiento-administrativo-general-decreto-supremo-006-2026-jus/'),
+                   (2, 2, 'TUO de la Ley 27444 (texto oficial vigente)', true, 'tuo-ley-27444-decreto-supremo-006-2026-jus.pdf'),
+                   (2, 3, 'Lectura: el principio de legalidad', false, 'https://lpderecho.pe/jurisprudencia-articulo-iv-num-1-1-ley-27444-principio-de-legalidad/'),
+                   (3, 2, 'Esquema: etapas del procedimiento', true, 'esquema-etapas-del-procedimiento-administrativo.pdf'),
+                   (4, 2, 'Esquema: etapas y requisitos del acto administrativo', true, 'esquema-etapas-del-procedimiento-administrativo.pdf'),
+                   (5, 2, 'Cuadro comparativo de recursos administrativos', true, 'cuadro-recursos-administrativos.pdf'),
+                   (5, 3, 'Lectura: recursos administrativos', false, 'https://lpderecho.pe/recursos-administrativos-reconsideracion-apelacion-revision/'),
+                   (5, 4, 'Modelos de recursos impugnatorios', false, 'https://lpderecho.pe/modelos-recursos-impugnatorios-administrativos/'),
+                   (6, 2, 'Cuadro comparativo de recursos administrativos', true, 'cuadro-recursos-administrativos.pdf'),
+                   (6, 3, 'Lectura: plazos y efectos de los recursos', false, 'https://lpderecho.pe/plazos-efectos-recursos-reconsideracion-apelacion/'),
+                   (7, 2, 'Lectura: silencios administrativos tras el D. Leg. 1272', false, 'https://lpderecho.pe/textos-unicos-procedimientos-administrativos-silencios-administrativos-modificaciones-ley-procedimiento-administrativo-general-mediante-decreto-legislativo-1272/'),
+                   (7, 3, 'Noticia: nuevo TUO de la Ley del Procedimiento Administrativo General', false, 'https://www.gob.pe/institucion/minjus/noticias/1386239-minjusdh-simplifica-tramites-y-publica-nuevo-texto-unico-de-la-ley-del-procedimiento-administrativo-general'),
+                   (8, 2, 'Caso practico: la licencia de la panaderia La Espiga', true, 'caso-practico-silencio-administrativo.pdf'),
+                   (8, 3, 'TUO de la Ley 27444 (texto oficial vigente)', true, 'tuo-ley-27444-decreto-supremo-006-2026-jus.pdf')
+) v(n, orden, titulo, descarga, referencia) ON v.n = x.n
+         JOIN recurso r ON r.referencia = v.referencia OR r.referencia LIKE '%/' || v.referencia;
+
+-- Examen final: 4 preguntas de seleccion unica (una por modulo, 5 puntos c/u, 20 en total), 3 intentos, 30 minutos de tiempo limite.
+-- Modo SECUENCIAL: una pregunta por vez con "Siguiente", sin volver atras, y no se puede avanzar sin responder.
+INSERT INTO examen
+(curso_id, modulo_id, titulo, descripcion, tipo, finalidad, orden, maximo_intentos, tiempo_limite_minutos,
+ barajar_preguntas, barajar_opciones, mostrar_respuestas, bloquea_siguiente_modulo, dias_revision,
+ modo_navegacion, permite_omitir_preguntas)
+SELECT c.curso_id, NULL, 'Examen final del curso',
+       'Responde las cuatro preguntas. Tienes 30 minutos desde que inicias; la nota se calcula automaticamente al enviar.',
+       'CALIFICADO', 'FINAL', 1, 3, 30, false, false, 'AL_APROBAR', false, 3, 'SECUENCIAL', false
+FROM curso c WHERE c.url_amigable = 'introduccion-procedimiento-administrativo';
+
+INSERT INTO pregunta (examen_id, tipo, enunciado, puntaje, orden)
+SELECT e.examen_id, 'SELECCION_UNICA', v.enunciado, 5, v.orden
+FROM examen e
+         JOIN curso c ON c.curso_id = e.curso_id AND c.url_amigable = 'introduccion-procedimiento-administrativo'
+         CROSS JOIN (VALUES
+                         (1, 'Que principio exige que la autoridad administrativa actue solo dentro de las facultades que la ley le atribuye?'),
+                         (2, 'En que etapa del procedimiento la autoridad recaba pruebas y verifica los hechos?'),
+                         (3, 'Que recurso se presenta ante la misma autoridad que emitio el acto, sustentado en nueva prueba?'),
+                         (4, 'Cual es el efecto del silencio administrativo positivo?')
+) v(orden, enunciado);
+
+-- La respuesta correcta de cada pregunta es siempre la primera opcion (sin barajar), para recorrer el examen rapido en las pruebas:
+-- pregunta 1 = "Principio de legalidad"; pregunta 2 = "Instruccion"; pregunta 3 = "Recurso de reconsideracion";
+-- pregunta 4 = "La solicitud se considera aprobada".
+INSERT INTO opcion_pregunta (pregunta_id, texto, es_correcta, orden)
+SELECT p.pregunta_id, v.texto, v.correcta, v.orden
+FROM pregunta p
+         JOIN examen e ON e.examen_id = p.examen_id
+         JOIN curso c ON c.curso_id = e.curso_id AND c.url_amigable = 'introduccion-procedimiento-administrativo'
          JOIN (VALUES
                    (1, 'Principio de legalidad', true, 1),
                    (1, 'Principio de informalismo', false, 2),

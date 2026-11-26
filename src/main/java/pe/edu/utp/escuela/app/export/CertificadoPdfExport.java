@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -395,65 +394,35 @@ public class CertificadoPdfExport {
     }
 
     static String lineaDePeriodo(Certificado c) {
+        String horas = muestraHorasEnPortada(c) ? totalDeHoras(c) : "";
         if (c.getFechaInicioImpresa() == null && c.getFechaFinImpresa() == null) {
+            return horas.isEmpty() ? "" : "Con un total de " + horas;
+        }
+        String cursado = "Cursado " + periodo(c.getFechaInicioImpresa(), c.getFechaFinImpresa());
+        return horas.isEmpty() ? cursado : cursado + " con un total de " + horas;
+    }
+
+    private static boolean muestraHorasEnPortada(Certificado c) {
+        String tipo = c.getTipoCursoImpreso() == null ? "" : c.getTipoCursoImpreso().strip().toUpperCase(LOCALE);
+        return !"DIPLOMADO".equals(tipo) && !"SEMINARIO".equals(tipo);
+    }
+
+    private static String totalDeHoras(Certificado c) {
+        if (c.getHorasImpresas() == null || c.getHorasImpresas().signum() <= 0) {
             return "";
         }
-        return "Realizado " + periodo(c.getFechaInicioImpresa(), c.getFechaFinImpresa());
+        String horas = c.getHorasImpresas().stripTrailingZeros().toPlainString();
+        return horas + ("1".equals(horas) ? " hora académica" : " horas académicas");
     }
 
     static String periodo(LocalDate inicio, LocalDate fin) {
-        if (inicio == null || fin == null) {
+        if (inicio == null || fin == null || !fin.isAfter(inicio)) {
             return "el " + fechaLarga(inicio != null ? inicio : fin);
         }
-        LocalDate desde = inicio;
-        LocalDate hasta = fin;
-        if (hasta.isBefore(desde)) {
-            hasta = desde;
-        }
-        if (desde.equals(hasta)) {
-            return "el " + fechaLarga(desde);
-        }
-        long dias = ChronoUnit.DAYS.between(desde, hasta) + 1;
-        boolean mismoAnio = desde.getYear() == hasta.getYear();
-        if (dias <= 4 && mismoAnio) {
-            List<String> grupos = new ArrayList<>();
-            List<Integer> delMes = new ArrayList<>();
-            LocalDate dia = desde;
-            for (int i = 0; i < dias; i++) {
-                delMes.add(dia.getDayOfMonth());
-                LocalDate siguiente = dia.plusDays(1);
-                boolean cierraGrupo = i == dias - 1 || siguiente.getMonth() != dia.getMonth();
-                if (cierraGrupo) {
-                    grupos.add(unir(delMes) + " de " + MESES[dia.getMonthValue() - 1]);
-                    delMes = new ArrayList<>();
-                }
-                dia = siguiente;
-            }
-            return "los días " + String.join(" y ", grupos) + " de " + hasta.getYear();
-        }
-        boolean mismoMes = mismoAnio && desde.getMonth() == hasta.getMonth();
-        if (mismoMes) {
-            return "del " + desde.getDayOfMonth() + " al " + hasta.getDayOfMonth() + " de " + MESES[hasta.getMonthValue() - 1]
-                    + " de " + hasta.getYear();
-        }
-        if (mismoAnio) {
-            return "del " + desde.getDayOfMonth() + " de " + MESES[desde.getMonthValue() - 1] + " al " + fechaLarga(hasta);
-        }
-        return "del " + fechaLarga(desde) + " al " + fechaLarga(hasta);
-    }
-
-    private static String unir(List<Integer> dias) {
-        if (dias.size() == 1) {
-            return String.valueOf(dias.getFirst());
-        }
-        StringBuilder texto = new StringBuilder();
-        for (int i = 0; i < dias.size(); i++) {
-            if (i > 0) {
-                texto.append(i == dias.size() - 1 ? " y " : ", ");
-            }
-            texto.append(dias.get(i));
-        }
-        return texto.toString();
+        String desde = inicio.getYear() == fin.getYear()
+                ? inicio.getDayOfMonth() + " de " + MESES[inicio.getMonthValue() - 1]
+                : fechaLarga(inicio);
+        return "del " + desde + " al " + fechaLarga(fin);
     }
 
     private void notaYHoras(PDPageContentStream c, Lienzo l, Fuentes f, Certificado cert) throws IOException {
