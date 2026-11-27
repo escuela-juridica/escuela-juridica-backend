@@ -1716,6 +1716,21 @@ SELECT u.usuario_id, r.rol_id, true
 FROM usuario u JOIN rol r ON r.codigo = 'ROLE_ALUMNO'
 WHERE u.correo = 'alumno.demo@escuelajuridica.edu.pe';
 
+-- Alumna de prueba: Anita Condo Lopez. Cuenta: anita.condo@prueba.com   Contrasena: Marco1415@
+INSERT INTO persona (nombres, apellido_paterno, apellido_materno, telefono)
+VALUES ('Anita', 'Condo', 'Lopez', '999 100 106');
+
+INSERT INTO usuario (persona_id, correo, origen_registro, contrasena_hash, correo_verificado_en)
+SELECT p.persona_id, 'anita.condo@prueba.com', 'FORMULARIO',
+       '{bcrypt}$2a$10$41ZIgbSSlPVd3pBrI3BGuu9O6s0NXg.XnZZ2svvawPxfzrHU5Aj3G', CURRENT_TIMESTAMP
+FROM persona p
+WHERE p.nombres = 'Anita' AND p.apellido_paterno = 'Condo' AND p.apellido_materno = 'Lopez';
+
+INSERT INTO usuario_rol (usuario_id, rol_id, es_principal)
+SELECT u.usuario_id, r.rol_id, true
+FROM usuario u JOIN rol r ON r.codigo = 'ROLE_ALUMNO'
+WHERE u.correo = 'anita.condo@prueba.com';
+
 -- ----------------------------------------------------------------------------
 -- CURSO 1: Procedimiento Administrativo Practico
 -- ----------------------------------------------------------------------------
